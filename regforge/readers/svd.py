@@ -125,5 +125,9 @@ class SvdReader(Reader):
         return Device(
             name=_text(root, "name") or "device",
             description=_text(root, "description"),
+            vendor=_text(root, "vendor"),
+            series=_text(root, "series"),
+            version=_text(root, "version"),
+            license_text=_text(root, "licenseText"),
             peripherals=[_build_peripheral(p) for p in root.findall("./peripherals/peripheral")],
         )

@@ -14,6 +14,7 @@ from pathlib import Path
 
 from . import __version__
 from .postprocess import FormatterNotAvailable, uncrustify
+from .provenance import build_provenance
 from .readers import available_readers, get_reader, reader_for_path
 from .writers import Writer, available_writers, get_writer, writer_for_path
 
@@ -48,6 +49,12 @@ def build_parser() -> argparse.ArgumentParser:
         f"extension (available: {', '.join(available_writers())})",
     )
     parser.add_argument(
+        "--no-provenance",
+        action="store_true",
+        help="omit the provenance banner and audit constants (source hash, "
+        "command) from the output",
+    )
+    parser.add_argument(
         "--uncrustify",
         action="store_true",
         help="format generated C/C++ output with uncrustify",
@@ -79,7 +86,8 @@ def _select_writer(args: argparse.Namespace) -> Writer:
 
 def main(argv: list[str] | None = None) -> int:
     """Run the command-line interface and return a process exit code."""
-    args = build_parser().parse_args(argv)
+    raw_args = list(sys.argv[1:] if argv is None else argv)
+    args = build_parser().parse_args(raw_args)
 
     try:
         reader = get_reader(args.from_format) if args.from_format else reader_for_path(args.input)
@@ -89,7 +97,13 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     device = reader.read(args.input)
-    output = writer.render(device)
+
+    provenance = None
+    if not args.no_provenance:
+        command = "regforge " + " ".join(raw_args)
+        provenance = build_provenance(args.input, tool_version=__version__, command=command)
+
+    output = writer.render(device, provenance)
 
     if args.uncrustify or args.uncrustify_config:
         try:

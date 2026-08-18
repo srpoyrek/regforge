@@ -1,4 +1,4 @@
-"""Tests for the writer registry and the C writer."""
+"""C writer registration and discovery."""
 
 import pytest
 
@@ -18,8 +18,3 @@ def test_writer_inferred_from_extension():
 def test_unknown_target_raises():
     with pytest.raises(ValueError):
         get_writer("does-not-exist")
-
-
-def test_render_matches_golden(demo_device, golden_header_path):
-    generated = CWriter().render(demo_device)
-    assert generated == golden_header_path.read_text(encoding="utf-8")

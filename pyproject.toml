@@ -34,6 +34,9 @@ regforge = ["writers/templates/*/*.j2", "formatting/*.cfg"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# importlib mode lets same-named test files (e.g. test_registry.py) live in
+# different folders (readers/svd, writers/c, ...) without collisions.
+addopts = "--import-mode=importlib"
 
 [tool.black]
 line-length = 100

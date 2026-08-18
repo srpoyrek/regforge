@@ -101,12 +101,24 @@ class Peripheral:
 class Device:
     """A complete device and the peripherals it exposes.
 
+    The identity fields (``vendor``, ``name``, ``series``, ``version``) come
+    straight from the source description and are preserved so generated output
+    can be traced back to the exact input it was produced from.
+
     Attributes:
         name: Identifier of the device.
         description: Optional human-readable description.
+        vendor: Name of the silicon vendor, if given.
+        series: Device family or series, if given.
+        version: Version string of the source description, if given.
+        license_text: License notice carried by the source description, if given.
         peripherals: Peripherals defined by the device.
     """
 
     name: str
     description: str | None = None
+    vendor: str | None = None
+    series: str | None = None
+    version: str | None = None
+    license_text: str | None = None
     peripherals: list[Peripheral] = field(default_factory=list)

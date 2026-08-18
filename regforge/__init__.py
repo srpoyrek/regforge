@@ -16,6 +16,7 @@ Typical usage::
 from __future__ import annotations
 
 from .ir import Device, EnumeratedValue, Field, Peripheral, Register
+from .provenance import PatchRef, Provenance, build_provenance
 from .readers import available_readers, get_reader, reader_for_path
 from .writers import available_writers, get_writer, writer_for_path
 
@@ -27,6 +28,9 @@ __all__ = [
     "Register",
     "Field",
     "EnumeratedValue",
+    "Provenance",
+    "PatchRef",
+    "build_provenance",
     "get_reader",
     "reader_for_path",
     "available_readers",

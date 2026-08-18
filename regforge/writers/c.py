@@ -17,6 +17,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 
 from ..ir import Device
+from ..provenance import Provenance
 from .base import Writer
 
 _TEMPLATE_DIR = Path(__file__).parent / "templates" / "c"
@@ -44,6 +45,7 @@ class CWriter(Writer):
         )
         self._env.filters["hex32"] = _hex32
 
-    def render(self, device: Device) -> str:
+    def render(self, device: Device, provenance: Provenance | None = None) -> str:
         """Render ``device`` into a C header string."""
-        return self._env.get_template("header.h.j2").render(device=device)
+        template = self._env.get_template("header.h.j2")
+        return template.render(device=device, provenance=provenance)

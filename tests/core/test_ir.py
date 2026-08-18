@@ -1,4 +1,4 @@
-"""Tests for the intermediate representation."""
+"""Core intermediate representation."""
 
 from regforge.ir import Field
 

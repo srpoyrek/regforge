@@ -1,28 +1,8 @@
-"""Tests for the reader registry and the SVD reader."""
+"""SVD structural parsing: peripherals, registers, fields, enums, literals."""
 
 import pytest
 
-from regforge.readers import available_readers, get_reader, reader_for_path
-from regforge.readers.svd import SvdReader, parse_svd_int
-
-
-def test_svd_reader_is_registered():
-    assert "svd" in available_readers()
-    assert isinstance(get_reader("svd"), SvdReader)
-
-
-def test_reader_inferred_from_extension(minimal_svd_path):
-    assert isinstance(reader_for_path(minimal_svd_path), SvdReader)
-
-
-def test_unknown_format_raises():
-    with pytest.raises(ValueError):
-        get_reader("does-not-exist")
-
-
-def test_unknown_extension_raises():
-    with pytest.raises(ValueError):
-        reader_for_path("device.unknown")
+from regforge.readers.svd import parse_svd_int
 
 
 @pytest.mark.parametrize(
@@ -38,8 +18,7 @@ def test_parse_svd_int(text, expected):
     assert parse_svd_int(text) == expected
 
 
-def test_reads_expected_ir(demo_device):
-    assert demo_device.name == "DemoMCU"
+def test_peripherals_registers_fields(demo_device):
     assert [p.name for p in demo_device.peripherals] == ["GPIOA"]
 
     gpioa = demo_device.peripherals[0]

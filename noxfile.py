@@ -55,7 +55,7 @@ def goldens(session: nox.Session) -> None:
         "python",
         "-m",
         "regforge",
-        "tests/svd/minimal.svd",
+        "tests/fixtures/svd/minimal.svd",
         "-o",
-        "tests/golden/minimal.h",
+        "tests/golden/c/minimal.h",
     )

@@ -1,4 +1,9 @@
-"""Shared pytest fixtures."""
+"""Shared fixtures for the test suite.
+
+Fixtures defined here are available to every test in every subfolder
+(readers/, writers/, core/, cli/). Input fixtures live under fixtures/ and
+golden output under golden/<language>/.
+"""
 
 from pathlib import Path
 
@@ -8,21 +13,23 @@ from regforge.ir import Device
 from regforge.readers.svd import SvdReader
 
 TESTS_DIR = Path(__file__).parent
+MINIMAL_SVD = TESTS_DIR / "fixtures" / "svd" / "minimal.svd"
+GOLDEN_C = TESTS_DIR / "golden" / "c" / "minimal.h"
 
 
 @pytest.fixture
 def minimal_svd_path() -> Path:
-    """Path to the minimal SVD fixture."""
-    return TESTS_DIR / "svd" / "minimal.svd"
+    """Path to the minimal SVD input fixture."""
+    return MINIMAL_SVD
 
 
 @pytest.fixture
 def golden_header_path() -> Path:
     """Path to the golden C header for the minimal fixture."""
-    return TESTS_DIR / "golden" / "minimal.h"
+    return GOLDEN_C
 
 
 @pytest.fixture
-def demo_device(minimal_svd_path: Path) -> Device:
+def demo_device() -> Device:
     """The device parsed from the minimal SVD fixture."""
-    return SvdReader().read(minimal_svd_path)
+    return SvdReader().read(MINIMAL_SVD)

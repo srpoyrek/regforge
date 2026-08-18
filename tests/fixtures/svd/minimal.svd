@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <device schemaVersion="1.3">
+  <vendor>DemoCorp</vendor>
   <name>DemoMCU</name>
+  <series>DemoSeries</series>
+  <version>1.0</version>
   <description>Minimal demo device used by the regforge test suite</description>
+  <licenseText>
+Copyright (c) 2024 DemoCorp.
+Licensed under the Apache License, Version 2.0.
+  </licenseText>
   <peripherals>
     <peripheral>
       <name>GPIOA</name>

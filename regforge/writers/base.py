@@ -11,6 +11,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from ..ir import Device
+from ..provenance import Provenance
 
 
 class Writer(ABC):
@@ -32,6 +33,10 @@ class Writer(ABC):
     language: str = ""
 
     @abstractmethod
-    def render(self, device: Device) -> str:
-        """Render ``device`` and return the generated source as a string."""
+    def render(self, device: Device, provenance: Provenance | None = None) -> str:
+        """Render ``device`` and return the generated source as a string.
+
+        If ``provenance`` is given, writers embed it into the output as an
+        audit trail (banner lines and compile-time constants).
+        """
         raise NotImplementedError
