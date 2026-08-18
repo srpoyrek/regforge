@@ -4,6 +4,7 @@
   <name>DemoMCU</name>
   <series>DemoSeries</series>
   <version>1.0</version>
+  <headerDefinitionsPrefix>DC_</headerDefinitionsPrefix>
   <description>Minimal demo device used by the regforge test suite</description>
   <licenseText>
 Copyright (c) 2024 DemoCorp.
@@ -22,6 +23,7 @@ Licensed under the Apache License, Version 2.0.
   </cpu>
   <addressUnitBits>8</addressUnitBits>
   <width>32</width>
+  <access>read-write</access>
   <peripherals>
     <peripheral>
       <name>GPIOA</name>
@@ -55,6 +57,7 @@ Licensed under the Apache License, Version 2.0.
           <addressOffset>0x14</addressOffset>
           <size>32</size>
           <resetValue>0x00000000</resetValue>
+          <resetMask>0x0000FFFF</resetMask>
           <fields>
             <field>
               <name>OD0</name>
@@ -66,4 +69,7 @@ Licensed under the Apache License, Version 2.0.
       </registers>
     </peripheral>
   </peripherals>
+  <vendorExtensions>
+    <democorp:tuning xmlns:democorp="urn:democorp:svd">calibrated</democorp:tuning>
+  </vendorExtensions>
 </device>

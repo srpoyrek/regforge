@@ -27,13 +27,15 @@ def _render(prefix, *, vendor_extensions_xml=None):
     return CWriter().render(device)
 
 
-def test_prefix_applied_to_all_identifier_levels():
+def test_prefix_applied_to_hardware_identifiers():
     output = _render("NRF_")
-    assert "#define NRF_CHIP_BUS_WIDTH" in output  # device constants
     assert "#define NRF_GPIO_BASE" in output  # peripheral
     assert "#define NRF_GPIO_CR " in output  # register accessor
     assert "#define NRF_GPIO_CR_EN_Pos" in output  # field-level, too
     assert "#define NRF_GPIO_CR_EN_Msk" in output
+    # Device-name-based metadata is NOT re-prefixed (no double namespacing).
+    assert "#define CHIP_BUS_WIDTH" in output
+    assert "NRF_CHIP_BUS_WIDTH" not in output
 
 
 def test_no_prefix_by_default():

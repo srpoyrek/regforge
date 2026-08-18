@@ -1,5 +1,5 @@
 {% set guard = "REGFORGE_" ~ device.name|upper ~ "_H" -%}
-{% set dev = prefix ~ device.name|upper -%}
+{% set dev = device.name|upper -%}
 /*
  * {{ device.name }} register definitions.
 {% if device.description %}

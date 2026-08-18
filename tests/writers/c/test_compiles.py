@@ -22,7 +22,7 @@ def test_golden_header_compiles(std, tmp_path, golden_header_path):
     source.write_text(
         f'#include "{golden_header_path.as_posix()}"\n'
         "int main(void) {\n"
-        "    volatile uint32_t v = GPIOA_MODER; (void)v;\n"
+        "    volatile uint32_t v = DC_GPIOA_MODER; (void)v;\n"
         "    return (int)demomcu_irq_prio(1);\n"
         "}\n",
         encoding="utf-8",
