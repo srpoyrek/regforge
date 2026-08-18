@@ -73,24 +73,6 @@ Generation is verified with a golden test: the suite parses
 header against [tests/golden/minimal.h](tests/golden/minimal.h). Regenerate the
 golden fixtures after an intentional template change with `nox -s goldens`.
 
-## Layout
-
-```
-regforge/
-  ir.py                 intermediate representation dataclasses
-  readers/              input format -> IR
-    base.py             Reader interface
-    svd.py              CMSIS-SVD reader
-  writers/              IR -> target language
-    base.py             Writer interface
-    c.py                C header writer
-    templates/c/        editable C output templates
-  postprocess.py        optional uncrustify formatting of generated output
-  formatting/           bundled uncrustify configuration
-  cli.py                command-line interface
-tests/                  pytest suite, SVD fixtures, golden output
-```
-
 ## License
 
 Apache-2.0 — see [LICENSE](LICENSE).
