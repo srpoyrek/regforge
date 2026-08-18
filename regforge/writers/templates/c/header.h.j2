@@ -44,16 +44,19 @@
 #include <assert.h>
 {% endif %}
 
-#define {{ dev }}_ADDRESS_UNIT_BITS {{ device.address_unit_bits }}
+/* Compile-time assert: _Static_assert on C11+, a negative-array typedef
+ * (named {{ dev }}_assert_<tag>, unique across headers) on C89/C99. */
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
-_Static_assert(CHAR_BIT == {{ dev }}_ADDRESS_UNIT_BITS,
+#define {{ dev }}_STATIC_ASSERT(cond, tag, msg) _Static_assert(cond, msg)
+#else
+#define {{ dev }}_STATIC_ASSERT(cond, tag, msg) \
+    typedef char {{ dev }}_assert_##tag[(cond) ? 1 : -1]
+#endif
+
+#define {{ dev }}_ADDRESS_UNIT_BITS {{ device.address_unit_bits }}
+{{ dev }}_STATIC_ASSERT(CHAR_BIT == {{ dev }}_ADDRESS_UNIT_BITS, address_unit_bits,
     "regforge: this header targets {{ device.address_unit_bits }}-bit address units; "
     "the compiler's CHAR_BIT disagrees -- regenerate with a matching emitter mode.");
-#else
-/* Pre-C11 has no _Static_assert; a negative array size fails the build the
- * same way (without a message) when CHAR_BIT disagrees. */
-typedef char {{ dev }}_assert_address_unit_bits[(CHAR_BIT == {{ dev }}_ADDRESS_UNIT_BITS) ? 1 : -1];
-#endif
 
 #define {{ dev }}_BUS_WIDTH {{ device.bus_width }}
 {% if device.version %}

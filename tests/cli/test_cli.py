@@ -59,3 +59,36 @@ def test_uncrustify_missing_reports_error(monkeypatch, capsys, minimal_svd_path)
     captured = capsys.readouterr()
     assert "uncrustify" in captured.err
     assert captured.out == ""
+
+
+def test_verbose_logs_stages_and_timing(capsys, minimal_svd_path):
+    assert main([str(minimal_svd_path), "--no-provenance", "-v"]) == ExitCode.OK
+    captured = capsys.readouterr()
+    for stage in ("parsed", "resolved defaults", "rendered", "done"):
+        assert stage in captured.err
+    assert "ms" in captured.err  # timing is shown
+    assert captured.out.startswith("/*")  # header still on stdout, logs on stderr
+
+
+def test_quiet_by_default(capsys, minimal_svd_path):
+    assert main([str(minimal_svd_path), "--no-provenance"]) == ExitCode.OK
+    captured = capsys.readouterr()
+    assert "parsed" not in captured.err  # no INFO progress
+    assert "ms" not in captured.err
+
+
+def test_warnings_show_without_verbose(tmp_path, capsys):
+    # A device with no access anywhere warns -- and warnings ignore -v entirely.
+    svd = tmp_path / "noaccess.svd"
+    svd.write_text(
+        "<device><name>C</name><peripherals><peripheral><name>P</name>"
+        "<baseAddress>0x0</baseAddress><registers><register><name>R</name>"
+        "<addressOffset>0x0</addressOffset><size>32</size></register>"
+        "</registers></peripheral></peripherals></device>",
+        encoding="utf-8",
+    )
+    assert main([str(svd), "--no-provenance"]) == ExitCode.OK  # note: no -v
+    captured = capsys.readouterr()
+    assert "warn:" in captured.err
+    assert "access unspecified" in captured.err
+    assert "parsed" not in captured.err  # but INFO progress still suppressed

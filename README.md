@@ -40,6 +40,7 @@ Options:
 | `-t, --to TARGET` | Output target; defaults to `c`, or inferred from the output extension. |
 | `--uncrustify` | Format generated C/C++ output with uncrustify. |
 | `--uncrustify-config PATH` | Use a specific uncrustify configuration. |
+| `-v, --verbose` | Log pipeline stages and per-stage timing to stderr (`-vv` for detail). |
 
 `--uncrustify` runs the [uncrustify](https://github.com/uncrustify/uncrustify)
 formatter on the *generated* C/C++ output only; it must be installed

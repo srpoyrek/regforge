@@ -28,7 +28,8 @@ def test_byte_addressable_emits_byte_offsets():
     # Tie the expected value to the input so the two can't drift apart.
     assert f"#define CHIP_ADDRESS_UNIT_BITS {unit_bits}" in output
     assert "#include <limits.h>" in output
-    assert "_Static_assert(CHAR_BIT == CHIP_ADDRESS_UNIT_BITS" in output
+    assert "#define CHIP_STATIC_ASSERT(cond, tag, msg)" in output
+    assert "CHIP_STATIC_ASSERT(CHAR_BIT == CHIP_ADDRESS_UNIT_BITS" in output
 
 
 def test_word_addressable_is_refused():
