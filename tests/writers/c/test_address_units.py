@@ -16,7 +16,7 @@ def test_byte_addressable_emits_byte_offsets():
             Peripheral(
                 name="P",
                 base_address=0x1000,
-                registers=[Register(name="R", address_offset=0x14)],
+                registers=[Register(name="R", address_offset=0x14, size=32)],
             )
         ],
     )

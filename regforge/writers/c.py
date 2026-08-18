@@ -91,4 +91,5 @@ class CWriter(Writer):
             provenance=provenance,
             to_bytes=lambda units: _units_to_bytes(units, device.address_unit_bits),
             c_type=_C_TYPE,
+            full_mask=lambda size: (1 << size) - 1,
         )

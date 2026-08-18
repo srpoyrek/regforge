@@ -19,6 +19,7 @@ from enum import IntEnum
 from ..ir import (
     DEFAULT_ADDRESS_UNIT_BITS,
     DEFAULT_BUS_WIDTH,
+    Access,
     Cpu,
     Device,
     EnumeratedValue,
@@ -88,6 +89,21 @@ def _bool(element: ET.Element, tag: str) -> bool | None:
     return parse_svd_bool(raw) if raw is not None else None
 
 
+def _access(element: ET.Element, tag: str = "access") -> Access | None:
+    """Return the :class:`~regforge.ir.Access` of ``element``'s ``tag`` child.
+
+    Returns ``None`` when the element is absent or holds an unrecognized value
+    (so the defaults resolution pass fills it from a higher level).
+    """
+    raw = _text(element, tag)
+    if raw is None:
+        return None
+    try:
+        return Access(raw)
+    except ValueError:
+        return None
+
+
 def _parse_bits(field_element: ET.Element) -> tuple[int, int]:
     """Return ``(bit_offset, bit_width)`` from any SVD bit-range encoding."""
     bit_range = _text(field_element, "bitRange")
@@ -126,19 +142,22 @@ def _build_field(field_element: ET.Element) -> Field:
         bit_offset=offset,
         bit_width=width,
         description=_text(field_element, "description"),
-        access=_text(field_element, "access"),
+        access=_access(field_element),
         enums=enums,
     )
 
 
-def _build_register(register_element: ET.Element, default_register_size: int) -> Register:
+def _build_register(register_element: ET.Element) -> Register:
+    # Register-property values are stored raw (None when silent); the defaults
+    # resolution pass fills them from the inheritance chain.
     return Register(
         name=_text(register_element, "name") or "",
         address_offset=_int(register_element, "addressOffset", 0),
-        size=_int(register_element, "size", default_register_size),
-        reset_value=_int(register_element, "resetValue", 0),
+        size=_int(register_element, "size"),
+        reset_value=_int(register_element, "resetValue"),
+        reset_mask=_int(register_element, "resetMask"),
         description=_text(register_element, "description"),
-        access=_text(register_element, "access"),
+        access=_access(register_element),
         fields=[_build_field(f) for f in register_element.findall("./fields/field")],
     )
 
@@ -157,15 +176,16 @@ def _build_cpu(cpu_element: ET.Element) -> Cpu:
     )
 
 
-def _build_peripheral(peripheral_element: ET.Element, default_register_size: int) -> Peripheral:
+def _build_peripheral(peripheral_element: ET.Element) -> Peripheral:
     return Peripheral(
         name=_text(peripheral_element, "name") or "",
         base_address=_int(peripheral_element, "baseAddress", 0),
         description=_text(peripheral_element, "description"),
-        registers=[
-            _build_register(r, default_register_size)
-            for r in peripheral_element.findall("./registers/register")
-        ],
+        default_size=_int(peripheral_element, "size"),
+        default_access=_access(peripheral_element),
+        default_reset_value=_int(peripheral_element, "resetValue"),
+        default_reset_mask=_int(peripheral_element, "resetMask"),
+        registers=[_build_register(r) for r in peripheral_element.findall("./registers/register")],
     )
 
 
@@ -176,12 +196,13 @@ class SvdReader(Reader):
     file_extensions = (".svd",)
 
     def read(self, source: Source) -> Device:
-        """Parse the SVD file at ``source`` into a :class:`~regforge.ir.Device`."""
+        """Parse the SVD file at ``source`` into a :class:`~regforge.ir.Device`.
+
+        Register-property defaults are stored raw at each level; run
+        :func:`regforge.resolve.resolve_defaults` to fill them in.
+        """
         root = ET.parse(str(source)).getroot()
         cpu_element = root.find("cpu")
-        bus_width = _int(root, "width", DEFAULT_BUS_WIDTH)
-        # Register size resolves: register <size> -> device <size> -> device <width>.
-        default_register_size = _int(root, "size", bus_width)
         return Device(
             name=_text(root, "name") or "device",
             description=_text(root, "description"),
@@ -191,9 +212,10 @@ class SvdReader(Reader):
             license_text=_text(root, "licenseText"),
             cpu=_build_cpu(cpu_element) if cpu_element is not None else None,
             address_unit_bits=_int(root, "addressUnitBits", DEFAULT_ADDRESS_UNIT_BITS),
-            bus_width=bus_width,
-            peripherals=[
-                _build_peripheral(p, default_register_size)
-                for p in root.findall("./peripherals/peripheral")
-            ],
+            bus_width=_int(root, "width", DEFAULT_BUS_WIDTH),
+            default_size=_int(root, "size"),
+            default_access=_access(root),
+            default_reset_value=_int(root, "resetValue"),
+            default_reset_mask=_int(root, "resetMask"),
+            peripherals=[_build_peripheral(p) for p in root.findall("./peripherals/peripheral")],
         )

@@ -16,9 +16,10 @@ Typical usage::
 from __future__ import annotations
 
 from .check import Finding, Severity, check_address_math
-from .ir import Cpu, Device, EnumeratedValue, Field, Peripheral, Register
+from .ir import Access, Cpu, Device, EnumeratedValue, Field, Peripheral, Register
 from .provenance import PatchRef, Provenance, build_provenance
 from .readers import available_readers, get_reader, reader_for_path
+from .resolve import resolve_defaults
 from .writers import available_writers, get_writer, writer_for_path
 
 __version__ = "0.0.1"
@@ -30,6 +31,8 @@ __all__ = [
     "Register",
     "Field",
     "EnumeratedValue",
+    "Access",
+    "resolve_defaults",
     "Provenance",
     "PatchRef",
     "build_provenance",

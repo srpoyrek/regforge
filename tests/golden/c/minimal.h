@@ -83,6 +83,7 @@ DEMOMCU_INLINE uint8_t demomcu_irq_prio(uint8_t priority)
 
 /* GPIOA.MODER - Mode register */
 #define GPIOA_MODER (*(volatile uint32_t *)(GPIOA_BASE + 0x00000000UL))
+#define GPIOA_MODER_RESET_VALUE (0x00000000UL)
 #define GPIOA_MODER_MODE0_Pos (0U)
 #define GPIOA_MODER_MODE0_Msk (0x00000003UL)
 #define GPIOA_MODER_MODE0_INPUT (0U)
@@ -92,6 +93,7 @@ DEMOMCU_INLINE uint8_t demomcu_irq_prio(uint8_t priority)
 
 /* GPIOA.ODR - Output data register */
 #define GPIOA_ODR (*(volatile uint32_t *)(GPIOA_BASE + 0x00000014UL))
+#define GPIOA_ODR_RESET_VALUE (0x00000000UL)
 #define GPIOA_ODR_OD0_Pos (0U)
 #define GPIOA_ODR_OD0_Msk (0x00000001UL)
 

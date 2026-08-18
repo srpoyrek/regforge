@@ -14,14 +14,24 @@ The hierarchy mirrors the structure of a memory-mapped device:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
 
 # --- SVD schema defaults (used when the source omits an optional element) ---
-#: Default register width in bits.
-DEFAULT_REGISTER_SIZE_BITS = 32
 #: Default bits per address unit (8 => byte-addressable).
 DEFAULT_ADDRESS_UNIT_BITS = 8
-#: Default data bus width in bits (SVD ``<width>`` fallback).
+#: Default data bus width in bits (SVD ``<width>``; also the register-size
+#: last resort in the defaults resolution pass).
 DEFAULT_BUS_WIDTH = 32
+
+
+class Access(Enum):
+    """Register/field access policy, spelled as in SVD."""
+
+    READ_ONLY = "read-only"
+    WRITE_ONLY = "write-only"
+    READ_WRITE = "read-write"
+    WRITE_ONCE = "writeOnce"
+    READ_WRITE_ONCE = "read-writeOnce"
 
 
 @dataclass
@@ -48,7 +58,8 @@ class Field:
         bit_offset: Zero-based index of the field's least-significant bit.
         bit_width: Number of bits the field occupies.
         description: Optional human-readable description.
-        access: Access policy such as ``"read-write"`` or ``"read-only"``.
+        access: Access policy. Raw (possibly ``None``) as parsed; filled in by
+            the defaults resolution pass so every field carries a resolved value.
         enums: Enumerated values the field may take, if any.
     """
 
@@ -56,7 +67,7 @@ class Field:
     bit_offset: int
     bit_width: int
     description: str | None = None
-    access: str | None = None
+    access: Access | None = None
     enums: list[EnumeratedValue] = field(default_factory=list)
 
     @property
@@ -69,22 +80,30 @@ class Field:
 class Register:
     """A single addressable register within a :class:`Peripheral`.
 
+    The ``size``, ``reset_value``, ``reset_mask``, and ``access`` fields hold
+    the register's own declared value (``None`` when the source is silent).
+    The defaults resolution pass then fills them from the inheritance chain, so
+    every emitter sees fully-resolved values and never re-derives them.
+
     Attributes:
         name: Identifier of the register.
-        address_offset: Byte offset from the owning peripheral's base address.
-        size: Width of the register in bits.
-        reset_value: Value the register holds after reset.
+        address_offset: Offset from the owning peripheral's base, in address units.
+        size: Width of the register in bits (resolved).
+        reset_value: Value the register holds after reset (resolved; may be
+            ``None`` if unspecified at every level).
+        reset_mask: Which bits of ``reset_value`` are defined (resolved).
         description: Optional human-readable description.
-        access: Access policy such as ``"read-write"`` or ``"read-only"``.
+        access: Access policy (resolved).
         fields: Bit fields defined within the register.
     """
 
     name: str
     address_offset: int
-    size: int = DEFAULT_REGISTER_SIZE_BITS
-    reset_value: int = 0
+    size: int | None = None
+    reset_value: int | None = None
+    reset_mask: int | None = None
     description: str | None = None
-    access: str | None = None
+    access: Access | None = None
     fields: list[Field] = field(default_factory=list)
 
 
@@ -92,16 +111,28 @@ class Register:
 class Peripheral:
     """A peripheral block mapped at a base address.
 
+    The ``default_*`` fields are register-property defaults declared at the
+    peripheral level; the defaults resolution pass hands them down to registers
+    that do not declare their own.
+
     Attributes:
         name: Identifier of the peripheral.
         base_address: Absolute base address of the peripheral.
         description: Optional human-readable description.
+        default_size: Peripheral-level default register width in bits.
+        default_access: Peripheral-level default access policy.
+        default_reset_value: Peripheral-level default reset value.
+        default_reset_mask: Peripheral-level default reset mask.
         registers: Registers belonging to the peripheral.
     """
 
     name: str
     base_address: int
     description: str | None = None
+    default_size: int | None = None
+    default_access: Access | None = None
+    default_reset_value: int | None = None
+    default_reset_mask: int | None = None
     registers: list[Register] = field(default_factory=list)
 
 
@@ -161,6 +192,10 @@ class Device:
         bus_width: Maximum data bus width in bits (SVD ``<width>``). The last
             fallback for a register's size, and the ceiling a register size is
             checked against.
+        default_size: Device-level default register width in bits.
+        default_access: Device-level default access policy.
+        default_reset_value: Device-level default reset value.
+        default_reset_mask: Device-level default reset mask.
         peripherals: Peripherals defined by the device.
     """
 
@@ -173,4 +208,8 @@ class Device:
     cpu: Cpu | None = None
     address_unit_bits: int = DEFAULT_ADDRESS_UNIT_BITS
     bus_width: int = DEFAULT_BUS_WIDTH
+    default_size: int | None = None
+    default_access: Access | None = None
+    default_reset_value: int | None = None
+    default_reset_mask: int | None = None
     peripherals: list[Peripheral] = field(default_factory=list)

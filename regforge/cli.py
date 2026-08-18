@@ -17,6 +17,7 @@ from . import __version__
 from .postprocess import FormatterNotAvailable, uncrustify
 from .provenance import build_provenance
 from .readers import available_readers, get_reader, reader_for_path
+from .resolve import resolve_defaults
 from .writers import EmitError, Writer, available_writers, get_writer, writer_for_path
 
 
@@ -107,6 +108,8 @@ def main(argv: list[str] | None = None) -> int:
         return ExitCode.USAGE_ERROR
 
     device = reader.read(args.input)
+    for warning in resolve_defaults(device):
+        print(f"regforge: warning: {warning}", file=sys.stderr)
 
     provenance = None
     if not args.no_provenance:

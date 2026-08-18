@@ -136,6 +136,12 @@ typedef char {{ dev }}_assert_address_unit_bits[(CHAR_BIT == {{ dev }}_ADDRESS_U
 
 /* {{ periph.name }}.{{ reg.name }}{% if reg.description %} - {{ reg.description }}{% endif %} */
 #define {{ periph.name|upper }}_{{ reg.name|upper }} (*(volatile {{ c_type[reg.size] }} *)({{ periph.name|upper }}_BASE + {{ to_bytes(reg.address_offset)|hex32 }}UL))
+{% if reg.reset_value is not none %}
+#define {{ periph.name|upper }}_{{ reg.name|upper }}_RESET_VALUE ({{ reg.reset_value|hex32 }}UL)
+{% endif %}
+{% if reg.reset_mask is not none and reg.reset_mask != full_mask(reg.size) %}
+#define {{ periph.name|upper }}_{{ reg.name|upper }}_RESET_MASK ({{ reg.reset_mask|hex32 }}UL)
+{% endif %}
 {% for field in reg.fields %}
 #define {{ periph.name|upper }}_{{ reg.name|upper }}_{{ field.name|upper }}_Pos ({{ field.bit_offset }}U)
 #define {{ periph.name|upper }}_{{ reg.name|upper }}_{{ field.name|upper }}_Msk ({{ field.mask|hex32 }}UL)
