@@ -14,6 +14,15 @@ from ..ir import Device
 from ..provenance import Provenance
 
 
+class EmitError(RuntimeError):
+    """Raised when a writer cannot faithfully emit the given device.
+
+    Signals a deliberate, named refusal (for example, a target that only
+    supports byte-addressable devices being handed a word-addressable one) so
+    the pipeline fails loudly instead of generating subtly wrong output.
+    """
+
+
 class Writer(ABC):
     """Base class for output-target writers.
 

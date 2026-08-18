@@ -18,3 +18,8 @@ def test_writer_inferred_from_extension():
 def test_unknown_target_raises():
     with pytest.raises(ValueError):
         get_writer("does-not-exist")
+
+
+def test_unknown_extension_raises():
+    with pytest.raises(ValueError):
+        writer_for_path("device.rs")

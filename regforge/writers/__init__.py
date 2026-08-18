@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .base import Writer
+from .base import EmitError, Writer
 from .c import CWriter
 
 _WRITERS: dict[str, type[Writer]] = {}
@@ -73,6 +73,7 @@ register_writer(CWriter)
 __all__ = [
     "Writer",
     "CWriter",
+    "EmitError",
     "register_writer",
     "available_writers",
     "get_writer",

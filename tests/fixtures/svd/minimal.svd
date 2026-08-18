@@ -20,6 +20,7 @@ Licensed under the Apache License, Version 2.0.
     <vendorSystickConfig>false</vendorSystickConfig>
     <deviceNumInterrupts>32</deviceNumInterrupts>
   </cpu>
+  <addressUnitBits>8</addressUnitBits>
   <peripherals>
     <peripheral>
       <name>GPIOA</name>

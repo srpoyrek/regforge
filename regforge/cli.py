@@ -10,13 +10,23 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+from enum import IntEnum
 from pathlib import Path
 
 from . import __version__
 from .postprocess import FormatterNotAvailable, uncrustify
 from .provenance import build_provenance
 from .readers import available_readers, get_reader, reader_for_path
-from .writers import Writer, available_writers, get_writer, writer_for_path
+from .writers import EmitError, Writer, available_writers, get_writer, writer_for_path
+
+
+class ExitCode(IntEnum):
+    """Process exit codes returned by :func:`main`."""
+
+    OK = 0
+    USAGE_ERROR = 2  # unknown input format or output target
+    FORMATTER_ERROR = 3  # uncrustify unavailable or failed
+    EMIT_ERROR = 4  # the writer refused to emit the device
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -94,7 +104,7 @@ def main(argv: list[str] | None = None) -> int:
         writer = _select_writer(args)
     except ValueError as error:
         print(f"regforge: error: {error}", file=sys.stderr)
-        return 2
+        return ExitCode.USAGE_ERROR
 
     device = reader.read(args.input)
 
@@ -103,7 +113,11 @@ def main(argv: list[str] | None = None) -> int:
         command = "regforge " + " ".join(raw_args)
         provenance = build_provenance(args.input, tool_version=__version__, command=command)
 
-    output = writer.render(device, provenance)
+    try:
+        output = writer.render(device, provenance)
+    except EmitError as error:
+        print(f"regforge: error: {error}", file=sys.stderr)
+        return ExitCode.EMIT_ERROR
 
     if args.uncrustify or args.uncrustify_config:
         try:
@@ -114,10 +128,10 @@ def main(argv: list[str] | None = None) -> int:
             )
         except (FormatterNotAvailable, ValueError) as error:
             print(f"regforge: error: {error}", file=sys.stderr)
-            return 3
+            return ExitCode.FORMATTER_ERROR
         except subprocess.CalledProcessError as error:
             print(f"regforge: error: uncrustify failed: {error.stderr}", file=sys.stderr)
-            return 3
+            return ExitCode.FORMATTER_ERROR
 
     if args.output:
         destination = Path(args.output)
@@ -126,4 +140,4 @@ def main(argv: list[str] | None = None) -> int:
             handle.write(output)
     else:
         sys.stdout.write(output)
-    return 0
+    return ExitCode.OK

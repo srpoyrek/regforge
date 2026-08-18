@@ -14,9 +14,27 @@ Notes:
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
+from enum import IntEnum
 
-from ..ir import Cpu, Device, EnumeratedValue, Field, Peripheral, Register
+from ..ir import (
+    DEFAULT_ADDRESS_UNIT_BITS,
+    DEFAULT_REGISTER_SIZE_BITS,
+    Cpu,
+    Device,
+    EnumeratedValue,
+    Field,
+    Peripheral,
+    Register,
+)
 from .base import Reader, Source
+
+
+class Radix(IntEnum):
+    """Numeric bases accepted for SVD integer literals."""
+
+    HEX = 16
+    BINARY = 2
+    DECIMAL = 10
 
 
 def parse_svd_int(text: str) -> int:
@@ -27,12 +45,12 @@ def parse_svd_int(text: str) -> int:
     """
     token = text.strip().lower()
     if token.startswith("0x"):
-        return int(token, 16)
+        return int(token, Radix.HEX)
     if token.startswith("0b"):
-        return int(token[2:], 2)
+        return int(token, Radix.BINARY)
     if token.startswith("#"):
-        return int(token[1:], 2)
-    return int(token, 10)
+        return int(token.removeprefix("#"), Radix.BINARY)
+    return int(token, Radix.DECIMAL)
 
 
 def parse_svd_bool(text: str) -> bool | None:
@@ -116,9 +134,9 @@ def _build_field(field_element: ET.Element) -> Field:
 def _build_register(register_element: ET.Element) -> Register:
     return Register(
         name=_text(register_element, "name") or "",
-        address_offset=_int(register_element, "addressOffset", 0) or 0,
-        size=_int(register_element, "size", 32) or 32,
-        reset_value=_int(register_element, "resetValue", 0) or 0,
+        address_offset=_int(register_element, "addressOffset", 0),
+        size=_int(register_element, "size", DEFAULT_REGISTER_SIZE_BITS),
+        reset_value=_int(register_element, "resetValue", 0),
         description=_text(register_element, "description"),
         access=_text(register_element, "access"),
         fields=[_build_field(f) for f in register_element.findall("./fields/field")],
@@ -142,7 +160,7 @@ def _build_cpu(cpu_element: ET.Element) -> Cpu:
 def _build_peripheral(peripheral_element: ET.Element) -> Peripheral:
     return Peripheral(
         name=_text(peripheral_element, "name") or "",
-        base_address=_int(peripheral_element, "baseAddress", 0) or 0,
+        base_address=_int(peripheral_element, "baseAddress", 0),
         description=_text(peripheral_element, "description"),
         registers=[_build_register(r) for r in peripheral_element.findall("./registers/register")],
     )
@@ -166,5 +184,6 @@ class SvdReader(Reader):
             version=_text(root, "version"),
             license_text=_text(root, "licenseText"),
             cpu=_build_cpu(cpu_element) if cpu_element is not None else None,
+            address_unit_bits=_int(root, "addressUnitBits", DEFAULT_ADDRESS_UNIT_BITS),
             peripherals=[_build_peripheral(p) for p in root.findall("./peripherals/peripheral")],
         )

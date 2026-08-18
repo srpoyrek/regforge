@@ -39,9 +39,21 @@
 #define {{ guard }}
 
 #include <stdint.h>
+#include <limits.h>
 {% if device.cpu and device.cpu.nvic_prio_bits is not none %}
 #include <assert.h>
 {% endif %}
+
+#define {{ dev }}_ADDRESS_UNIT_BITS {{ device.address_unit_bits }}
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
+_Static_assert(CHAR_BIT == {{ dev }}_ADDRESS_UNIT_BITS,
+    "regforge: this header targets {{ device.address_unit_bits }}-bit address units; "
+    "the compiler's CHAR_BIT disagrees -- regenerate with a matching emitter mode.");
+#else
+/* Pre-C11 has no _Static_assert; a negative array size fails the build the
+ * same way (without a message) when CHAR_BIT disagrees. */
+typedef char {{ dev }}_assert_address_unit_bits[(CHAR_BIT == {{ dev }}_ADDRESS_UNIT_BITS) ? 1 : -1];
+#endif
 
 {% if device.version %}
 #define {{ dev }}_SVD_VERSION "{{ device.version }}"
@@ -108,11 +120,11 @@ static inline uint8_t {{ device.name|lower }}_irq_prio(uint8_t priority)
 
 {% for periph in device.peripherals %}
 /* {{ periph.name }}{% if periph.description %} - {{ periph.description }}{% endif %} */
-#define {{ periph.name|upper }}_BASE ({{ periph.base_address|hex32 }}UL)
+#define {{ periph.name|upper }}_BASE ({{ to_bytes(periph.base_address)|hex32 }}UL)
 {% for reg in periph.registers %}
 
 /* {{ periph.name }}.{{ reg.name }}{% if reg.description %} - {{ reg.description }}{% endif %} */
-#define {{ periph.name|upper }}_{{ reg.name|upper }} (*(volatile uint32_t *)({{ periph.name|upper }}_BASE + {{ reg.address_offset|hex32 }}UL))
+#define {{ periph.name|upper }}_{{ reg.name|upper }} (*(volatile uint32_t *)({{ periph.name|upper }}_BASE + {{ to_bytes(reg.address_offset)|hex32 }}UL))
 {% for field in reg.fields %}
 #define {{ periph.name|upper }}_{{ reg.name|upper }}_{{ field.name|upper }}_Pos ({{ field.bit_offset }}U)
 #define {{ periph.name|upper }}_{{ reg.name|upper }}_{{ field.name|upper }}_Msk ({{ field.mask|hex32 }}UL)

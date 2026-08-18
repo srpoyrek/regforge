@@ -2,7 +2,7 @@
 
 import pytest
 
-from regforge.readers.svd import parse_svd_int
+from regforge.readers.svd import SvdReader, parse_svd_int
 
 
 @pytest.mark.parametrize(
@@ -37,3 +37,17 @@ def test_bit_range_encoding(demo_device):
     # ODR.OD0 uses the "[0:0]" bitRange encoding.
     od0 = demo_device.peripherals[0].registers[1].fields[0]
     assert (od0.bit_offset, od0.bit_width) == (0, 1)
+
+
+def test_field_without_bit_spec_raises(tmp_path):
+    # A field with no bitOffset/bitWidth, bitRange, or lsb/msb is malformed.
+    svd = tmp_path / "badfield.svd"
+    svd.write_text(
+        "<device><name>X</name><peripherals><peripheral><name>P</name>"
+        "<baseAddress>0x0</baseAddress><registers><register><name>R</name>"
+        "<addressOffset>0x0</addressOffset><fields><field><name>F</name></field>"
+        "</fields></register></registers></peripheral></peripherals></device>",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="no recognizable bit-range"):
+        SvdReader().read(svd)

@@ -18,14 +18,31 @@ from jinja2 import Environment, FileSystemLoader
 
 from ..ir import Device
 from ..provenance import Provenance
-from .base import Writer
+from .base import EmitError, Writer
 
 _TEMPLATE_DIR = Path(__file__).parent / "templates" / "c"
+
+# --- C emitter constants ---
+#: Bits in one byte; this emitter targets byte-addressable devices.
+BITS_PER_BYTE = 8
+#: Mask and hex-digit width for formatting 32-bit register values.
+_UINT32_MASK = 0xFFFFFFFF
+_HEX32_DIGITS = 8
 
 
 def _hex32(value: int) -> str:
     """Format ``value`` as a zero-padded 32-bit hexadecimal literal."""
-    return f"0x{value & 0xFFFFFFFF:08X}"
+    return f"0x{value & _UINT32_MASK:0{_HEX32_DIGITS}X}"
+
+
+def _units_to_bytes(units: int, address_unit_bits: int) -> int:
+    """Convert an address-unit count to bytes for this byte-addressed target.
+
+    A no-op for byte-addressable devices; the conversion lives here, at the
+    emitter, because a word-addressable target would convert differently (or
+    not at all).
+    """
+    return units * address_unit_bits // BITS_PER_BYTE
 
 
 class CWriter(Writer):
@@ -46,6 +63,20 @@ class CWriter(Writer):
         self._env.filters["hex32"] = _hex32
 
     def render(self, device: Device, provenance: Provenance | None = None) -> str:
-        """Render ``device`` into a C header string."""
+        """Render ``device`` into a C header string.
+
+        Refuses non-byte-addressable devices rather than emitting byte offsets
+        that would be silently wrong.
+        """
+        if device.address_unit_bits != BITS_PER_BYTE:
+            raise EmitError(
+                f"{device.name}: addressUnitBits={device.address_unit_bits} "
+                "(word-addressable, e.g. TI C2000) is not supported by the C "
+                "emitter yet -- offsets would be wrong if emitted as bytes."
+            )
         template = self._env.get_template("header.h.j2")
-        return template.render(device=device, provenance=provenance)
+        return template.render(
+            device=device,
+            provenance=provenance,
+            to_bytes=lambda units: _units_to_bytes(units, device.address_unit_bits),
+        )

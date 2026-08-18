@@ -18,6 +18,9 @@ import hashlib
 from dataclasses import dataclass, field
 from pathlib import Path
 
+#: Default number of leading hash characters shown in short form.
+DEFAULT_SHORT_SHA_LENGTH = 16
+
 
 @dataclass
 class PatchRef:
@@ -50,7 +53,7 @@ class Provenance:
         """The bare file name of the source description."""
         return Path(self.source_path).name
 
-    def short_sha(self, length: int = 16) -> str:
+    def short_sha(self, length: int = DEFAULT_SHORT_SHA_LENGTH) -> str:
         """The leading ``length`` characters of the source hash, for banners."""
         return self.source_sha256[:length]
 
