@@ -216,3 +216,19 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- regforge project-specific ---
+
+# Editor / IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Locally generated headers from ad-hoc runs (test fixtures are committed separately)
+/*.h
+/out/

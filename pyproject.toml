@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "regforge"
+version = "0.0.1"
+description = "Convert register descriptions between formats (CMSIS-SVD to C and beyond)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+keywords = ["svd", "cmsis", "embedded", "codegen", "registers", "firmware"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Software Development :: Embedded Systems",
+]
+dependencies = ["jinja2>=3.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "ruff>=0.5", "black>=24", "nox>=2024", "pre-commit>=3"]
+
+[project.scripts]
+regforge = "regforge.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["regforge*"]
+
+[tool.setuptools.package-data]
+regforge = ["writers/templates/*/*.j2", "formatting/*.cfg"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.black]
+line-length = 100
+target-version = ["py39"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+extend-exclude = ["tests/golden"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "B", "UP"]

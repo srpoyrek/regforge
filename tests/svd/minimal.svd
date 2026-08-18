@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<device schemaVersion="1.3">
+  <name>DemoMCU</name>
+  <description>Minimal demo device used by the regforge test suite</description>
+  <peripherals>
+    <peripheral>
+      <name>GPIOA</name>
+      <description>General purpose I/O port A</description>
+      <baseAddress>0x40020000</baseAddress>
+      <registers>
+        <register>
+          <name>MODER</name>
+          <description>Mode register</description>
+          <addressOffset>0x00</addressOffset>
+          <size>32</size>
+          <resetValue>0x00000000</resetValue>
+          <fields>
+            <field>
+              <name>MODE0</name>
+              <description>Pin 0 mode</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>2</bitWidth>
+              <enumeratedValues>
+                <enumeratedValue><name>INPUT</name><value>0</value></enumeratedValue>
+                <enumeratedValue><name>OUTPUT</name><value>1</value></enumeratedValue>
+                <enumeratedValue><name>ALTERNATE</name><value>2</value></enumeratedValue>
+                <enumeratedValue><name>ANALOG</name><value>3</value></enumeratedValue>
+              </enumeratedValues>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ODR</name>
+          <description>Output data register</description>
+          <addressOffset>0x14</addressOffset>
+          <size>32</size>
+          <resetValue>0x00000000</resetValue>
+          <fields>
+            <field>
+              <name>OD0</name>
+              <description>Port output data bit 0</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+      </registers>
+    </peripheral>
+  </peripherals>
+</device>
