@@ -59,10 +59,20 @@ typedef char DEMOMCU_assert_address_unit_bits[(CHAR_BIT == DEMOMCU_ADDRESS_UNIT_
 
 #define DEMOMCU_IRQ_PRIO_LEVELS (1U << DEMOMCU_NVIC_PRIO_BITS)
 
+/* `inline` is C99; on C89 degrade to `static` -- plus GCC/Clang's unused
+ * attribute so an unreferenced helper does not warn under -Wall. */
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
+#define DEMOMCU_INLINE static inline
+#elif defined(__GNUC__)
+#define DEMOMCU_INLINE static __attribute__((unused))
+#else
+#define DEMOMCU_INLINE static
+#endif
+
 /* Align an interrupt priority to this core's implemented bits. NVIC priority
  * registers are MSB-aligned, so the value is shifted into the top
  * 2 bit(s); priorities >= the level count truncate in hardware. */
-static inline uint8_t demomcu_irq_prio(uint8_t priority)
+DEMOMCU_INLINE uint8_t demomcu_irq_prio(uint8_t priority)
 {
     assert(priority < DEMOMCU_IRQ_PRIO_LEVELS);
     return (uint8_t)(priority << (8U - DEMOMCU_NVIC_PRIO_BITS));
