@@ -69,9 +69,10 @@ pre-commit install        # enable hooks on commit
 ```
 
 Generation is verified with a golden test: the suite parses
-[tests/svd/minimal.svd](tests/svd/minimal.svd) and compares the generated
-header against [tests/golden/minimal.h](tests/golden/minimal.h). Regenerate the
-golden fixtures after an intentional template change with `nox -s goldens`.
+[tests/fixtures/svd/minimal.svd](tests/fixtures/svd/minimal.svd) and compares
+the generated header against [tests/golden/c/minimal.h](tests/golden/c/minimal.h).
+Regenerate the golden fixtures after an intentional template change with
+`nox -s goldens`.
 
 ## License
 
