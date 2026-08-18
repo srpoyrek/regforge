@@ -15,7 +15,7 @@ Typical usage::
 
 from __future__ import annotations
 
-from .ir import Device, EnumeratedValue, Field, Peripheral, Register
+from .ir import Cpu, Device, EnumeratedValue, Field, Peripheral, Register
 from .provenance import PatchRef, Provenance, build_provenance
 from .readers import available_readers, get_reader, reader_for_path
 from .writers import available_writers, get_writer, writer_for_path
@@ -24,6 +24,7 @@ __version__ = "0.0.1"
 
 __all__ = [
     "Device",
+    "Cpu",
     "Peripheral",
     "Register",
     "Field",

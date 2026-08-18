@@ -1,4 +1,5 @@
 {% set guard = "REGFORGE_" ~ device.name|upper ~ "_H" -%}
+{% set dev = device.name|upper -%}
 /*
  * {{ device.name }} register definitions.
 {% if device.description %}
@@ -38,12 +39,71 @@
 #define {{ guard }}
 
 #include <stdint.h>
+{% if device.cpu and device.cpu.nvic_prio_bits is not none %}
+#include <assert.h>
+{% endif %}
 
 {% if device.version %}
-#define {{ device.name|upper }}_SVD_VERSION "{{ device.version }}"
+#define {{ dev }}_SVD_VERSION "{{ device.version }}"
 {% endif %}
 {% if provenance %}
-#define {{ device.name|upper }}_SVD_SHA256 "{{ provenance.source_sha256 }}"
+#define {{ dev }}_SVD_SHA256 "{{ provenance.source_sha256 }}"
+{% endif %}
+{% if device.cpu %}
+{% set cpu = device.cpu %}
+
+/* CPU ---------------------------------------------------------------------- */
+{% if cpu.name %}
+#define {{ dev }}_CPU_CORE "{{ cpu.name }}"
+{% endif %}
+{% if cpu.revision %}
+#define {{ dev }}_CPU_REVISION "{{ cpu.revision }}"
+{% endif %}
+{% if cpu.nvic_prio_bits is not none %}
+#define {{ dev }}_NVIC_PRIO_BITS {{ cpu.nvic_prio_bits }}
+{% endif %}
+{% if cpu.num_interrupts is not none %}
+#define {{ dev }}_NUM_IRQS {{ cpu.num_interrupts }}
+{% endif %}
+{% if cpu.fpu_present is not none %}
+#define {{ dev }}_HAS_FPU {{ 1 if cpu.fpu_present else 0 }}
+{% endif %}
+{% if cpu.mpu_present is not none %}
+#define {{ dev }}_HAS_MPU {{ 1 if cpu.mpu_present else 0 }}
+{% endif %}
+{% if cpu.vtor_present is not none %}
+#define {{ dev }}_HAS_VTOR {{ 1 if cpu.vtor_present else 0 }}
+{% endif %}
+{% if cpu.endian == "little" %}
+
+#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__)
+#error "{{ device.name }} is little-endian, but the compiler targets a different byte order."
+#endif
+{% elif cpu.endian == "big" %}
+
+#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ != __ORDER_BIG_ENDIAN__)
+#error "{{ device.name }} is big-endian, but the compiler targets a different byte order."
+#endif
+{% endif %}
+{% if cpu.fpu_present is not none and not cpu.fpu_present %}
+
+#if defined(__ARM_FP) && !{{ dev }}_HAS_FPU
+#error "Building with FPU codegen for {{ device.name }}, which has no FPU (check -mfloat-abi / -mfpu)."
+#endif
+{% endif %}
+{% if cpu.nvic_prio_bits is not none %}
+
+#define {{ dev }}_IRQ_PRIO_LEVELS (1U << {{ dev }}_NVIC_PRIO_BITS)
+
+/* Align an interrupt priority to this core's implemented bits. NVIC priority
+ * registers are MSB-aligned, so the value is shifted into the top
+ * {{ cpu.nvic_prio_bits }} bit(s); priorities >= the level count truncate in hardware. */
+static inline uint8_t {{ device.name|lower }}_irq_prio(uint8_t priority)
+{
+    assert(priority < {{ dev }}_IRQ_PRIO_LEVELS);
+    return (uint8_t)(priority << (8U - {{ dev }}_NVIC_PRIO_BITS));
+}
+{% endif %}
 {% endif %}
 
 {% for periph in device.peripherals %}

@@ -9,6 +9,17 @@
 Copyright (c) 2024 DemoCorp.
 Licensed under the Apache License, Version 2.0.
   </licenseText>
+  <cpu>
+    <name>CM0PLUS</name>
+    <revision>r0p1</revision>
+    <endian>little</endian>
+    <mpuPresent>true</mpuPresent>
+    <fpuPresent>false</fpuPresent>
+    <vtorPresent>1</vtorPresent>
+    <nvicPrioBits>2</nvicPrioBits>
+    <vendorSystickConfig>false</vendorSystickConfig>
+    <deviceNumInterrupts>32</deviceNumInterrupts>
+  </cpu>
   <peripherals>
     <peripheral>
       <name>GPIOA</name>

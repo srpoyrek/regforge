@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 
-from ..ir import Device, EnumeratedValue, Field, Peripheral, Register
+from ..ir import Cpu, Device, EnumeratedValue, Field, Peripheral, Register
 from .base import Reader, Source
 
 
@@ -35,6 +35,21 @@ def parse_svd_int(text: str) -> int:
     return int(token, 10)
 
 
+def parse_svd_bool(text: str) -> bool | None:
+    """Parse an SVD boolean, accepting both ``true``/``false`` and ``1``/``0``.
+
+    Some vendor files (Nordic, for example) write booleans as ``1``/``0``
+    rather than ``true``/``false``; both spellings are normalized here.
+    Anything unrecognized returns ``None`` so callers can treat it as absent.
+    """
+    token = text.strip().lower()
+    if token in ("true", "1"):
+        return True
+    if token in ("false", "0"):
+        return False
+    return None
+
+
 def _text(element: ET.Element, tag: str) -> str | None:
     """Return the stripped text of ``element``'s ``tag`` child, or ``None``."""
     child = element.find(tag)
@@ -47,6 +62,12 @@ def _int(element: ET.Element, tag: str, default: int | None = None) -> int | Non
     """Return the integer value of ``element``'s ``tag`` child, or ``default``."""
     raw = _text(element, tag)
     return parse_svd_int(raw) if raw is not None else default
+
+
+def _bool(element: ET.Element, tag: str) -> bool | None:
+    """Return the boolean value of ``element``'s ``tag`` child, or ``None``."""
+    raw = _text(element, tag)
+    return parse_svd_bool(raw) if raw is not None else None
 
 
 def _parse_bits(field_element: ET.Element) -> tuple[int, int]:
@@ -104,6 +125,20 @@ def _build_register(register_element: ET.Element) -> Register:
     )
 
 
+def _build_cpu(cpu_element: ET.Element) -> Cpu:
+    return Cpu(
+        name=_text(cpu_element, "name"),
+        revision=_text(cpu_element, "revision"),
+        endian=_text(cpu_element, "endian"),
+        mpu_present=_bool(cpu_element, "mpuPresent"),
+        fpu_present=_bool(cpu_element, "fpuPresent"),
+        vtor_present=_bool(cpu_element, "vtorPresent"),
+        nvic_prio_bits=_int(cpu_element, "nvicPrioBits"),
+        vendor_systick=_bool(cpu_element, "vendorSystickConfig"),
+        num_interrupts=_int(cpu_element, "deviceNumInterrupts"),
+    )
+
+
 def _build_peripheral(peripheral_element: ET.Element) -> Peripheral:
     return Peripheral(
         name=_text(peripheral_element, "name") or "",
@@ -122,6 +157,7 @@ class SvdReader(Reader):
     def read(self, source: Source) -> Device:
         """Parse the SVD file at ``source`` into a :class:`~regforge.ir.Device`."""
         root = ET.parse(str(source)).getroot()
+        cpu_element = root.find("cpu")
         return Device(
             name=_text(root, "name") or "device",
             description=_text(root, "description"),
@@ -129,5 +165,6 @@ class SvdReader(Reader):
             series=_text(root, "series"),
             version=_text(root, "version"),
             license_text=_text(root, "licenseText"),
+            cpu=_build_cpu(cpu_element) if cpu_element is not None else None,
             peripherals=[_build_peripheral(p) for p in root.findall("./peripherals/peripheral")],
         )
