@@ -28,6 +28,9 @@ BITS_PER_BYTE = 8
 #: Mask and hex-digit width for formatting 32-bit register values.
 _UINT32_MASK = 0xFFFFFFFF
 _HEX32_DIGITS = 8
+#: Register base type keyed on width in bits. 64 is future-proofing (see TODO);
+#: any size absent here is refused rather than rounded.
+_C_TYPE = {8: "uint8_t", 16: "uint16_t", 32: "uint32_t", 64: "uint64_t"}
 
 
 def _hex32(value: int) -> str:
@@ -74,9 +77,18 @@ class CWriter(Writer):
                 "(word-addressable, e.g. TI C2000) is not supported by the C "
                 "emitter yet -- offsets would be wrong if emitted as bytes."
             )
+        for peripheral in device.peripherals:
+            for register in peripheral.registers:
+                if register.size not in _C_TYPE:
+                    raise EmitError(
+                        f"{peripheral.name}.{register.name}: register size "
+                        f"{register.size} bits has no C type mapping "
+                        f"(supported: {sorted(_C_TYPE)})"
+                    )
         template = self._env.get_template("header.h.j2")
         return template.render(
             device=device,
             provenance=provenance,
             to_bytes=lambda units: _units_to_bytes(units, device.address_unit_bits),
+            c_type=_C_TYPE,
         )

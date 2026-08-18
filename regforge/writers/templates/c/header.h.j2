@@ -55,6 +55,7 @@ _Static_assert(CHAR_BIT == {{ dev }}_ADDRESS_UNIT_BITS,
 typedef char {{ dev }}_assert_address_unit_bits[(CHAR_BIT == {{ dev }}_ADDRESS_UNIT_BITS) ? 1 : -1];
 #endif
 
+#define {{ dev }}_BUS_WIDTH {{ device.bus_width }}
 {% if device.version %}
 #define {{ dev }}_SVD_VERSION "{{ device.version }}"
 {% endif %}
@@ -124,7 +125,7 @@ static inline uint8_t {{ device.name|lower }}_irq_prio(uint8_t priority)
 {% for reg in periph.registers %}
 
 /* {{ periph.name }}.{{ reg.name }}{% if reg.description %} - {{ reg.description }}{% endif %} */
-#define {{ periph.name|upper }}_{{ reg.name|upper }} (*(volatile uint32_t *)({{ periph.name|upper }}_BASE + {{ to_bytes(reg.address_offset)|hex32 }}UL))
+#define {{ periph.name|upper }}_{{ reg.name|upper }} (*(volatile {{ c_type[reg.size] }} *)({{ periph.name|upper }}_BASE + {{ to_bytes(reg.address_offset)|hex32 }}UL))
 {% for field in reg.fields %}
 #define {{ periph.name|upper }}_{{ reg.name|upper }}_{{ field.name|upper }}_Pos ({{ field.bit_offset }}U)
 #define {{ periph.name|upper }}_{{ reg.name|upper }}_{{ field.name|upper }}_Msk ({{ field.mask|hex32 }}UL)

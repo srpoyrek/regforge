@@ -15,6 +15,7 @@ Typical usage::
 
 from __future__ import annotations
 
+from .check import Finding, Severity, check_address_math
 from .ir import Cpu, Device, EnumeratedValue, Field, Peripheral, Register
 from .provenance import PatchRef, Provenance, build_provenance
 from .readers import available_readers, get_reader, reader_for_path
@@ -32,6 +33,9 @@ __all__ = [
     "Provenance",
     "PatchRef",
     "build_provenance",
+    "check_address_math",
+    "Finding",
+    "Severity",
     "get_reader",
     "reader_for_path",
     "available_readers",

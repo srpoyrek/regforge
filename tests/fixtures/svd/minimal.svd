@@ -21,6 +21,7 @@ Licensed under the Apache License, Version 2.0.
     <deviceNumInterrupts>32</deviceNumInterrupts>
   </cpu>
   <addressUnitBits>8</addressUnitBits>
+  <width>32</width>
   <peripherals>
     <peripheral>
       <name>GPIOA</name>

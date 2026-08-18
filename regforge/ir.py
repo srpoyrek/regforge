@@ -20,6 +20,8 @@ from dataclasses import dataclass, field
 DEFAULT_REGISTER_SIZE_BITS = 32
 #: Default bits per address unit (8 => byte-addressable).
 DEFAULT_ADDRESS_UNIT_BITS = 8
+#: Default data bus width in bits (SVD ``<width>`` fallback).
+DEFAULT_BUS_WIDTH = 32
 
 
 @dataclass
@@ -156,6 +158,9 @@ class Device:
             byte-addressable device; the SVD default). All offsets, block sizes,
             and array strides in the IR are stored in these units, unconverted;
             converting to a target's native unit is the emitter's job.
+        bus_width: Maximum data bus width in bits (SVD ``<width>``). The last
+            fallback for a register's size, and the ceiling a register size is
+            checked against.
         peripherals: Peripherals defined by the device.
     """
 
@@ -167,4 +172,5 @@ class Device:
     license_text: str | None = None
     cpu: Cpu | None = None
     address_unit_bits: int = DEFAULT_ADDRESS_UNIT_BITS
+    bus_width: int = DEFAULT_BUS_WIDTH
     peripherals: list[Peripheral] = field(default_factory=list)

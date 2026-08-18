@@ -18,7 +18,7 @@ from enum import IntEnum
 
 from ..ir import (
     DEFAULT_ADDRESS_UNIT_BITS,
-    DEFAULT_REGISTER_SIZE_BITS,
+    DEFAULT_BUS_WIDTH,
     Cpu,
     Device,
     EnumeratedValue,
@@ -131,11 +131,11 @@ def _build_field(field_element: ET.Element) -> Field:
     )
 
 
-def _build_register(register_element: ET.Element) -> Register:
+def _build_register(register_element: ET.Element, default_register_size: int) -> Register:
     return Register(
         name=_text(register_element, "name") or "",
         address_offset=_int(register_element, "addressOffset", 0),
-        size=_int(register_element, "size", DEFAULT_REGISTER_SIZE_BITS),
+        size=_int(register_element, "size", default_register_size),
         reset_value=_int(register_element, "resetValue", 0),
         description=_text(register_element, "description"),
         access=_text(register_element, "access"),
@@ -157,12 +157,15 @@ def _build_cpu(cpu_element: ET.Element) -> Cpu:
     )
 
 
-def _build_peripheral(peripheral_element: ET.Element) -> Peripheral:
+def _build_peripheral(peripheral_element: ET.Element, default_register_size: int) -> Peripheral:
     return Peripheral(
         name=_text(peripheral_element, "name") or "",
         base_address=_int(peripheral_element, "baseAddress", 0),
         description=_text(peripheral_element, "description"),
-        registers=[_build_register(r) for r in peripheral_element.findall("./registers/register")],
+        registers=[
+            _build_register(r, default_register_size)
+            for r in peripheral_element.findall("./registers/register")
+        ],
     )
 
 
@@ -176,6 +179,9 @@ class SvdReader(Reader):
         """Parse the SVD file at ``source`` into a :class:`~regforge.ir.Device`."""
         root = ET.parse(str(source)).getroot()
         cpu_element = root.find("cpu")
+        bus_width = _int(root, "width", DEFAULT_BUS_WIDTH)
+        # Register size resolves: register <size> -> device <size> -> device <width>.
+        default_register_size = _int(root, "size", bus_width)
         return Device(
             name=_text(root, "name") or "device",
             description=_text(root, "description"),
@@ -185,5 +191,9 @@ class SvdReader(Reader):
             license_text=_text(root, "licenseText"),
             cpu=_build_cpu(cpu_element) if cpu_element is not None else None,
             address_unit_bits=_int(root, "addressUnitBits", DEFAULT_ADDRESS_UNIT_BITS),
-            peripherals=[_build_peripheral(p) for p in root.findall("./peripherals/peripheral")],
+            bus_width=bus_width,
+            peripherals=[
+                _build_peripheral(p, default_register_size)
+                for p in root.findall("./peripherals/peripheral")
+            ],
         )
