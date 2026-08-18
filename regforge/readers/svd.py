@@ -203,6 +203,7 @@ class SvdReader(Reader):
         """
         root = ET.parse(str(source)).getroot()
         cpu_element = root.find("cpu")
+        vendor_ext = root.find("vendorExtensions")
         return Device(
             name=_text(root, "name") or "device",
             description=_text(root, "description"),
@@ -210,6 +211,13 @@ class SvdReader(Reader):
             series=_text(root, "series"),
             version=_text(root, "version"),
             license_text=_text(root, "licenseText"),
+            header_prefix=_text(root, "headerDefinitionsPrefix"),
+            # Preserve the vendor-extension subtree verbatim; never interpret it.
+            vendor_extensions_xml=(
+                ET.tostring(vendor_ext, encoding="unicode").strip()
+                if vendor_ext is not None
+                else None
+            ),
             cpu=_build_cpu(cpu_element) if cpu_element is not None else None,
             address_unit_bits=_int(root, "addressUnitBits", DEFAULT_ADDRESS_UNIT_BITS),
             bus_width=_int(root, "width", DEFAULT_BUS_WIDTH),

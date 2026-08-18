@@ -184,6 +184,10 @@ class Device:
         series: Device family or series, if given.
         version: Version string of the source description, if given.
         license_text: License notice carried by the source description, if given.
+        header_prefix: Vendor prefix for generated identifiers (SVD
+            ``headerDefinitionsPrefix``); emitters prepend it to define names.
+        vendor_extensions_xml: The raw ``<vendorExtensions>`` subtree, preserved
+            verbatim as an opaque string for future interpreters. Never dropped.
         cpu: The processor core, if the source describes one.
         address_unit_bits: Bits selected by one address unit (8 for every
             byte-addressable device; the SVD default). All offsets, block sizes,
@@ -205,6 +209,8 @@ class Device:
     series: str | None = None
     version: str | None = None
     license_text: str | None = None
+    header_prefix: str | None = None
+    vendor_extensions_xml: str | None = None
     cpu: Cpu | None = None
     address_unit_bits: int = DEFAULT_ADDRESS_UNIT_BITS
     bus_width: int = DEFAULT_BUS_WIDTH
