@@ -22,6 +22,7 @@
 #define REGFORGE_DEMOMCU_H
 
 #include <stdint.h>
+#include <stddef.h>
 #include <limits.h>
 #include <assert.h>
 
@@ -122,6 +123,9 @@ typedef struct {
     volatile const uint32_t IDR;            /* 0x10  Input data register */
     volatile uint32_t       ODR;            /* 0x14  Output data register */
 } dc_gpioa_t;
+REGFORGE_STATIC_ASSERT(offsetof(dc_gpioa_t, MODER) == 0x00, DC_GPIOA_MODER_offset, "GPIOA.MODER offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_gpioa_t, IDR) == 0x10, DC_GPIOA_IDR_offset, "GPIOA.IDR offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_gpioa_t, ODR) == 0x14, DC_GPIOA_ODR_offset, "GPIOA.ODR offset");
 
 #define DC_GPIOA_BASE (0x40020000UL)
 REGFORGE_MAYBE_UNUSED static dc_gpioa_t *const DC_GPIOA = (dc_gpioa_t *)DC_GPIOA_BASE;

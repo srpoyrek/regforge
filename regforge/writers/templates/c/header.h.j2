@@ -39,6 +39,9 @@
 #define {{ guard }}
 
 #include <stdint.h>
+{% if device.peripherals %}
+#include <stddef.h>
+{% endif %}
 #include <limits.h>
 {% if device.cpu and device.cpu.nvic_prio_bits is not none %}
 #include <assert.h>
@@ -129,6 +132,9 @@ typedef struct {
     {{ "%-*s"|format(tw, m.type) }} {{ "%-*s"|format(fw, m.field) }}  /* 0x{{ "%02X"|format(m.offset) }}{% if m.desc %}  {{ m.desc }}{% endif %} */
 {% endfor %}
 } {{ tname }};
+{% for m in members if m.member %}
+REGFORGE_STATIC_ASSERT(offsetof({{ tname }}, {{ m.member }}) == 0x{{ "%02X"|format(m.offset) }}, {{ pf }}_{{ m.member|upper }}_offset, "{{ periph.name }}.{{ m.member }} offset");
+{% endfor %}
 
 #define {{ pf }}_BASE ({{ to_bytes(periph.base_address)|hex32 }}UL)
 REGFORGE_MAYBE_UNUSED static {{ tname }} *const {{ pf }} = ({{ tname }} *){{ pf }}_BASE;

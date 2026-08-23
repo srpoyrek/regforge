@@ -5,6 +5,8 @@ so passing the wrong peripheral to a function is a compile error -- and the
 handle is a real symbol, not a cast-macro like CMSIS emits.
 """
 
+import re
+
 import pytest
 
 from regforge.ir import Access, Device, Peripheral, Register
@@ -13,14 +15,20 @@ from regforge.writers.base import EmitError
 from regforge.writers.c import CWriter
 
 
+def _squash(text: str) -> str:
+    """Collapse runs of spaces so assertions ignore column-alignment padding."""
+    return re.sub(r" +", " ", text)
+
+
 def test_emits_struct_type_and_typed_instance(demo_device):
     output = CWriter().render(demo_device)
+    squashed = _squash(output)
     # A distinct struct type per peripheral; the _t name is fully lower-case.
     assert "} dc_gpioa_t;" in output
-    assert "volatile uint32_t MODER;" in output
-    assert "volatile uint32_t ODR;" in output
+    assert "volatile uint32_t MODER;" in squashed
+    assert "volatile uint32_t ODR;" in squashed
     # Reserved padding fills 0x04..0x10 (IDR sits at 0x10) so offsets stay true.
-    assert "uint8_t RESERVED0[12];" in output
+    assert "uint8_t RESERVED0[12];" in squashed
     # The instance is a typed, non-redefinable symbol -- not a cast-macro.
     assert (
         "REGFORGE_MAYBE_UNUSED static dc_gpioa_t *const DC_GPIOA = (dc_gpioa_t *)DC_GPIOA_BASE;"
@@ -28,6 +36,17 @@ def test_emits_struct_type_and_typed_instance(demo_device):
     )
     # The base-address define is kept for constant-expression contexts.
     assert "#define DC_GPIOA_BASE" in output
+
+
+def test_offset_static_asserts_prove_layout(demo_device):
+    output = CWriter().render(demo_device)
+    # Each register carries a compile-time proof it sits at its declared offset;
+    # the compile matrix then makes a real compiler check them.
+    assert "offsetof(dc_gpioa_t, MODER) == 0x00" in output
+    assert "offsetof(dc_gpioa_t, IDR) == 0x10" in output
+    assert "offsetof(dc_gpioa_t, ODR) == 0x14" in output
+    # No assert on the reserved gap -- a register's offset proves the pad before it.
+    assert "offsetof(dc_gpioa_t, RESERVED0)" not in output
 
 
 def test_distinct_type_per_peripheral():
@@ -89,7 +108,7 @@ def test_member_type_comes_from_resolved_size():
     )
     resolve_defaults(device)
     assert device.peripherals[0].registers[0].size == 16  # inherited, not None
-    assert "volatile uint16_t R;" in CWriter().render(device)
+    assert "volatile uint16_t R;" in _squash(CWriter().render(device))
 
 
 def test_read_only_member_and_macro_are_const():
@@ -107,8 +126,9 @@ def test_read_only_member_and_macro_are_const():
         ],
     )
     output = CWriter().render(device)
-    assert "volatile uint32_t RW;" in output  # read-write: writable
-    assert "volatile const uint32_t RO;" in output  # read-only: const struct member
+    squashed = _squash(output)
+    assert "volatile uint32_t RW;" in squashed  # read-write: writable
+    assert "volatile const uint32_t RO;" in squashed  # read-only: const struct member
     # The flat macro is const too, so it cannot be a write backdoor to a RO register.
     assert "#define P_RO (*(volatile const uint32_t *)" in output
     assert "#define P_RW (*(volatile uint32_t *)" in output

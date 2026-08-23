@@ -95,6 +95,7 @@ def _peripheral_layout(peripheral: Peripheral, address_unit_bits: int) -> list[d
                     "type": "uint8_t",
                     "field": f"RESERVED{pad_index}[{offset - cursor}];",
                     "desc": "(reserved)",
+                    "member": None,
                 }
             )
             pad_index += 1
@@ -104,6 +105,7 @@ def _peripheral_layout(peripheral: Peripheral, address_unit_bits: int) -> list[d
                 "type": _member_type(register),
                 "field": f"{register.name};",
                 "desc": _short_desc(register.description),
+                "member": register.name,
             }
         )
         cursor = offset + register.size // BITS_PER_BYTE
