@@ -13,6 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
+from .families import first_divergence, layout_signature
 from .ir import Device
 
 
@@ -136,6 +137,38 @@ def check_derived_chains(device: Device) -> list[Finding]:
                     Severity.WARNING,
                     f"{peripheral.name}: derivedFrom chain is {depth} levels deep -- "
                     "legal but bug-prone in some SVD tools (portability hazard)",
+                )
+            )
+    return findings
+
+
+def check_group_divergence(device: Device) -> list[Finding]:
+    """Warn when a ``groupName`` covers peripherals with different layouts.
+
+    ``groupName`` is a label, not a structural claim: vendors apply one name to
+    genuinely different silicon (STM32's advanced vs general-purpose timers).
+    Trusting it as a single type is how ``TIM2->BDTR`` compiles against a
+    reserved address in stock headers. Flagging divergence is the evidence that a
+    vendor's family labels cannot be trusted unverified.
+    """
+    findings: list[Finding] = []
+    groups: dict[str, list] = {}
+    for peripheral in device.peripherals:
+        if peripheral.group_name:
+            groups.setdefault(peripheral.group_name, []).append(peripheral)
+    for group, members in groups.items():
+        by_signature: dict[tuple, list] = {}
+        for member in members:
+            by_signature.setdefault(layout_signature(member), []).append(member)
+        if len(by_signature) > 1:
+            signatures = list(by_signature)
+            register = first_divergence(signatures[0], signatures[1])
+            findings.append(
+                Finding(
+                    Severity.WARNING,
+                    f"groupName '{group}': members have differing register layouts "
+                    f"(first differs at {register}) -- the label is not one verified "
+                    "type; regforge emits separate types",
                 )
             )
     return findings

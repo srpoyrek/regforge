@@ -88,6 +88,37 @@ def test_groupname_names_a_derived_family():
     assert families[0].name == "UART"  # groupName names the type, not the root
 
 
+def test_divergent_group_largest_subgroup_keeps_name():
+    # STM32 timer trap: TIM2/TIM3 identical, TIM1 advanced (extra RCR), all "TIM".
+    device = _resolved(
+        Peripheral(
+            name="TIM1",
+            base_address=0x0,
+            group_name="TIM",
+            registers=[Register("CR1", 0x0, size=32), Register("RCR", 0x4, size=32)],
+        ),
+        Peripheral(
+            name="TIM2",
+            base_address=0x400,
+            group_name="TIM",
+            registers=[Register("CR1", 0x0, size=32)],
+        ),
+        Peripheral(
+            name="TIM3",
+            base_address=0x800,
+            group_name="TIM",
+            registers=[Register("CR1", 0x0, size=32)],
+        ),
+    )
+    families = group_families(device)
+    assert len(families) == 2
+    main = next(f for f in families if f.name == "TIM")
+    assert [p.name for p in main.instances] == ["TIM2", "TIM3"]  # largest keeps the name
+    assert main.note and "split 2 ways" in main.note and "RCR" in main.note
+    outlier = next(f for f in families if f.name == "TIM1")
+    assert [p.name for p in outlier.instances] == ["TIM1"]
+
+
 def test_unrelated_peripherals_are_separate_families():
     device = _resolved(
         Peripheral(name="GPIOA", base_address=0x0, registers=[Register("MODER", 0x0, size=32)]),

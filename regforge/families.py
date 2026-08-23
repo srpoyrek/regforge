@@ -2,11 +2,17 @@
 
 A family key is the ``derivedFrom`` chain root's ``groupName`` (else its name),
 so peripherals linked by ``derivedFrom`` and peripherals merely sharing a
-``groupName`` both collapse to one family. Within a family we do not *trust*
-that the members match -- we structurally compare register layouts and split off
-any member whose layout diverges, so the "one type, N instances" decision is
-verified rather than assumed. Reusable by the C writer, the docs generator, diff
-mode, and the linter.
+``groupName`` both collapse to one family. But we do not *trust* the members
+match: ``groupName`` is a label, not a claim -- vendors apply it to genuinely
+different silicon (STM32's advanced TIM1 has ``RCR``/``BDTR`` that general-purpose
+TIM2..5 lack, all ``groupName=TIM``). So we structurally compare register layouts
+and split divergent members into their own types.
+
+When a group splits, the **largest** structurally-identical subgroup keeps the
+plain family name; outliers get their own name -- matching how engineers already
+talk ("the timers" vs "the advanced timer"). The split is recorded as a ``note``
+on the kept family so the emitter can surface it. Reusable by the C writer, the
+docs generator, diff mode, and the linter.
 """
 
 from __future__ import annotations
@@ -24,13 +30,15 @@ class Family:
         name: the family/type name -- the root's ``groupName`` if it has one,
             otherwise the root peripheral's name.
         type_source: the peripheral whose registers define the shared type.
-        instances: every peripheral emitted as an instance of that type
-            (includes ``type_source``), in declaration order.
+        instances: every peripheral emitted as an instance of that type.
+        note: for the family a divergent group split into, a human-readable
+            record of the split (which members went which way, first difference).
     """
 
     name: str
     type_source: Peripheral
     instances: tuple[Peripheral, ...]
+    note: str | None = None
 
 
 def _chain_root(peripheral: Peripheral, by_name: dict[str, Peripheral]) -> Peripheral:
@@ -38,7 +46,7 @@ def _chain_root(peripheral: Peripheral, by_name: dict[str, Peripheral]) -> Perip
     seen: set[str] = set()
     current = peripheral
     while current.derived_from is not None and current.derived_from in by_name:
-        if current.name in seen:  # cycle guard -- stop rather than loop forever
+        if current.name in seen:  # cycle guard
             break
         seen.add(current.name)
         current = by_name[current.derived_from]
@@ -51,7 +59,7 @@ def _family_key(peripheral: Peripheral, by_name: dict[str, Peripheral]) -> str:
     return root.group_name or root.name
 
 
-def _layout_signature(peripheral: Peripheral) -> tuple:
+def layout_signature(peripheral: Peripheral) -> tuple:
     """A hashable key for a peripheral's register layout.
 
     Two peripherals share a C type exactly when this matches: same registers at
@@ -63,35 +71,64 @@ def _layout_signature(peripheral: Peripheral) -> tuple:
     )
 
 
+def first_divergence(left: tuple, right: tuple) -> str:
+    """Name a register where two layout signatures first differ."""
+    names_left = [entry[0] for entry in left]
+    names_right = [entry[0] for entry in right]
+    only_one_side = set(names_left) ^ set(names_right)
+    if only_one_side:
+        return sorted(only_one_side)[0]  # a register present on one side only
+    for entry_left, entry_right in zip(left, right):
+        if entry_left != entry_right:
+            return entry_left[0]  # same name, differing offset/size/access
+    return "layout"
+
+
 def group_families(device: Device) -> list[Family]:
     """Group peripherals into families that share one C type, verifying layout.
 
-    Peripherals are grouped by family key; within a group, members whose register
-    layout matches the representative share one type, and any member with a
-    divergent layout is split into its own single-instance family.
+    Peripherals are grouped by family key; members are then bucketed by register
+    layout. A single bucket is one clean family. Multiple buckets is a split: the
+    largest bucket keeps the family name, outliers are named after themselves, and
+    the kept family carries a ``note`` recording the split.
     """
     by_name = {peripheral.name: peripheral for peripheral in device.peripherals}
 
-    # Group by family key, preserving declaration order.
     groups: dict[str, list[Peripheral]] = {}
     for peripheral in device.peripherals:
         groups.setdefault(_family_key(peripheral, by_name), []).append(peripheral)
 
     families: list[Family] = []
     for key, members in groups.items():
-        # Representative for the shared type: the chain root if the group has one,
-        # else the first member (a groupName group has no single root).
-        source = next((m for m in members if m.derived_from is None), members[0])
-        signature = _layout_signature(source)
-        shared: list[Peripheral] = []
-        divergent: list[Peripheral] = []
+        buckets: dict[tuple, list[Peripheral]] = {}
         for member in members:
-            target = shared if _layout_signature(member) == signature else divergent
-            target.append(member)
+            buckets.setdefault(layout_signature(member), []).append(member)
 
-        families.append(Family(name=key, type_source=source, instances=tuple(shared)))
-        # A divergent member gets its own type, named after itself (never the
-        # group key -- two divergent members must not collide on one type name).
-        for member in divergent:
-            families.append(Family(name=member.name, type_source=member, instances=(member,)))
+        if len(buckets) == 1:
+            (bucket,) = buckets.values()
+            source = next((m for m in bucket if m.derived_from is None), bucket[0])
+            families.append(Family(name=key, type_source=source, instances=tuple(bucket)))
+            continue
+
+        # Divergent group: largest identical subgroup keeps the name (stable sort
+        # keeps declaration order among equal-sized subgroups).
+        subgroups = sorted(buckets.values(), key=len, reverse=True)
+        summary = " | ".join(",".join(m.name for m in group) for group in subgroups)
+        differ_at = first_divergence(
+            layout_signature(subgroups[0][0]), layout_signature(subgroups[1][0])
+        )
+        note = (
+            f"family {key}: split {len(subgroups)} ways by layout "
+            f"({summary}); first differs at {differ_at}"
+        )
+        for index, group in enumerate(subgroups):
+            source = next((m for m in group if m.derived_from is None), group[0])
+            families.append(
+                Family(
+                    name=key if index == 0 else source.name,
+                    type_source=source,
+                    instances=tuple(group),
+                    note=note if index == 0 else None,
+                )
+            )
     return families

@@ -49,12 +49,33 @@ def test_fixture_groupname_only_family_merges(demo_device):
 
 def test_fixture_divergent_groupname_is_split(demo_device):
     output = CWriter().render(demo_device)
-    # TIM1 (has ARR) and TIM6 (basic) share groupName "TIM" but diverge -->
-    # verify-and-split: two distinct types, not one silently-wrong shared type.
-    assert "} dc_tim_t;" in output
-    assert "} dc_tim6_t;" in output
-    assert "static dc_tim_t *const DC_TIM1" in output
-    assert "static dc_tim6_t *const DC_TIM6" in output
+    # TIM1 (advanced, has RCR) diverges from TIM2/TIM3 (general) under groupName
+    # "TIM": the largest identical subgroup keeps the name, the outlier splits off
+    # (so DC_TIM2->RCR is a compile error, not a reserved-address write).
+    assert output.count("} dc_tim_t;") == 1
+    assert output.count("} dc_tim1_t;") == 1
+    assert "static dc_tim_t *const DC_TIM2" in output  # majority keeps the name
+    assert "static dc_tim_t *const DC_TIM3" in output
+    assert "static dc_tim1_t *const DC_TIM1" in output  # outlier gets its own
+    assert "split 2 ways" in output  # the split is recorded as a note
+    assert "first differs at RCR" in output
+
+
+def test_fixture_derivedfrom_without_groupname_uses_root_name(demo_device):
+    output = CWriter().render(demo_device)
+    # ADC0 + ADC1 (derivedFrom, NO groupName) -> merge, type named after the root.
+    assert output.count("} dc_adc0_t;") == 1
+    assert "static dc_adc0_t *const DC_ADC0" in output
+    assert "static dc_adc0_t *const DC_ADC1" in output
+
+
+def test_fixture_derived_override_is_split(demo_device):
+    output = CWriter().render(demo_device)
+    # WDT1 derivesFrom WDT0 but adds RELOAD -> "same type" would be a lie -> split.
+    assert "} dc_wdt0_t;" in output
+    assert "} dc_wdt1_t;" in output
+    assert "static dc_wdt0_t *const DC_WDT0" in output
+    assert "static dc_wdt1_t *const DC_WDT1" in output
 
 
 def test_fixture_preserves_vendor_extensions_without_emitting(demo_device):

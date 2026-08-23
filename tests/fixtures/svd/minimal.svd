@@ -126,15 +126,61 @@ Licensed under the Apache License, Version 2.0.
       <registers>
         <register><name>CR1</name><description>Control register 1</description><addressOffset>0x00</addressOffset></register>
         <register><name>ARR</name><description>Auto-reload register</description><addressOffset>0x04</addressOffset></register>
+        <register><name>RCR</name><description>Repetition counter (advanced only)</description><addressOffset>0x08</addressOffset></register>
       </registers>
     </peripheral>
     <peripheral>
-      <name>TIM6</name>
-      <description>Basic timer</description>
+      <name>TIM2</name>
+      <description>General-purpose timer</description>
       <groupName>TIM</groupName>
-      <baseAddress>0x40011000</baseAddress>
+      <baseAddress>0x40000000</baseAddress>
       <registers>
         <register><name>CR1</name><description>Control register 1</description><addressOffset>0x00</addressOffset></register>
+        <register><name>ARR</name><description>Auto-reload register</description><addressOffset>0x04</addressOffset></register>
+      </registers>
+    </peripheral>
+    <peripheral>
+      <name>TIM3</name>
+      <description>General-purpose timer</description>
+      <groupName>TIM</groupName>
+      <baseAddress>0x40000400</baseAddress>
+      <registers>
+        <register><name>CR1</name><description>Control register 1</description><addressOffset>0x00</addressOffset></register>
+        <register><name>ARR</name><description>Auto-reload register</description><addressOffset>0x04</addressOffset></register>
+      </registers>
+    </peripheral>
+    <!-- derivedFrom WITHOUT groupName: merge, type named after the root (ADC0). -->
+    <peripheral>
+      <name>ADC0</name>
+      <description>Analog-to-digital converter</description>
+      <baseAddress>0x40012000</baseAddress>
+      <registers>
+        <register><name>CR</name><description>Control register</description><addressOffset>0x00</addressOffset></register>
+        <register><name>DR</name><description>Data register</description><addressOffset>0x04</addressOffset><access>read-only</access></register>
+      </registers>
+    </peripheral>
+    <peripheral derivedFrom="ADC0">
+      <name>ADC1</name>
+      <description>ADC, instance 1</description>
+      <baseAddress>0x40012400</baseAddress>
+    </peripheral>
+    <!-- derivedFrom but the derived peripheral ADDS a register: layouts differ, so
+         "same type" would be a lie -> regforge splits them. -->
+    <peripheral>
+      <name>WDT0</name>
+      <description>Watchdog timer</description>
+      <baseAddress>0x40013000</baseAddress>
+      <registers>
+        <register><name>CR</name><description>Control register</description><addressOffset>0x00</addressOffset></register>
+      </registers>
+    </peripheral>
+    <peripheral derivedFrom="WDT0">
+      <name>WDT1</name>
+      <description>Watchdog, instance 1 (adds a reload register)</description>
+      <baseAddress>0x40013400</baseAddress>
+      <registers>
+        <register><name>CR</name><description>Control register</description><addressOffset>0x00</addressOffset></register>
+        <register><name>RELOAD</name><description>Reload value</description><addressOffset>0x04</addressOffset></register>
       </registers>
     </peripheral>
   </peripherals>

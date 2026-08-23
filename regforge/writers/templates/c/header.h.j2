@@ -127,6 +127,9 @@ REGFORGE_INLINE uint8_t {{ device.name|lower }}_irq_prio(uint8_t priority)
 {% set fw = members|map(attribute='field')|map('length')|max %}
 /* ========================================================================== */
 /* {{ family.name }}{% if src.description %} -- {{ src.description }}{% endif %}{% if family.instances|length > 1 %} (family: {{ family.instances|map(attribute='name')|join(', ') }}){% endif %} */
+{% if family.note %}
+/* {{ family.note }} */
+{% endif %}
 
 typedef struct {
 {% for m in members %}
