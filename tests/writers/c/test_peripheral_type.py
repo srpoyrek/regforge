@@ -10,7 +10,7 @@ import re
 import pytest
 
 from regforge.ir import Access, Device, Peripheral, Register
-from regforge.resolve import resolve_defaults
+from regforge.resolve import resolve_defaults, resolve_derived
 from regforge.writers.base import EmitError
 from regforge.writers.c import CWriter
 
@@ -47,6 +47,32 @@ def test_offset_static_asserts_prove_layout(demo_device):
     assert "offsetof(dc_gpioa_t, ODR) == 0x14" in output
     # No assert on the reserved gap -- a register's offset proves the pad before it.
     assert "offsetof(dc_gpioa_t, RESERVED0)" not in output
+
+
+def test_derived_family_emits_one_type_and_two_instances():
+    device = Device(
+        name="Chip",
+        peripherals=[
+            Peripheral(
+                name="UART0",
+                base_address=0x4000,
+                registers=[Register("DR", 0x0, size=32, access=Access.READ_WRITE)],
+            ),
+            Peripheral(name="UART1", base_address=0x5000, derived_from="UART0"),
+        ],
+    )
+    resolve_defaults(device)
+    resolve_derived(device)
+    output = CWriter().render(device)
+    # ONE shared type; both instances are of it -> one driver works for both.
+    assert output.count("} uart0_t;") == 1
+    assert "static uart0_t *const UART0 " in output
+    assert "static uart0_t *const UART1 " in output
+    # offsetof asserts emitted once per type, not per instance.
+    assert output.count("offsetof(uart0_t, DR)") == 1
+    # per-instance register macros, each at its own base.
+    assert "#define UART0_DR (" in output
+    assert "#define UART1_DR (" in output
 
 
 def test_distinct_type_per_peripheral():

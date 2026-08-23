@@ -181,6 +181,8 @@ def _build_peripheral(peripheral_element: ET.Element) -> Peripheral:
         name=_text(peripheral_element, "name") or "",
         base_address=_int(peripheral_element, "baseAddress", 0),
         description=_text(peripheral_element, "description"),
+        derived_from=peripheral_element.get("derivedFrom"),  # XML attribute, not a child
+        group_name=_text(peripheral_element, "groupName"),
         default_size=_int(peripheral_element, "size"),
         default_access=_access(peripheral_element),
         default_reset_value=_int(peripheral_element, "resetValue"),

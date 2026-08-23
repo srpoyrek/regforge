@@ -19,9 +19,10 @@ but *warns*, so the fallback is visible and auditable.
 
 from __future__ import annotations
 
+import copy
 from typing import TypeVar
 
-from .ir import Access, Device
+from .ir import Access, Device, Peripheral
 
 _T = TypeVar("_T")
 
@@ -71,4 +72,39 @@ def resolve_defaults(device: Device) -> list[str]:
             for field_ in register.fields:
                 field_.access = _first(field_.access, register.access)
 
+    return warnings
+
+
+def resolve_derived(device: Device) -> list[str]:
+    """Copy each derived peripheral's base registers into it (after defaults).
+
+    A peripheral with ``derived_from`` inherits the full register set of the
+    peripheral it names, at its own base address. The base is resolved first so
+    ``derivedFrom`` chains inherit a complete set. Mutates ``device`` in place
+    and returns warnings (unknown base, or a cycle).
+    """
+    warnings: list[str] = []
+    by_name = {peripheral.name: peripheral for peripheral in device.peripherals}
+    resolving: set[str] = set()
+
+    def ensure(peripheral: Peripheral) -> None:
+        if peripheral.derived_from is None or peripheral.registers:
+            return
+        base = by_name.get(peripheral.derived_from)
+        if base is None:
+            warnings.append(
+                f"{peripheral.name}: derivedFrom '{peripheral.derived_from}' -- "
+                "no such peripheral; left empty"
+            )
+            return
+        if peripheral.name in resolving:
+            warnings.append(f"{peripheral.name}: derivedFrom cycle -- left empty")
+            return
+        resolving.add(peripheral.name)
+        ensure(base)  # resolve the base first, so chains inherit a full set
+        resolving.discard(peripheral.name)
+        peripheral.registers = [copy.deepcopy(register) for register in base.registers]
+
+    for peripheral in device.peripherals:
+        ensure(peripheral)
     return warnings

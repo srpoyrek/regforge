@@ -74,6 +74,69 @@ Licensed under the Apache License, Version 2.0.
         </register>
       </registers>
     </peripheral>
+    <peripheral>
+      <name>UART0</name>
+      <description>Universal async receiver/transmitter</description>
+      <groupName>UART</groupName>
+      <baseAddress>0x40004000</baseAddress>
+      <registers>
+        <register>
+          <name>DR</name>
+          <description>Data register</description>
+          <addressOffset>0x00</addressOffset>
+        </register>
+        <register>
+          <name>SR</name>
+          <description>Status register</description>
+          <addressOffset>0x04</addressOffset>
+          <access>read-only</access>
+        </register>
+      </registers>
+    </peripheral>
+    <peripheral derivedFrom="UART0">
+      <name>UART1</name>
+      <description>UART, instance 1</description>
+      <baseAddress>0x40004400</baseAddress>
+    </peripheral>
+    <peripheral>
+      <name>SPI0</name>
+      <description>Serial peripheral interface</description>
+      <groupName>SPI</groupName>
+      <baseAddress>0x40008000</baseAddress>
+      <registers>
+        <register><name>CR</name><description>Control register</description><addressOffset>0x00</addressOffset></register>
+        <register><name>DR</name><description>Data register</description><addressOffset>0x04</addressOffset></register>
+      </registers>
+    </peripheral>
+    <peripheral>
+      <name>SPI1</name>
+      <description>Serial peripheral interface</description>
+      <groupName>SPI</groupName>
+      <baseAddress>0x40008400</baseAddress>
+      <registers>
+        <register><name>CR</name><description>Control register</description><addressOffset>0x00</addressOffset></register>
+        <register><name>DR</name><description>Data register</description><addressOffset>0x04</addressOffset></register>
+      </registers>
+    </peripheral>
+    <peripheral>
+      <name>TIM1</name>
+      <description>Advanced timer</description>
+      <groupName>TIM</groupName>
+      <baseAddress>0x40010000</baseAddress>
+      <registers>
+        <register><name>CR1</name><description>Control register 1</description><addressOffset>0x00</addressOffset></register>
+        <register><name>ARR</name><description>Auto-reload register</description><addressOffset>0x04</addressOffset></register>
+      </registers>
+    </peripheral>
+    <peripheral>
+      <name>TIM6</name>
+      <description>Basic timer</description>
+      <groupName>TIM</groupName>
+      <baseAddress>0x40011000</baseAddress>
+      <registers>
+        <register><name>CR1</name><description>Control register 1</description><addressOffset>0x00</addressOffset></register>
+      </registers>
+    </peripheral>
   </peripherals>
   <vendorExtensions>
     <democorp:tuning xmlns:democorp="urn:democorp:svd">calibrated</democorp:tuning>

@@ -109,3 +109,33 @@ def check_address_math(device: Device) -> list[Finding]:
                     )
                 )
     return findings
+
+
+def check_derived_chains(device: Device) -> list[Finding]:
+    """Flag ``derivedFrom`` chains deeper than one level.
+
+    A chain (A derives from B derives from C) is legal but rare, and handled
+    inconsistently by other SVD tools -- a portability hazard worth surfacing.
+    Depth 1 (the common ``UART1 derivedFrom UART0``) is fine.
+    """
+    findings: list[Finding] = []
+    by_name = {peripheral.name: peripheral for peripheral in device.peripherals}
+    for peripheral in device.peripherals:
+        depth = 0
+        seen: set[str] = set()
+        current = peripheral
+        while current.derived_from is not None and current.derived_from in by_name:
+            if current.name in seen:  # cycle guard
+                break
+            seen.add(current.name)
+            current = by_name[current.derived_from]
+            depth += 1
+        if depth > 1:
+            findings.append(
+                Finding(
+                    Severity.WARNING,
+                    f"{peripheral.name}: derivedFrom chain is {depth} levels deep -- "
+                    "legal but bug-prone in some SVD tools (portability hazard)",
+                )
+            )
+    return findings

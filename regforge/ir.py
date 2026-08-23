@@ -119,6 +119,10 @@ class Peripheral:
         name: Identifier of the peripheral.
         base_address: Absolute base address of the peripheral.
         description: Optional human-readable description.
+        derived_from: Name of the peripheral this one derives from (SVD
+            ``derivedFrom``); the resolver copies that base's registers in.
+        group_name: SVD ``groupName`` -- a family label (e.g. ``GPIO``);
+            peripherals sharing it are candidates for one shared type.
         default_size: Peripheral-level default register width in bits.
         default_access: Peripheral-level default access policy.
         default_reset_value: Peripheral-level default reset value.
@@ -129,6 +133,8 @@ class Peripheral:
     name: str
     base_address: int
     description: str | None = None
+    derived_from: str | None = None
+    group_name: str | None = None
     default_size: int | None = None
     default_access: Access | None = None
     default_reset_value: int | None = None

@@ -19,7 +19,7 @@ from . import __version__
 from .postprocess import FormatterNotAvailable, uncrustify
 from .provenance import build_provenance
 from .readers import available_readers, get_reader, reader_for_path
-from .resolve import resolve_defaults
+from .resolve import resolve_defaults, resolve_derived
 from .writers import EmitError, Writer, available_writers, get_writer, writer_for_path
 
 logger = logging.getLogger("regforge")
@@ -178,6 +178,9 @@ def main(argv: list[str] | None = None) -> int:
     warnings = resolve_defaults(device)
     log(logging.INFO, "resolved defaults: %d warning(s)", len(warnings))
     for warning in warnings:
+        log(logging.WARNING, "%s", warning)
+
+    for warning in resolve_derived(device):
         log(logging.WARNING, "%s", warning)
 
     provenance = None

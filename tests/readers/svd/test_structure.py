@@ -19,7 +19,15 @@ def test_parse_svd_int(text, expected):
 
 
 def test_peripherals_registers_fields(demo_device):
-    assert [p.name for p in demo_device.peripherals] == ["GPIOA"]
+    assert [p.name for p in demo_device.peripherals] == [
+        "GPIOA",
+        "UART0",
+        "UART1",
+        "SPI0",
+        "SPI1",
+        "TIM1",
+        "TIM6",
+    ]
 
     gpioa = demo_device.peripherals[0]
     assert gpioa.base_address == 0x40020000
@@ -52,3 +60,18 @@ def test_field_without_bit_spec_raises(tmp_path):
     )
     with pytest.raises(ValueError, match="no recognizable bit-range"):
         SvdReader().read(svd)
+
+
+def test_derived_from_attribute_is_captured(tmp_path):
+    svd = tmp_path / "derived.svd"
+    svd.write_text(
+        "<device><name>X</name><peripherals>"
+        "<peripheral><name>UART0</name><baseAddress>0x40004000</baseAddress></peripheral>"
+        "<peripheral derivedFrom='UART0'><name>UART1</name>"
+        "<baseAddress>0x40005000</baseAddress></peripheral>"
+        "</peripherals></device>",
+        encoding="utf-8",
+    )
+    device = SvdReader().read(svd)
+    assert device.peripherals[0].derived_from is None  # base declares nothing
+    assert device.peripherals[1].derived_from == "UART0"  # derived backlink captured

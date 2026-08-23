@@ -118,14 +118,15 @@ REGFORGE_INLINE uint8_t {{ device.name|lower }}_irq_prio(uint8_t priority)
 {% endif %}
 {% endif %}
 
-{% for periph in device.peripherals %}
-{% set pf = prefix ~ periph.name|upper %}
-{% set tname = prefix|lower ~ periph.name|lower ~ "_t" %}
-{% set members = layout(periph) %}
+{% for family in families %}
+{% set src = family.type_source %}
+{% set spf = prefix ~ family.name|upper %}
+{% set tname = prefix|lower ~ family.name|lower ~ "_t" %}
+{% set members = layout(src) %}
 {% set tw = members|map(attribute='type')|map('length')|max %}
 {% set fw = members|map(attribute='field')|map('length')|max %}
 /* ========================================================================== */
-/* {{ periph.name }}{% if periph.description %} -- {{ periph.description }}{% endif %} (base {{ to_bytes(periph.base_address)|hex32 }}) */
+/* {{ family.name }}{% if src.description %} -- {{ src.description }}{% endif %}{% if family.instances|length > 1 %} (family: {{ family.instances|map(attribute='name')|join(', ') }}){% endif %} */
 
 typedef struct {
 {% for m in members %}
@@ -133,9 +134,12 @@ typedef struct {
 {% endfor %}
 } {{ tname }};
 {% for m in members if m.member %}
-REGFORGE_STATIC_ASSERT(offsetof({{ tname }}, {{ m.member }}) == 0x{{ "%02X"|format(m.offset) }}, {{ pf }}_{{ m.member|upper }}_offset, "{{ periph.name }}.{{ m.member }} offset");
+REGFORGE_STATIC_ASSERT(offsetof({{ tname }}, {{ m.member }}) == 0x{{ "%02X"|format(m.offset) }}, {{ spf }}_{{ m.member|upper }}_offset, "{{ family.name }}.{{ m.member }} offset");
 {% endfor %}
+{% for periph in family.instances %}
+{% set pf = prefix ~ periph.name|upper %}
 
+/* {{ periph.name }} @ {{ to_bytes(periph.base_address)|hex32 }} */
 #define {{ pf }}_BASE ({{ to_bytes(periph.base_address)|hex32 }}UL)
 REGFORGE_MAYBE_UNUSED static {{ tname }} *const {{ pf }} = ({{ tname }} *){{ pf }}_BASE;
 {% for reg in periph.registers %}
@@ -153,6 +157,7 @@ REGFORGE_MAYBE_UNUSED static {{ tname }} *const {{ pf }} = ({{ tname }} *){{ pf 
 #define {{ pf }}_{{ reg.name|upper }}_{{ field.name|upper }}_Msk ({{ field.mask|hex32 }}UL)
 {% for ev in field.enums %}
 #define {{ pf }}_{{ reg.name|upper }}_{{ field.name|upper }}_{{ ev.name|upper }} ({{ ev.value }}U)
+{% endfor %}
 {% endfor %}
 {% endfor %}
 {% endfor %}
