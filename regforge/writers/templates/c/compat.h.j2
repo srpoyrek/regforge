@@ -1,0 +1,55 @@
+{# Compiler / language-standard portability layer, shared by every regforge
+   header. Tool-namespaced and include-guarded so it is emitted into each
+   header but takes effect exactly once per translation unit, however many
+   regforge headers are included together. Add a compiler by extending the
+   cascades below; standard-driven features need no change. #}
+#ifndef REGFORGE_COMPAT_H
+#define REGFORGE_COMPAT_H
+
+/* Language standard as a comparable number (0 if not a Standard C compiler). */
+#if defined(__STDC_VERSION__)
+#  define REGFORGE_STDC __STDC_VERSION__
+#else
+#  define REGFORGE_STDC 0L
+#endif
+
+/* REGFORGE_STATIC_ASSERT(cond, tag, msg) -- compile-time check.
+ * C++11+ and C11/C23 have a language construct; older dialects fall back to a
+ * negative-array typedef named REGFORGE_assert_<tag>. `tag` must be unique per
+ * translation unit -- regforge passes a device-namespaced tag. */
+#if defined(__cplusplus) && (__cplusplus >= 201103L)
+#  define REGFORGE_STATIC_ASSERT(cond, tag, msg) static_assert(cond, msg)
+#elif REGFORGE_STDC >= 201112L
+#  define REGFORGE_STATIC_ASSERT(cond, tag, msg) _Static_assert(cond, msg)
+#else
+#  define REGFORGE_STATIC_ASSERT(cond, tag, msg) \
+       typedef char REGFORGE_assert_##tag[(cond) ? 1 : -1]
+#endif
+
+/* REGFORGE_INLINE -- inline with internal linkage.
+ * `inline` is C99/C++; on C89 degrade to `static`, plus the unused attribute
+ * (on compilers that support it) so an unreferenced helper stays warning-free. */
+#if defined(__cplusplus) || REGFORGE_STDC >= 199901L
+#  define REGFORGE_INLINE static inline
+#elif defined(__GNUC__) || defined(__clang__) \
+   || defined(__CC_ARM) || defined(__ICCARM__)
+#  define REGFORGE_INLINE static __attribute__((unused))
+#else
+#  define REGFORGE_INLINE static
+#endif
+
+/* REGFORGE_MAYBE_UNUSED -- suppress "defined but not used" on an entity a given
+ * translation unit may legitimately not reference. Used as a *prefix* on the
+ * declaration (required by [[maybe_unused]]; also valid for __attribute__). */
+#if defined(__cplusplus) && (__cplusplus >= 201703L)
+#  define REGFORGE_MAYBE_UNUSED [[maybe_unused]]
+#elif REGFORGE_STDC >= 202311L
+#  define REGFORGE_MAYBE_UNUSED [[maybe_unused]]              /* C23 */
+#elif defined(__GNUC__) || defined(__clang__) \
+   || defined(__CC_ARM) || defined(__ICCARM__)
+#  define REGFORGE_MAYBE_UNUSED __attribute__((unused))       /* GCC/Clang/armclang/armcc5/IAR8+ */
+#else
+#  define REGFORGE_MAYBE_UNUSED                                /* MSVC (no such warning) + exotic */
+#endif
+
+#endif /* REGFORGE_COMPAT_H */

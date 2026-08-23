@@ -37,6 +37,9 @@ testpaths = ["tests"]
 # importlib mode lets same-named test files (e.g. test_registry.py) live in
 # different folders (readers/svd, writers/c, ...) without collisions.
 addopts = "--import-mode=importlib"
+# Make the repo root importable so tests can share the dev toolchain registry
+# (tools/toolchains.py) with the size report.
+pythonpath = ["."]
 
 [tool.black]
 line-length = 100
@@ -49,3 +52,6 @@ extend-exclude = ["tests/golden"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "B", "UP"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["regforge", "tools"]

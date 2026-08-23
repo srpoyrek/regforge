@@ -6,15 +6,17 @@ lint) with a bare ``nox``. Sessions:
 * ``tests``   -- run the pytest suite.
 * ``lint``    -- check formatting and lint rules without modifying files.
 * ``format``  -- apply ruff fixes and black formatting in place.
-* ``build``   -- build the wheel and source distribution.
-* ``goldens`` -- regenerate the golden test fixtures.
+* ``build``     -- build the wheel and source distribution.
+* ``goldens``   -- regenerate the golden test fixtures.
+* ``compilers`` -- compile the golden header with every C/C++ compiler on PATH.
+* ``sizes``     -- report generated-header size per compiler / optimization level.
 """
 
 import nox
 
 nox.options.sessions = ["tests", "lint"]
 
-PYTHON_PATHS = ["regforge", "tests", "noxfile.py"]
+PYTHON_PATHS = ["regforge", "tests", "tools", "noxfile.py"]
 
 
 @nox.session
@@ -59,3 +61,29 @@ def goldens(session: nox.Session) -> None:
         "-o",
         "tests/golden/c/minimal.h",
     )
+
+
+@nox.session
+def compilers(session: nox.Session) -> None:
+    """Compile the golden header with every C/C++ compiler found on PATH.
+
+    The matrix skips toolchains that are absent, so this reports on whatever is
+    installed; run it wherever a compiler you care about is available.
+    """
+    session.install("-e", ".[dev]")
+    session.run(
+        "pytest",
+        "tests/writers/c/test_compiles.py",
+        "-v",
+        *session.posargs,
+    )
+
+
+@nox.session
+def sizes(session: nox.Session) -> None:
+    """Print generated-header size per compiler and optimization level.
+
+    Object-level bytes (text/data/bss) for each GNU toolchain on PATH; skips any
+    that are absent. Needs no dependencies -- it only reads the golden header.
+    """
+    session.run("python", "-m", "tools.size_report", *session.posargs)

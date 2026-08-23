@@ -46,6 +46,31 @@ Options:
 formatter on the *generated* C/C++ output only; it must be installed
 separately and does not affect regforge's own sources.
 
+## Compiler support
+
+Generated C headers target C89, C99, C11, and C23, and also compile as C++.
+Portability lives in a small self-contained `REGFORGE_*` prelude
+([compat.h.j2](regforge/writers/templates/c/compat.h.j2)) that adapts
+`static_assert`, `inline`, and unused-suppression per compiler and standard.
+
+| Compiler | Status |
+| --- | --- |
+| GCC, Clang | Verified — compile matrix (C89 / C99 / C11) and C++ (C++11 / C++17); local + CI. |
+| GNU Arm Embedded (`arm-none-eabi-gcc`) | Covered in CI — the free bare-metal Cortex-M cross-compiler. |
+| MSVC | Covered in CI (Windows) — compilability. |
+| Arm Compiler 6 (armclang) | Supported (Clang-based, same code path); exercised where installed. |
+| Arm Compiler 5, IAR | In the matrix but commercially licensed — run only on a self-hosted runner with the toolchain. |
+| Pre-8 IAR, Arm Compiler <5, other | Not officially supported — headers still compile, but unreferenced peripheral handles may warn. |
+
+The compile matrix
+([tests/writers/c/test_compiles.py](tests/writers/c/test_compiles.py)) exercises
+every compiler it finds on `PATH` across the standards it supports and skips
+those that are absent — run it in isolation with `nox -s compilers`. A companion
+size report ([tools/size_report.py](tools/size_report.py), `nox -s sizes`) prints
+code/data size per compiler and optimization level, and a
+[zero-cost test](tests/writers/c/test_sizes.py) asserts an included-but-unused
+header adds no bytes at `-Os`.
+
 ## Extending
 
 **Add an input format:** subclass `Reader` in a new module under
@@ -65,15 +90,27 @@ registry automatically.
 ```bash
 pytest                    # run the tests
 nox                       # run tests and lint
+nox -s compilers          # compile the golden header on every compiler on PATH
+nox -s sizes              # size per compiler / optimization level
 nox -s format             # apply ruff + black
 pre-commit install        # enable hooks on commit
 ```
 
-Generation is verified with a golden test: the suite parses
-[tests/fixtures/svd/minimal.svd](tests/fixtures/svd/minimal.svd) and compares
-the generated header against [tests/golden/c/minimal.h](tests/golden/c/minimal.h).
-Regenerate the golden fixtures after an intentional template change with
-`nox -s goldens`.
+Output is verified three ways:
+
+- **Golden test** — the suite parses
+  [tests/fixtures/svd/minimal.svd](tests/fixtures/svd/minimal.svd) and compares
+  the generated header byte-for-byte against
+  [tests/golden/c/minimal.h](tests/golden/c/minimal.h). Regenerate it after an
+  intentional template change with `nox -s goldens`.
+- **Compile matrix** — the header must build cleanly under every C/C++ compiler
+  present (see [Compiler support](#compiler-support)); GNU-family compilers are
+  held to `-Wextra -Werror`.
+- **Zero-cost check** — an included-but-unused header must add no code or data at
+  `-Os`, so the abstractions stay free in optimized firmware.
+
+All three run in CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) on
+Linux and Windows.
 
 ## License
 

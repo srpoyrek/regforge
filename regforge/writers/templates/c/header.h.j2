@@ -44,17 +44,10 @@
 #include <assert.h>
 {% endif %}
 
-/* Compile-time assert: _Static_assert on C11+, a negative-array typedef
- * (named {{ dev }}_assert_<tag>, unique across headers) on C89/C99. */
-#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
-#define {{ dev }}_STATIC_ASSERT(cond, tag, msg) _Static_assert(cond, msg)
-#else
-#define {{ dev }}_STATIC_ASSERT(cond, tag, msg) \
-    typedef char {{ dev }}_assert_##tag[(cond) ? 1 : -1]
-#endif
+{% include "compat.h.j2" %}
 
 #define {{ dev }}_ADDRESS_UNIT_BITS {{ device.address_unit_bits }}
-{{ dev }}_STATIC_ASSERT(CHAR_BIT == {{ dev }}_ADDRESS_UNIT_BITS, address_unit_bits,
+REGFORGE_STATIC_ASSERT(CHAR_BIT == {{ dev }}_ADDRESS_UNIT_BITS, {{ dev }}_address_unit_bits,
     "regforge: this header targets {{ device.address_unit_bits }}-bit address units; "
     "the compiler's CHAR_BIT disagrees -- regenerate with a matching emitter mode.");
 
@@ -111,20 +104,10 @@
 
 #define {{ dev }}_IRQ_PRIO_LEVELS (1U << {{ dev }}_NVIC_PRIO_BITS)
 
-/* `inline` is C99; on C89 degrade to `static` -- plus GCC/Clang's unused
- * attribute so an unreferenced helper does not warn under -Wall. */
-#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
-#define {{ dev }}_INLINE static inline
-#elif defined(__GNUC__)
-#define {{ dev }}_INLINE static __attribute__((unused))
-#else
-#define {{ dev }}_INLINE static
-#endif
-
 /* Align an interrupt priority to this core's implemented bits. NVIC priority
  * registers are MSB-aligned, so the value is shifted into the top
  * {{ cpu.nvic_prio_bits }} bit(s); priorities >= the level count truncate in hardware. */
-{{ dev }}_INLINE uint8_t {{ device.name|lower }}_irq_prio(uint8_t priority)
+REGFORGE_INLINE uint8_t {{ device.name|lower }}_irq_prio(uint8_t priority)
 {
     assert(priority < {{ dev }}_IRQ_PRIO_LEVELS);
     return (uint8_t)(priority << (8U - {{ dev }}_NVIC_PRIO_BITS));

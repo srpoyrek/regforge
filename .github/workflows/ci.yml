@@ -1,0 +1,53 @@
+# Continuous integration: tests + lint + the compiler matrix, on Linux and
+# Windows. Free on public repositories (unlimited GitHub-hosted minutes).
+#
+# The compile matrix (tests/writers/c/test_compiles.py) picks up whatever
+# compilers each runner provides and skips the rest, so:
+#   * Linux   -- gcc, clang, g++, clang++, arm-none-eabi-gcc (installed below)
+#   * Windows -- MSVC (cl), via the developer environment
+# armcc / IAR are commercially licensed and cannot run on GitHub-hosted runners;
+# they only exercise on a self-hosted runner that has the toolchain.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install C/C++ compilers (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            gcc clang g++ gcc-arm-none-eabi binutils-arm-none-eabi
+
+      - name: Set up MSVC (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install nox
+        run: pip install nox
+
+      - name: Tests + lint
+        run: nox -s tests lint
+
+      - name: Size report (Linux)
+        if: runner.os == 'Linux'
+        run: nox -s sizes
