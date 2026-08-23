@@ -1,0 +1,9 @@
+# Normalize line endings to LF in the repository and on checkout for all text
+# files. Byte-exact golden tests and the SVD source-hash provenance must be
+# identical on every platform; without this, Windows CI's default autocrlf
+# rewrites the .svd fixture to CRLF and its sha256 no longer matches the golden.
+* text=auto eol=lf
+
+# Belt and braces for the files whose exact bytes the tests depend on.
+*.svd            text eol=lf
+tests/golden/**  text eol=lf
