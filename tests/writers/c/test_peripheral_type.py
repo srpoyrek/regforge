@@ -8,6 +8,7 @@ handle is a real symbol, not a cast-macro like CMSIS emits.
 import pytest
 
 from regforge.ir import Device, Peripheral, Register
+from regforge.resolve import resolve_defaults
 from regforge.writers.base import EmitError
 from regforge.writers.c import CWriter
 
@@ -70,3 +71,39 @@ def test_overlapping_registers_are_refused():
     with pytest.raises(EmitError) as exc:
         CWriter().render(device)
     assert "overlaps" in str(exc.value)
+
+
+def test_member_type_comes_from_resolved_size():
+    # A register with no <size> of its own inherits it (device default here) and
+    # still gets a correct struct member type.
+    device = Device(
+        name="Chip",
+        default_size=16,
+        peripherals=[
+            Peripheral(
+                name="P",
+                base_address=0x0,
+                registers=[Register(name="R", address_offset=0x0)],
+            ),
+        ],
+    )
+    resolve_defaults(device)
+    assert device.peripherals[0].registers[0].size == 16  # inherited, not None
+    assert "volatile uint16_t R;" in CWriter().render(device)
+
+
+def test_size_less_register_is_refused_without_resolution():
+    # Without resolve_defaults, size stays None -- the emitter refuses it rather
+    # than guessing. The resolution pass is what makes the struct member typeable.
+    device = Device(
+        name="Chip",
+        peripherals=[
+            Peripheral(
+                name="P",
+                base_address=0x0,
+                registers=[Register(name="R", address_offset=0x0)],
+            ),
+        ],
+    )
+    with pytest.raises(EmitError):
+        CWriter().render(device)
