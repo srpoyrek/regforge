@@ -1,4 +1,4 @@
-"""Layer 1: headerDefinitionsPrefix parsing and vendorExtensions preservation."""
+"""headerDefinitionsPrefix parsing and vendorExtensions preservation."""
 
 from regforge.readers.svd import SvdReader
 

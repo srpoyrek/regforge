@@ -1,4 +1,4 @@
-"""Layer 1 device `addressUnitBits` extraction."""
+"""Device `addressUnitBits` extraction."""
 
 from regforge.readers.svd import SvdReader
 

@@ -1,4 +1,4 @@
-"""Layer 1 device description extraction."""
+"""Device description extraction."""
 
 from regforge.readers.svd import SvdReader
 

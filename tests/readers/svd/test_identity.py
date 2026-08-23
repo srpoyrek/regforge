@@ -1,4 +1,4 @@
-"""Layer 1 device identity: vendor / name / series / version."""
+"""Device identity: vendor / name / series / version."""
 
 
 def test_reads_device_identity(demo_device):

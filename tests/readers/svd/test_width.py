@@ -1,4 +1,4 @@
-"""Layer 1 device `<width>` (bus width) parsing.
+"""Device `<width>` (bus width) parsing.
 
 Register-size *resolution* (which uses the bus width as a fallback) is exercised
 in tests/resolve/, since it happens in the defaults pass, not the reader.

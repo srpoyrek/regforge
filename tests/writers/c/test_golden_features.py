@@ -1,4 +1,4 @@
-"""The canonical fixture (minimal.svd) exercises Layer 1 features end-to-end.
+"""The canonical fixture (minimal.svd) exercises features end-to-end.
 
 test_golden diffs the whole output byte-for-byte; these name the specific
 features the enriched fixture is there to demonstrate, so a regression points

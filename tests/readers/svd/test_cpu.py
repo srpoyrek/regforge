@@ -1,4 +1,4 @@
-"""Layer 1 device `<cpu>` block: extraction and boolean normalization."""
+"""Device `<cpu>` block: extraction and boolean normalization."""
 
 import pytest
 

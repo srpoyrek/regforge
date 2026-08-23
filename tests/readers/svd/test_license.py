@@ -1,4 +1,4 @@
-"""Layer 1 device license: licenseText extraction."""
+"""Device license: licenseText extraction."""
 
 
 def test_reads_license_text(demo_device):

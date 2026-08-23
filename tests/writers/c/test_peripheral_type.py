@@ -1,4 +1,4 @@
-"""C writer, Layer 2 (name + baseAddress): a distinct type + typed instance.
+"""C writer: peripheral name + base address as a distinct type + typed instance.
 
 Each peripheral becomes its own C struct type with a typed handle at its base,
 so passing the wrong peripheral to a function is a compile error -- and the
@@ -149,3 +149,26 @@ def test_size_less_register_is_refused_without_resolution():
     )
     with pytest.raises(EmitError):
         CWriter().render(device)
+
+
+def test_render_is_deterministic():
+    # Same IR -> byte-identical output. The internal id()-keyed layout lookup
+    # must not leak memory addresses (or any nondeterminism) into the header.
+    device = Device(
+        name="Chip",
+        peripherals=[
+            Peripheral(name="A", base_address=0x0, registers=[Register("R", 0x0, size=32)]),
+            Peripheral(name="B", base_address=0x1000, registers=[Register("R", 0x0, size=32)]),
+        ],
+    )
+    assert CWriter().render(device) == CWriter().render(device)
+
+
+def test_macro_rule_base_kept_identity_is_the_type(demo_device):
+    # Base address is a consumed value -> macro; peripheral identity is
+    # enforced by the C type -> no macro (a _KIND macro would be dead weight).
+    output = CWriter().render(demo_device)
+    assert "#define DC_GPIOA_BASE" in output  # consumed value -> macro
+    assert "dc_gpioa_t *const DC_GPIOA" in output  # identity is the type + instance
+    assert "DC_GPIOA_KIND" not in output
+    assert "DC_GPIOA_TYPE" not in output
