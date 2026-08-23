@@ -23,7 +23,7 @@ def test_peripherals_registers_fields(demo_device):
 
     gpioa = demo_device.peripherals[0]
     assert gpioa.base_address == 0x40020000
-    assert [r.name for r in gpioa.registers] == ["MODER", "ODR"]
+    assert [r.name for r in gpioa.registers] == ["MODER", "IDR", "ODR"]
 
     moder = gpioa.registers[0]
     assert moder.address_offset == 0x00
@@ -35,7 +35,8 @@ def test_peripherals_registers_fields(demo_device):
 
 def test_bit_range_encoding(demo_device):
     # ODR.OD0 uses the "[0:0]" bitRange encoding.
-    od0 = demo_device.peripherals[0].registers[1].fields[0]
+    odr = next(r for r in demo_device.peripherals[0].registers if r.name == "ODR")
+    od0 = odr.fields[0]
     assert (od0.bit_offset, od0.bit_width) == (0, 1)
 
 

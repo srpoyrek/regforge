@@ -21,6 +21,15 @@ def test_fixture_emits_reset_mask_only_where_partial(demo_device):
     assert "DC_GPIOA_MODER_RESET_MASK" not in output  # MODER: no mask -> suppressed
 
 
+def test_fixture_marks_read_only_register_const(demo_device):
+    output = CWriter().render(demo_device)
+    # IDR is <access>read-only</access>: the struct member and flat macro are const,
+    # so writing it (IDR = x) is a compile error -- while ODR (read-write) is not.
+    assert "volatile const uint32_t IDR;" in output
+    assert "#define DC_GPIOA_IDR (*(volatile const uint32_t *)" in output
+    assert "volatile const uint32_t ODR;" not in output  # ODR stays writable
+
+
 def test_fixture_preserves_vendor_extensions_without_emitting(demo_device):
     assert demo_device.vendor_extensions_xml is not None
     assert "calibrated" in demo_device.vendor_extensions_xml

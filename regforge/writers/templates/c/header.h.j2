@@ -117,23 +117,25 @@ REGFORGE_INLINE uint8_t {{ device.name|lower }}_irq_prio(uint8_t priority)
 
 {% for periph in device.peripherals %}
 {% set pf = prefix ~ periph.name|upper %}
-/* {{ periph.name }}{% if periph.description %} - {{ periph.description }}{% endif %} */
-#define {{ pf }}_BASE ({{ to_bytes(periph.base_address)|hex32 }}UL)
 {% set tname = prefix|lower ~ periph.name|lower ~ "_t" %}
 {% set members = layout(periph) %}
-{% set width = members|map(attribute='decl')|map('length')|max %}
+{% set tw = members|map(attribute='type')|map('length')|max %}
+{% set fw = members|map(attribute='field')|map('length')|max %}
+/* ========================================================================== */
+/* {{ periph.name }}{% if periph.description %} -- {{ periph.description }}{% endif %} (base {{ to_bytes(periph.base_address)|hex32 }}) */
 
 typedef struct {
 {% for m in members %}
-    {{ "%-*s"|format(width, m.decl) }}  /* 0x{{ "%02X"|format(m.offset) }} */
+    {{ "%-*s"|format(tw, m.type) }} {{ "%-*s"|format(fw, m.field) }}  /* 0x{{ "%02X"|format(m.offset) }}{% if m.desc %}  {{ m.desc }}{% endif %} */
 {% endfor %}
 } {{ tname }};
 
+#define {{ pf }}_BASE ({{ to_bytes(periph.base_address)|hex32 }}UL)
 REGFORGE_MAYBE_UNUSED static {{ tname }} *const {{ pf }} = ({{ tname }} *){{ pf }}_BASE;
 {% for reg in periph.registers %}
 
 /* {{ periph.name }}.{{ reg.name }}{% if reg.description %} - {{ reg.description }}{% endif %} */
-#define {{ pf }}_{{ reg.name|upper }} (*(volatile {{ c_type[reg.size] }} *)({{ pf }}_BASE + {{ to_bytes(reg.address_offset)|hex32 }}UL))
+#define {{ pf }}_{{ reg.name|upper }} (*({{ member_type(reg) }} *)({{ pf }}_BASE + {{ to_bytes(reg.address_offset)|hex32 }}UL))
 {% if reg.reset_value is not none %}
 #define {{ pf }}_{{ reg.name|upper }}_RESET_VALUE ({{ reg.reset_value|hex32 }}UL)
 {% endif %}

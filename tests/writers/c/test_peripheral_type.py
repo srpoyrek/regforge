@@ -7,7 +7,7 @@ handle is a real symbol, not a cast-macro like CMSIS emits.
 
 import pytest
 
-from regforge.ir import Device, Peripheral, Register
+from regforge.ir import Access, Device, Peripheral, Register
 from regforge.resolve import resolve_defaults
 from regforge.writers.base import EmitError
 from regforge.writers.c import CWriter
@@ -19,8 +19,8 @@ def test_emits_struct_type_and_typed_instance(demo_device):
     assert "} dc_gpioa_t;" in output
     assert "volatile uint32_t MODER;" in output
     assert "volatile uint32_t ODR;" in output
-    # Reserved padding fills 0x04..0x14 so ODR sits at its true offset.
-    assert "uint8_t RESERVED0[16];" in output
+    # Reserved padding fills 0x04..0x10 (IDR sits at 0x10) so offsets stay true.
+    assert "uint8_t RESERVED0[12];" in output
     # The instance is a typed, non-redefinable symbol -- not a cast-macro.
     assert (
         "REGFORGE_MAYBE_UNUSED static dc_gpioa_t *const DC_GPIOA = (dc_gpioa_t *)DC_GPIOA_BASE;"
@@ -90,6 +90,28 @@ def test_member_type_comes_from_resolved_size():
     resolve_defaults(device)
     assert device.peripherals[0].registers[0].size == 16  # inherited, not None
     assert "volatile uint16_t R;" in CWriter().render(device)
+
+
+def test_read_only_member_and_macro_are_const():
+    device = Device(
+        name="Chip",
+        peripherals=[
+            Peripheral(
+                name="P",
+                base_address=0x0,
+                registers=[
+                    Register(name="RW", address_offset=0x0, size=32, access=Access.READ_WRITE),
+                    Register(name="RO", address_offset=0x4, size=32, access=Access.READ_ONLY),
+                ],
+            ),
+        ],
+    )
+    output = CWriter().render(device)
+    assert "volatile uint32_t RW;" in output  # read-write: writable
+    assert "volatile const uint32_t RO;" in output  # read-only: const struct member
+    # The flat macro is const too, so it cannot be a write backdoor to a RO register.
+    assert "#define P_RO (*(volatile const uint32_t *)" in output
+    assert "#define P_RW (*(volatile uint32_t *)" in output
 
 
 def test_size_less_register_is_refused_without_resolution():

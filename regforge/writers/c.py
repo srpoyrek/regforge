@@ -16,7 +16,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
-from ..ir import Device, Peripheral
+from ..ir import Access, Device, Peripheral, Register
 from ..provenance import Provenance
 from .base import EmitError, Writer
 
@@ -31,6 +31,9 @@ _HEX32_DIGITS = 8
 #: Register base type keyed on width in bits. 64 is future-proofing (see TODO);
 #: any size absent here is refused rather than rounded.
 _C_TYPE = {8: "uint8_t", 16: "uint16_t", 32: "uint32_t", 64: "uint64_t"}
+#: Register descriptions at most this long sit inline in the struct comment;
+#: longer ones stay in the per-register banner so the layout stays a tight map.
+_MAX_INLINE_DESC = 40
 
 
 def _hex32(value: int) -> str:
@@ -46,6 +49,24 @@ def _units_to_bytes(units: int, address_unit_bits: int) -> int:
     not at all).
     """
     return units * address_unit_bits // BITS_PER_BYTE
+
+
+def _short_desc(description: str | None) -> str:
+    """A register description short enough to sit inline in the struct comment."""
+    if description and len(description) <= _MAX_INLINE_DESC:
+        return description
+    return ""
+
+
+def _member_type(register: Register) -> str:
+    """A register's C storage type: volatile, and const when read-only.
+
+    A read-only register becomes ``volatile const`` so writing it is a compile
+    error (as CMSIS's ``__IM`` does). Write-only / read-write / write-once are
+    plain ``volatile`` -- C has no type qualifier for "write-only" or "once".
+    """
+    const = "const " if register.access == Access.READ_ONLY else ""
+    return f"volatile {const}{_C_TYPE[register.size]}"
 
 
 def _peripheral_layout(peripheral: Peripheral, address_unit_bits: int) -> list[dict]:
@@ -69,11 +90,21 @@ def _peripheral_layout(peripheral: Peripheral, address_unit_bits: int) -> list[d
             )
         if offset > cursor:
             entries.append(
-                {"offset": cursor, "decl": f"uint8_t RESERVED{pad_index}[{offset - cursor}];"}
+                {
+                    "offset": cursor,
+                    "type": "uint8_t",
+                    "field": f"RESERVED{pad_index}[{offset - cursor}];",
+                    "desc": "(reserved)",
+                }
             )
             pad_index += 1
         entries.append(
-            {"offset": offset, "decl": f"volatile {_C_TYPE[register.size]} {register.name};"}
+            {
+                "offset": offset,
+                "type": _member_type(register),
+                "field": f"{register.name};",
+                "desc": _short_desc(register.description),
+            }
         )
         cursor = offset + register.size // BITS_PER_BYTE
     return entries
@@ -126,7 +157,7 @@ class CWriter(Writer):
             provenance=provenance,
             prefix=device.header_prefix or "",
             to_bytes=lambda units: _units_to_bytes(units, device.address_unit_bits),
-            c_type=_C_TYPE,
+            member_type=_member_type,
             full_mask=lambda size: (1 << size) - 1,
             layout=lambda peripheral: layouts[id(peripheral)],
         )

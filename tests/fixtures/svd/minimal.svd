@@ -52,6 +52,12 @@ Licensed under the Apache License, Version 2.0.
           </fields>
         </register>
         <register>
+          <name>IDR</name>
+          <description>Input data register</description>
+          <addressOffset>0x10</addressOffset>
+          <access>read-only</access>
+        </register>
+        <register>
           <name>ODR</name>
           <description>Output data register</description>
           <addressOffset>0x14</addressOffset>
