@@ -8,7 +8,7 @@ in-memory devices so the enum shape is pinned before it reaches the golden.
 
 import re
 
-from regforge.ir import Device, Interrupt, Peripheral, Register
+from regforge.ir import Cpu, Device, Interrupt, Peripheral, Register
 from regforge.resolve import resolve_defaults, resolve_derived
 from regforge.writers.c import CWriter
 
@@ -18,6 +18,22 @@ def _render(*peripherals: Peripheral, prefix: str | None = "DC_") -> str:
     resolve_defaults(device)
     resolve_derived(device)
     return CWriter().render(device)
+
+
+def _render_with_cpu(cpu: Cpu, *peripherals: Peripheral, prefix: str | None = "DC_") -> str:
+    device = Device(name="Chip", header_prefix=prefix, cpu=cpu, peripherals=list(peripherals))
+    resolve_defaults(device)
+    resolve_derived(device)
+    return CWriter().render(device)
+
+
+def _uart(irq_value: int = 20) -> Peripheral:
+    return Peripheral(
+        name="UART0",
+        base_address=0x4000,
+        registers=[Register("DR", 0x0, size=32)],
+        interrupts=[Interrupt("UART0", irq_value)],
+    )
 
 
 def test_enum_lists_interrupts_sorted_by_value():
@@ -127,6 +143,42 @@ def test_peripheral_without_interrupt_emits_no_link():
         Peripheral(name="GPIOA", base_address=0x0, registers=[Register("MODER", 0x0, size=32)]),
     )
     assert "_IRQ " not in output
+
+
+def test_cortex_m_emits_nvic_helpers_and_capability_macro():
+    output = _render_with_cpu(Cpu(name="CM0PLUS", nvic_prio_bits=2, num_interrupts=32), _uart())
+    assert "#define CHIP_HAS_NVIC 1" in output  # capability macro (device-name family)
+    for name in ("enable", "disable", "get_enabled", "set_pending", "clear_pending", "get_pending"):
+        assert f"dc_nvic_{name}(dc_irqn_e irq)" in output
+    assert "dc_nvic_set_priority(dc_irqn_e irq, uint8_t priority)" in output
+    assert "dc_nvic_get_priority(dc_irqn_e irq)" in output
+    assert "#define DC_NVIC_ISER ((volatile uint32_t *)0xE000E100UL)" in output
+    assert "assert((uint32_t)irq < CHIP_NUM_IRQS)" in output  # bounds against the count
+    assert "dc_irq_prio(priority)" in output  # set_priority routes through the shift helper
+
+
+def test_priority_helpers_need_prio_bits_but_enable_does_not():
+    # A Cortex-M core without nvic_prio_bits still gets enable/disable/pending,
+    # but not set/get_priority (which need the priority-bit count).
+    output = _render_with_cpu(Cpu(name="CM0PLUS", num_interrupts=32), _uart())
+    assert "dc_nvic_enable(dc_irqn_e irq)" in output
+    assert "dc_nvic_set_priority" not in output
+    assert "dc_nvic_get_priority" not in output
+
+
+def test_non_cortex_m_emits_no_nvic():
+    # A RISC-V-style core name is not detected -> no NVIC block, no capability macro.
+    output = _render_with_cpu(Cpu(name="RV32IMAC", num_interrupts=32), _uart())
+    assert "HAS_NVIC" not in output
+    assert "dc_nvic_" not in output
+    assert "DC_NVIC_" not in output
+
+
+def test_nvic_bound_falls_back_when_count_absent():
+    # deviceNumInterrupts absent -> bound from the highest declared vector + 1.
+    output = _render_with_cpu(Cpu(name="CM0PLUS", nvic_prio_bits=2), _uart(irq_value=20))
+    assert "#define CHIP_IRQ_COUNT (21U)" in output  # max vector (20) + 1
+    assert "assert((uint32_t)irq < CHIP_IRQ_COUNT)" in output
 
 
 def test_empty_prefix_names_the_enum_type():

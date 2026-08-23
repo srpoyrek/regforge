@@ -16,6 +16,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
+from ..arch import NVIC_REGISTER_BANKS, is_cortex_m
 from ..families import group_families
 from ..interrupts import all_interrupts
 from ..ir import Access, Device, Peripheral, Register
@@ -166,4 +167,6 @@ class CWriter(Writer):
             layout=lambda peripheral: layouts[id(peripheral)],
             families=group_families(device),
             interrupts=all_interrupts(device),
+            is_cortex_m=is_cortex_m(device.cpu),
+            nvic_banks=NVIC_REGISTER_BANKS,
         )

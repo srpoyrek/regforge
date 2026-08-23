@@ -103,6 +103,19 @@ def test_fixture_emits_per_instance_irq_links(demo_device):
     assert "#define DC_TIM1_BRK_IRQ DC_TIM1_BRK_IRQn" in output
 
 
+def test_fixture_emits_cortex_m_nvic_helpers(demo_device):
+    output = CWriter().render(demo_device)
+    # CM0PLUS is detected as Cortex-M -> capability macro + the typed NVIC API.
+    assert "#define DEMOMCU_HAS_NVIC 1" in output
+    assert "#define DC_NVIC_ISER ((volatile uint32_t *)0xE000E100UL)" in output
+    assert "REGFORGE_INLINE void dc_nvic_enable(dc_irqn_e irq)" in output
+    assert "REGFORGE_INLINE void dc_nvic_set_priority(dc_irqn_e irq, uint8_t priority)" in output
+    assert "assert((uint32_t)irq < DEMOMCU_NUM_IRQS)" in output  # bounds vs the count
+    # set_priority routes through the renamed, prefix-namespaced shift helper.
+    assert "REGFORGE_INLINE uint8_t dc_irq_prio(uint8_t priority)" in output
+    assert "(uint32_t)dc_irq_prio(priority)" in output
+
+
 def test_fixture_preserves_vendor_extensions_without_emitting(demo_device):
     assert demo_device.vendor_extensions_xml is not None
     assert "calibrated" in demo_device.vendor_extensions_xml

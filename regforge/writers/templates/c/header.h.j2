@@ -1,5 +1,6 @@
 {% set guard = "REGFORGE_" ~ device.name|upper ~ "_H" -%}
 {% set dev = device.name|upper -%}
+{% set ns = prefix if prefix else device.name ~ "_" -%}
 /*
  * {{ device.name }} register definitions.
 {% if device.description %}
@@ -43,7 +44,7 @@
 #include <stddef.h>
 {% endif %}
 #include <limits.h>
-{% if device.cpu and device.cpu.nvic_prio_bits is not none %}
+{% if (device.cpu and device.cpu.nvic_prio_bits is not none) or (is_cortex_m and interrupts) %}
 #include <assert.h>
 {% endif %}
 
@@ -86,6 +87,9 @@ REGFORGE_STATIC_ASSERT(CHAR_BIT == {{ dev }}_ADDRESS_UNIT_BITS, {{ dev }}_addres
 {% if cpu.vtor_present is not none %}
 #define {{ dev }}_HAS_VTOR {{ 1 if cpu.vtor_present else 0 }}
 {% endif %}
+{% if is_cortex_m %}
+#define {{ dev }}_HAS_NVIC 1
+{% endif %}
 {% if cpu.endian == "little" %}
 
 #if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__)
@@ -110,7 +114,7 @@ REGFORGE_STATIC_ASSERT(CHAR_BIT == {{ dev }}_ADDRESS_UNIT_BITS, {{ dev }}_addres
 /* Align an interrupt priority to this core's implemented bits. NVIC priority
  * registers are MSB-aligned, so the value is shifted into the top
  * {{ cpu.nvic_prio_bits }} bit(s); priorities >= the level count truncate in hardware. */
-REGFORGE_INLINE uint8_t {{ device.name|lower }}_irq_prio(uint8_t priority)
+REGFORGE_INLINE uint8_t {{ ns|lower }}irq_prio(uint8_t priority)
 {
     assert(priority < {{ dev }}_IRQ_PRIO_LEVELS);
     return (uint8_t)(priority << (8U - {{ dev }}_NVIC_PRIO_BITS));
@@ -129,6 +133,80 @@ typedef enum {
     {{ "%-*s"|format(ipad, prefix ~ irq.name ~ "_IRQn") }} = {{ irq.value }}{% if not loop.last %},{% endif %}{% if irq.description %}  /* {{ irq.description }} */{% endif +%}
 {% endfor %}
 } {{ prefix|lower }}irqn_e;
+{% if is_cortex_m %}
+{% if device.cpu.num_interrupts is not none %}
+{% set irq_bound = dev ~ "_NUM_IRQS" %}
+{% else %}
+
+#define {{ dev }}_IRQ_COUNT ({{ (interrupts|map(attribute='value')|max) + 1 }}U)  /* deviceNumInterrupts absent; lower bound from declared vectors */
+{% set irq_bound = dev ~ "_IRQ_COUNT" %}
+{% endif %}
+
+/* Cortex-M NVIC (fixed-address interrupt controller; emitted only for Cortex-M
+ * cores). The register banks live in the System Control Space at addresses ARM
+ * fixes for every Cortex-M core and vendor. Each helper takes {{ prefix|lower }}irqn_e --
+ * a raw int won't pass -- and bounds-checks against {{ irq_bound }} in debug
+ * builds; with NDEBUG each compiles to the bare register access. */
+{% set bw = nvic_banks|map(attribute='name')|map('length')|max %}
+{% set cw = nvic_banks|map(attribute='purpose')|map('length')|max %}
+{% for bank in nvic_banks %}
+#define {{ ns|upper }}NVIC_{{ "%-*s"|format(bw, bank.name) }} ((volatile uint32_t *)0x{{ "%08X"|format(bank.address) }}UL)  /* {{ "%-*s"|format(cw, bank.purpose) }} */
+{% endfor %}
+
+REGFORGE_INLINE void {{ ns|lower }}nvic_enable({{ prefix|lower }}irqn_e irq)
+{
+    assert((uint32_t)irq < {{ irq_bound }});
+    {{ ns|upper }}NVIC_ISER[(uint32_t)irq >> 5] = 1UL << ((uint32_t)irq & 31UL);
+}
+
+REGFORGE_INLINE void {{ ns|lower }}nvic_disable({{ prefix|lower }}irqn_e irq)
+{
+    assert((uint32_t)irq < {{ irq_bound }});
+    {{ ns|upper }}NVIC_ICER[(uint32_t)irq >> 5] = 1UL << ((uint32_t)irq & 31UL);
+}
+
+REGFORGE_INLINE uint32_t {{ ns|lower }}nvic_get_enabled({{ prefix|lower }}irqn_e irq)
+{
+    assert((uint32_t)irq < {{ irq_bound }});
+    return (uint32_t)(({{ ns|upper }}NVIC_ISER[(uint32_t)irq >> 5] >> ((uint32_t)irq & 31UL)) & 1UL);
+}
+
+REGFORGE_INLINE void {{ ns|lower }}nvic_set_pending({{ prefix|lower }}irqn_e irq)
+{
+    assert((uint32_t)irq < {{ irq_bound }});
+    {{ ns|upper }}NVIC_ISPR[(uint32_t)irq >> 5] = 1UL << ((uint32_t)irq & 31UL);
+}
+
+REGFORGE_INLINE void {{ ns|lower }}nvic_clear_pending({{ prefix|lower }}irqn_e irq)
+{
+    assert((uint32_t)irq < {{ irq_bound }});
+    {{ ns|upper }}NVIC_ICPR[(uint32_t)irq >> 5] = 1UL << ((uint32_t)irq & 31UL);
+}
+
+REGFORGE_INLINE uint32_t {{ ns|lower }}nvic_get_pending({{ prefix|lower }}irqn_e irq)
+{
+    assert((uint32_t)irq < {{ irq_bound }});
+    return (uint32_t)(({{ ns|upper }}NVIC_ISPR[(uint32_t)irq >> 5] >> ((uint32_t)irq & 31UL)) & 1UL);
+}
+{% if device.cpu.nvic_prio_bits is not none %}
+
+REGFORGE_INLINE void {{ ns|lower }}nvic_set_priority({{ prefix|lower }}irqn_e irq, uint8_t priority)
+{
+    volatile uint32_t *ipr = &{{ ns|upper }}NVIC_IPR[(uint32_t)irq >> 2];
+    uint32_t shift = ((uint32_t)irq & 3UL) * 8UL;
+    assert((uint32_t)irq < {{ irq_bound }});
+    *ipr = (*ipr & ~(0xFFUL << shift)) | ((uint32_t){{ ns|lower }}irq_prio(priority) << shift);
+}
+
+REGFORGE_INLINE uint8_t {{ ns|lower }}nvic_get_priority({{ prefix|lower }}irqn_e irq)
+{
+    volatile uint32_t *ipr = &{{ ns|upper }}NVIC_IPR[(uint32_t)irq >> 2];
+    uint32_t shift = ((uint32_t)irq & 3UL) * 8UL;
+    assert((uint32_t)irq < {{ irq_bound }});
+    return (uint8_t)(((*ipr >> shift) & 0xFFUL) >> (8U - {{ dev }}_NVIC_PRIO_BITS));
+}
+{% endif %}
+{% endif %}
 {% endif %}
 
 {% for family in families %}

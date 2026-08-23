@@ -94,6 +94,7 @@ REGFORGE_STATIC_ASSERT(CHAR_BIT == DEMOMCU_ADDRESS_UNIT_BITS, DEMOMCU_address_un
 #define DEMOMCU_HAS_FPU 0
 #define DEMOMCU_HAS_MPU 1
 #define DEMOMCU_HAS_VTOR 1
+#define DEMOMCU_HAS_NVIC 1
 
 #if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__)
 #error "DemoMCU is little-endian, but the compiler targets a different byte order."
@@ -108,7 +109,7 @@ REGFORGE_STATIC_ASSERT(CHAR_BIT == DEMOMCU_ADDRESS_UNIT_BITS, DEMOMCU_address_un
 /* Align an interrupt priority to this core's implemented bits. NVIC priority
  * registers are MSB-aligned, so the value is shifted into the top
  * 2 bit(s); priorities >= the level count truncate in hardware. */
-REGFORGE_INLINE uint8_t demomcu_irq_prio(uint8_t priority)
+REGFORGE_INLINE uint8_t dc_irq_prio(uint8_t priority)
 {
     assert(priority < DEMOMCU_IRQ_PRIO_LEVELS);
     return (uint8_t)(priority << (8U - DEMOMCU_NVIC_PRIO_BITS));
@@ -124,6 +125,69 @@ typedef enum {
     DC_TIM1_UP_IRQn  = 25,  /* TIM1 update */
     DC_TIM1_BRK_IRQn = 26  /* TIM1 break */
 } dc_irqn_e;
+
+/* Cortex-M NVIC (fixed-address interrupt controller; emitted only for Cortex-M
+ * cores). The register banks live in the System Control Space at addresses ARM
+ * fixes for every Cortex-M core and vendor. Each helper takes dc_irqn_e --
+ * a raw int won't pass -- and bounds-checks against DEMOMCU_NUM_IRQS in debug
+ * builds; with NDEBUG each compiles to the bare register access. */
+#define DC_NVIC_ISER ((volatile uint32_t *)0xE000E100UL)  /* set-enable    */
+#define DC_NVIC_ICER ((volatile uint32_t *)0xE000E180UL)  /* clear-enable  */
+#define DC_NVIC_ISPR ((volatile uint32_t *)0xE000E200UL)  /* set-pending   */
+#define DC_NVIC_ICPR ((volatile uint32_t *)0xE000E280UL)  /* clear-pending */
+#define DC_NVIC_IPR  ((volatile uint32_t *)0xE000E400UL)  /* priority      */
+
+REGFORGE_INLINE void dc_nvic_enable(dc_irqn_e irq)
+{
+    assert((uint32_t)irq < DEMOMCU_NUM_IRQS);
+    DC_NVIC_ISER[(uint32_t)irq >> 5] = 1UL << ((uint32_t)irq & 31UL);
+}
+
+REGFORGE_INLINE void dc_nvic_disable(dc_irqn_e irq)
+{
+    assert((uint32_t)irq < DEMOMCU_NUM_IRQS);
+    DC_NVIC_ICER[(uint32_t)irq >> 5] = 1UL << ((uint32_t)irq & 31UL);
+}
+
+REGFORGE_INLINE uint32_t dc_nvic_get_enabled(dc_irqn_e irq)
+{
+    assert((uint32_t)irq < DEMOMCU_NUM_IRQS);
+    return (uint32_t)((DC_NVIC_ISER[(uint32_t)irq >> 5] >> ((uint32_t)irq & 31UL)) & 1UL);
+}
+
+REGFORGE_INLINE void dc_nvic_set_pending(dc_irqn_e irq)
+{
+    assert((uint32_t)irq < DEMOMCU_NUM_IRQS);
+    DC_NVIC_ISPR[(uint32_t)irq >> 5] = 1UL << ((uint32_t)irq & 31UL);
+}
+
+REGFORGE_INLINE void dc_nvic_clear_pending(dc_irqn_e irq)
+{
+    assert((uint32_t)irq < DEMOMCU_NUM_IRQS);
+    DC_NVIC_ICPR[(uint32_t)irq >> 5] = 1UL << ((uint32_t)irq & 31UL);
+}
+
+REGFORGE_INLINE uint32_t dc_nvic_get_pending(dc_irqn_e irq)
+{
+    assert((uint32_t)irq < DEMOMCU_NUM_IRQS);
+    return (uint32_t)((DC_NVIC_ISPR[(uint32_t)irq >> 5] >> ((uint32_t)irq & 31UL)) & 1UL);
+}
+
+REGFORGE_INLINE void dc_nvic_set_priority(dc_irqn_e irq, uint8_t priority)
+{
+    volatile uint32_t *ipr = &DC_NVIC_IPR[(uint32_t)irq >> 2];
+    uint32_t shift = ((uint32_t)irq & 3UL) * 8UL;
+    assert((uint32_t)irq < DEMOMCU_NUM_IRQS);
+    *ipr = (*ipr & ~(0xFFUL << shift)) | ((uint32_t)dc_irq_prio(priority) << shift);
+}
+
+REGFORGE_INLINE uint8_t dc_nvic_get_priority(dc_irqn_e irq)
+{
+    volatile uint32_t *ipr = &DC_NVIC_IPR[(uint32_t)irq >> 2];
+    uint32_t shift = ((uint32_t)irq & 3UL) * 8UL;
+    assert((uint32_t)irq < DEMOMCU_NUM_IRQS);
+    return (uint8_t)(((*ipr >> shift) & 0xFFUL) >> (8U - DEMOMCU_NVIC_PRIO_BITS));
+}
 
 /* ========================================================================== */
 /* GPIOA -- General purpose I/O port A */

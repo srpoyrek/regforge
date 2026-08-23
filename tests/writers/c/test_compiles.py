@@ -40,7 +40,10 @@ def test_golden_header_compiles(language, toolchain, std, tmp_path, golden_heade
         "    volatile uint32_t v = DC_GPIOA_MODER;\n"
         "    dc_irqn_e irq = DC_TIM1_UP_IRQ;\n"
         "    (void)v; (void)irq;\n"
-        "    return (int)demomcu_irq_prio(1);\n"
+        "    dc_nvic_enable(DC_UART0_IRQ);\n"
+        "    dc_nvic_set_priority(DC_TIM1_UP_IRQ, 2);\n"
+        "    (void)dc_nvic_get_pending(DC_UART0_IRQ);\n"
+        "    return (int)dc_irq_prio(1);\n"
         "}\n",
         encoding="utf-8",
     )

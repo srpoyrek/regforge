@@ -35,7 +35,7 @@ TRANSLATION_UNITS = {
     "include-only": '#include "{header}"\nint main(void) {{ return 0; }}\n',
     "use-registers": (
         '#include "{header}"\n'
-        "int main(void) {{ DC_GPIOA_MODER = 1u; return (int)demomcu_irq_prio(1); }}\n"
+        "int main(void) {{ DC_GPIOA_MODER = 1u; return (int)dc_irq_prio(1); }}\n"
     ),
 }
 
