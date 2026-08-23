@@ -237,7 +237,8 @@ REGFORGE_STATIC_ASSERT(offsetof({{ tname }}, {{ m.member }}) == 0x{{ "%02X"|form
 #define {{ pf }}_BASE ({{ to_bytes(periph.base_address)|hex32 }}UL)
 REGFORGE_MAYBE_UNUSED static {{ tname }} *const {{ pf }} = ({{ tname }} *){{ pf }}_BASE;
 {% for irq in periph.interrupts %}
-#define {{ prefix }}{{ irq.name }}_IRQ {{ prefix }}{{ irq.name }}_IRQn  /* {% if irq.description %}{{ irq.description }}, {% endif %}vector {{ irq.value }} */
+{% set irq_shared = shared_vectors.get(irq.value) %}
+#define {{ prefix }}{{ irq.name }}_IRQ {{ prefix }}{{ irq.name }}_IRQn  /* {% if irq.description %}{{ irq.description }}, {% endif %}vector {{ irq.value }}{% if irq_shared %} -- shared with {% for other in irq_shared if other != periph.name %}{{ prefix }}{{ other|upper }}{% if not loop.last %}, {% endif %}{% endfor %}; demux in ISR{% endif %} */
 {% endfor %}
 {% for reg in periph.registers %}
 

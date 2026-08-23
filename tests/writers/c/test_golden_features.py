@@ -89,7 +89,9 @@ def test_fixture_emits_irqn_enum_sorted_no_trailing_comma(demo_device):
         "DC_UART0_IRQn    = 20,  /* UART0 global interrupt */",
         "DC_UART1_IRQn    = 21,  /* UART1 global interrupt */",
         "DC_TIM1_UP_IRQn  = 25,  /* TIM1 update */",
-        "DC_TIM1_BRK_IRQn = 26  /* TIM1 break */",
+        "DC_TIM1_BRK_IRQn = 26,  /* TIM1 break */",
+        "DC_SPI0_IRQn     = 30,  /* SPI0 interrupt */",
+        "DC_SPI1_IRQn     = 30  /* SPI1 interrupt */",  # shared vector, last -> no comma
     ]
     assert not members[-1].endswith(",")  # C89 -pedantic-errors rejects trailing comma
 
@@ -114,6 +116,22 @@ def test_fixture_emits_cortex_m_nvic_helpers(demo_device):
     # set_priority routes through the renamed, prefix-namespaced shift helper.
     assert "REGFORGE_INLINE uint8_t dc_irq_prio(uint8_t priority)" in output
     assert "(uint32_t)dc_irq_prio(priority)" in output
+
+
+def test_fixture_surfaces_shared_irq_at_both_sites(demo_device):
+    output = CWriter().render(demo_device)
+    lines = output.splitlines()
+    # SPI0 and SPI1 share vector 30: the enum lists both (legal duplicate values)...
+    assert "DC_SPI0_IRQn     = 30" in output
+    assert "DC_SPI1_IRQn     = 30" in output
+    # ...and each instance site names the OTHER peripheral + the demux warning.
+    spi0 = next(ln for ln in lines if ln.startswith("#define DC_SPI0_IRQ "))
+    spi1 = next(ln for ln in lines if ln.startswith("#define DC_SPI1_IRQ "))
+    assert "vector 30 -- shared with DC_SPI1; demux in ISR" in spi0
+    assert "vector 30 -- shared with DC_SPI0; demux in ISR" in spi1
+    # A non-shared vector carries no shared-with note.
+    uart0 = next(ln for ln in lines if ln.startswith("#define DC_UART0_IRQ "))
+    assert "shared with" not in uart0
 
 
 def test_fixture_preserves_vendor_extensions_without_emitting(demo_device):
