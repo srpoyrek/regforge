@@ -78,6 +78,31 @@ def test_fixture_derived_override_is_split(demo_device):
     assert "static dc_wdt1_t *const DC_WDT1" in output
 
 
+def test_fixture_emits_irqn_enum_sorted_no_trailing_comma(demo_device):
+    output = CWriter().render(demo_device)
+    # One device-wide enum from every peripheral's <interrupt>, sorted by value.
+    assert "} dc_irqn_e;" in output  # enum types end in _e, not _t
+    enum_body = output.split("typedef enum {", 1)[1].split("} dc_irqn_e;", 1)[0]
+    members = [line.strip() for line in enum_body.splitlines() if "_IRQn" in line]
+    # UART0=20, UART1=21 (a derived peripheral's own vector), TIM1 dual-IRQ (25, 26).
+    assert members == [
+        "DC_UART0_IRQn    = 20,  /* UART0 global interrupt */",
+        "DC_UART1_IRQn    = 21,  /* UART1 global interrupt */",
+        "DC_TIM1_UP_IRQn  = 25,  /* TIM1 update */",
+        "DC_TIM1_BRK_IRQn = 26  /* TIM1 break */",
+    ]
+    assert not members[-1].endswith(",")  # C89 -pedantic-errors rejects trailing comma
+
+
+def test_fixture_emits_per_instance_irq_links(demo_device):
+    output = CWriter().render(demo_device)
+    # Each instance carries its own IRQ handle(s), aliasing the enum member.
+    assert "#define DC_UART0_IRQ DC_UART0_IRQn" in output
+    assert "#define DC_UART1_IRQ DC_UART1_IRQn" in output  # derived instance, own vector
+    assert "#define DC_TIM1_UP_IRQ DC_TIM1_UP_IRQn" in output  # multi-IRQ, role-named
+    assert "#define DC_TIM1_BRK_IRQ DC_TIM1_BRK_IRQn" in output
+
+
 def test_fixture_preserves_vendor_extensions_without_emitting(demo_device):
     assert demo_device.vendor_extensions_xml is not None
     assert "calibrated" in demo_device.vendor_extensions_xml

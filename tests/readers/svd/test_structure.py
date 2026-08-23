@@ -80,3 +80,21 @@ def test_derived_from_attribute_is_captured(tmp_path):
     device = SvdReader().read(svd)
     assert device.peripherals[0].derived_from is None  # base declares nothing
     assert device.peripherals[1].derived_from == "UART0"  # derived backlink captured
+
+
+def test_interrupts_are_captured(tmp_path):
+    # A peripheral may raise several interrupts, each with its own name/value.
+    svd = tmp_path / "irq.svd"
+    svd.write_text(
+        "<device><name>X</name><peripherals><peripheral><name>DMA</name>"
+        "<baseAddress>0x40020000</baseAddress>"
+        "<interrupt><name>DMA_CH0</name><description>Channel 0</description>"
+        "<value>10</value></interrupt>"
+        "<interrupt><name>DMA_ERR</name><value>11</value></interrupt>"
+        "</peripheral></peripherals></device>",
+        encoding="utf-8",
+    )
+    device = SvdReader().read(svd)
+    interrupts = device.peripherals[0].interrupts
+    assert [(i.name, i.value) for i in interrupts] == [("DMA_CH0", 10), ("DMA_ERR", 11)]
+    assert interrupts[0].description == "Channel 0"

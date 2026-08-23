@@ -17,6 +17,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 
 from ..families import group_families
+from ..interrupts import all_interrupts
 from ..ir import Access, Device, Peripheral, Register
 from ..provenance import Provenance
 from .base import EmitError, Writer
@@ -164,4 +165,5 @@ class CWriter(Writer):
             full_mask=lambda size: (1 << size) - 1,
             layout=lambda peripheral: layouts[id(peripheral)],
             families=group_families(device),
+            interrupts=all_interrupts(device),
         )

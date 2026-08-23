@@ -79,6 +79,11 @@ Licensed under the Apache License, Version 2.0.
       <description>Universal async receiver/transmitter</description>
       <groupName>UART</groupName>
       <baseAddress>0x40004000</baseAddress>
+      <interrupt>
+        <name>UART0</name>
+        <description>UART0 global interrupt</description>
+        <value>20</value>
+      </interrupt>
       <registers>
         <register>
           <name>DR</name>
@@ -97,6 +102,13 @@ Licensed under the Apache License, Version 2.0.
       <name>UART1</name>
       <description>UART, instance 1</description>
       <baseAddress>0x40004400</baseAddress>
+      <!-- A derived peripheral declares its OWN interrupt: it is per-instance,
+           not inherited from the base (UART1 has vector 21, not UART0's 20). -->
+      <interrupt>
+        <name>UART1</name>
+        <description>UART1 global interrupt</description>
+        <value>21</value>
+      </interrupt>
     </peripheral>
     <peripheral>
       <name>SPI0</name>
@@ -123,6 +135,18 @@ Licensed under the Apache License, Version 2.0.
       <description>Advanced timer</description>
       <groupName>TIM</groupName>
       <baseAddress>0x40010000</baseAddress>
+      <!-- A peripheral with several interrupt lines, each its own vector: the
+           enum lists both, named after the interrupt (not the peripheral). -->
+      <interrupt>
+        <name>TIM1_UP</name>
+        <description>TIM1 update</description>
+        <value>25</value>
+      </interrupt>
+      <interrupt>
+        <name>TIM1_BRK</name>
+        <description>TIM1 break</description>
+        <value>26</value>
+      </interrupt>
       <registers>
         <register><name>CR1</name><description>Control register 1</description><addressOffset>0x00</addressOffset></register>
         <register><name>ARR</name><description>Auto-reload register</description><addressOffset>0x04</addressOffset></register>

@@ -24,6 +24,7 @@ from ..ir import (
     Device,
     EnumeratedValue,
     Field,
+    Interrupt,
     Peripheral,
     Register,
 )
@@ -176,6 +177,14 @@ def _build_cpu(cpu_element: ET.Element) -> Cpu:
     )
 
 
+def _build_interrupt(interrupt_element: ET.Element) -> Interrupt:
+    return Interrupt(
+        name=_text(interrupt_element, "name") or "",
+        value=_int(interrupt_element, "value", 0),
+        description=_text(interrupt_element, "description"),
+    )
+
+
 def _build_peripheral(peripheral_element: ET.Element) -> Peripheral:
     return Peripheral(
         name=_text(peripheral_element, "name") or "",
@@ -188,6 +197,7 @@ def _build_peripheral(peripheral_element: ET.Element) -> Peripheral:
         default_reset_value=_int(peripheral_element, "resetValue"),
         default_reset_mask=_int(peripheral_element, "resetMask"),
         registers=[_build_register(r) for r in peripheral_element.findall("./registers/register")],
+        interrupts=[_build_interrupt(i) for i in peripheral_element.findall("./interrupt")],
     )
 
 

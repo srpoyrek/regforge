@@ -35,9 +35,11 @@ def test_golden_header_compiles(language, toolchain, std, tmp_path, golden_heade
 
     source = tmp_path / f"main.{SOURCE_EXTENSION[language]}"
     source.write_text(
-        f'#include "{golden_header_path.as_posix()}"\n'
-        "int main(void) {\n"
-        "    volatile uint32_t v = DC_GPIOA_MODER; (void)v;\n"
+        f'#include "{golden_header_path.as_posix()}"\n' "int main(void) {\n"
+        # C89 requires declarations before statements -- keep both decls first.
+        "    volatile uint32_t v = DC_GPIOA_MODER;\n"
+        "    dc_irqn_e irq = DC_TIM1_UP_IRQ;\n"
+        "    (void)v; (void)irq;\n"
         "    return (int)demomcu_irq_prio(1);\n"
         "}\n",
         encoding="utf-8",

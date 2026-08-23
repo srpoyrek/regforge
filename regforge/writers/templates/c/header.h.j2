@@ -117,6 +117,19 @@ REGFORGE_INLINE uint8_t {{ device.name|lower }}_irq_prio(uint8_t priority)
 }
 {% endif %}
 {% endif %}
+{% if interrupts %}
+{% set ipad = (interrupts|map(attribute='name')|map('length')|max) + prefix|length + 5 %}
+
+/* Interrupts -------------------------------------------------------------- */
+/* Device interrupt vector numbers (CMSIS IRQn_Type equivalent). Peripherals
+ * link to these via their <NAME>_IRQ constants; the NVIC helpers take this
+ * enum, so a raw int can't stand in for a vector number. */
+typedef enum {
+{% for irq in interrupts %}
+    {{ "%-*s"|format(ipad, prefix ~ irq.name ~ "_IRQn") }} = {{ irq.value }}{% if not loop.last %},{% endif %}{% if irq.description %}  /* {{ irq.description }} */{% endif +%}
+{% endfor %}
+} {{ prefix|lower }}irqn_e;
+{% endif %}
 
 {% for family in families %}
 {% set src = family.type_source %}
@@ -145,6 +158,9 @@ REGFORGE_STATIC_ASSERT(offsetof({{ tname }}, {{ m.member }}) == 0x{{ "%02X"|form
 /* {{ periph.name }} @ {{ to_bytes(periph.base_address)|hex32 }} */
 #define {{ pf }}_BASE ({{ to_bytes(periph.base_address)|hex32 }}UL)
 REGFORGE_MAYBE_UNUSED static {{ tname }} *const {{ pf }} = ({{ tname }} *){{ pf }}_BASE;
+{% for irq in periph.interrupts %}
+#define {{ prefix }}{{ irq.name }}_IRQ {{ prefix }}{{ irq.name }}_IRQn  /* {% if irq.description %}{{ irq.description }}, {% endif %}vector {{ irq.value }} */
+{% endfor %}
 {% for reg in periph.registers %}
 
 /* {{ periph.name }}.{{ reg.name }}{% if reg.description %} - {{ reg.description }}{% endif %} */

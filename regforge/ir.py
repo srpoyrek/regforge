@@ -108,6 +108,24 @@ class Register:
 
 
 @dataclass
+class Interrupt:
+    """An interrupt line a peripheral raises (SVD ``<interrupt>``).
+
+    Attributes:
+        name: Interrupt identifier, e.g. ``"UART0"`` or ``"TIM1_BRK_TIM9"``.
+            Names the ``<name>_IRQn`` enumerator; may differ from the peripheral
+            name and may be shared by several peripherals (one vector, many
+            sources).
+        value: Vector number (NVIC position); the enumerator's value.
+        description: Optional human-readable description.
+    """
+
+    name: str
+    value: int
+    description: str | None = None
+
+
+@dataclass
 class Peripheral:
     """A peripheral block mapped at a base address.
 
@@ -128,6 +146,7 @@ class Peripheral:
         default_reset_value: Peripheral-level default reset value.
         default_reset_mask: Peripheral-level default reset mask.
         registers: Registers belonging to the peripheral.
+        interrupts: Interrupt lines the peripheral raises (SVD ``<interrupt>``).
     """
 
     name: str
@@ -140,6 +159,7 @@ class Peripheral:
     default_reset_value: int | None = None
     default_reset_mask: int | None = None
     registers: list[Register] = field(default_factory=list)
+    interrupts: list[Interrupt] = field(default_factory=list)
 
 
 @dataclass
