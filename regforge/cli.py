@@ -16,6 +16,7 @@ from enum import IntEnum
 from pathlib import Path
 
 from . import __version__
+from .check import ALL_CHECKS, Severity, run_checks
 from .postprocess import FormatterNotAvailable, uncrustify
 from .provenance import build_provenance
 from .readers import available_readers, get_reader, reader_for_path
@@ -27,19 +28,58 @@ logger = logging.getLogger("regforge")
 #: Short labels shown in place of logging's uppercase level names.
 _LEVEL_LABEL = {"DEBUG": "debug", "INFO": "info", "WARNING": "warn", "ERROR": "error"}
 
+#: ANSI color codes, used only when stderr is a terminal.
+_RESET = "\033[0m"
+_COLOR = {
+    "red": "\033[31m",
+    "yellow": "\033[33m",
+    "blue": "\033[34m",
+    "green": "\033[32m",
+    "cyan": "\033[36m",
+    "dim": "\033[2m",
+}
+#: Default line color per level; a record may override via a ``color`` extra.
+_LEVEL_COLOR = {"error": "red", "warn": "yellow", "info": "cyan", "debug": "dim"}
+
+
+def _enable_ansi() -> None:
+    """Best-effort enable of ANSI escape processing on a Windows console."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.GetStdHandle(-12)  # STD_ERROR_HANDLE
+        mode = ctypes.c_uint32()
+        if kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            kernel32.SetConsoleMode(handle, mode.value | 0x0004)  # VT processing
+    except Exception:  # pragma: no cover - colouring is best-effort only
+        pass
+
 
 class _Formatter(logging.Formatter):
     """Format a line as ``[<elapsed>] <level>: <message>`` -- time first.
 
     The elapsed time (ms since the run started) rides on each record as the
-    ``elapsed_ms`` extra; a record without it omits the stamp.
+    ``elapsed_ms`` extra; a record without it omits the stamp. When ``use_color``
+    is set, each line is colored by level (warn=yellow, error=red, info=cyan),
+    unless the record carries a ``color`` extra that overrides it.
     """
+
+    def __init__(self, use_color: bool) -> None:
+        super().__init__()
+        self._use_color = use_color
 
     def format(self, record: logging.LogRecord) -> str:
         label = _LEVEL_LABEL.get(record.levelname, record.levelname.lower())
         elapsed = getattr(record, "elapsed_ms", None)
         stamp = f"[{elapsed:>7.1f} ms] " if elapsed is not None else ""
-        return f"{stamp}{label}: {record.getMessage()}"
+        line = f"{stamp}{label}: {record.getMessage()}"
+        if not self._use_color:
+            return line
+        code = _COLOR.get(getattr(record, "color", None) or _LEVEL_COLOR.get(label, ""))
+        return f"{code}{line}{_RESET}" if code else line
 
 
 class ExitCode(IntEnum):
@@ -59,8 +99,11 @@ def _configure_logging(verbosity: int) -> None:
     """
     logger.handlers.clear()
     logger.propagate = False
+    use_color = hasattr(sys.stderr, "isatty") and sys.stderr.isatty()
+    if use_color:
+        _enable_ansi()
     handler = logging.StreamHandler(sys.stderr)
-    handler.setFormatter(_Formatter())
+    handler.setFormatter(_Formatter(use_color))
     logger.addHandler(handler)
     if verbosity >= 2:
         logger.setLevel(logging.DEBUG)
@@ -130,6 +173,28 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _provenance_command(args: argparse.Namespace) -> str:
+    """Reconstruct a normalized command for the provenance banner.
+
+    Built from the parsed *output-affecting* options, not raw argv, so cosmetic
+    flags (``-v``/``--verbose``) and argument order never change the recorded
+    command -- and therefore never change the generated file. Running with or
+    without ``-v`` produces byte-identical output.
+    """
+    parts = ["regforge", args.input]
+    if args.from_format:
+        parts += ["-f", args.from_format]
+    if args.to_target:
+        parts += ["-t", args.to_target]
+    if args.output:
+        parts += ["-o", args.output]
+    if args.uncrustify_config:
+        parts += ["--uncrustify-config", args.uncrustify_config]
+    elif args.uncrustify:
+        parts.append("--uncrustify")
+    return " ".join(parts)
+
+
 def _select_writer(args: argparse.Namespace) -> Writer:
     """Choose the output writer from the parsed arguments."""
     if args.to_target:
@@ -149,9 +214,9 @@ def main(argv: list[str] | None = None) -> int:
     _configure_logging(args.verbose)
     started = time.perf_counter()
 
-    def log(level: int, msg: str, *msg_args: object) -> None:
+    def log(level: int, msg: str, *msg_args: object, color: str | None = None) -> None:
         elapsed = (time.perf_counter() - started) * 1000
-        logger.log(level, msg, *msg_args, extra={"elapsed_ms": elapsed})
+        logger.log(level, msg, *msg_args, extra={"elapsed_ms": elapsed, "color": color})
 
     try:
         reader = get_reader(args.from_format) if args.from_format else reader_for_path(args.input)
@@ -180,13 +245,39 @@ def main(argv: list[str] | None = None) -> int:
     for warning in warnings:
         log(logging.WARNING, "%s", warning)
 
-    for warning in resolve_derived(device):
+    derived_count = sum(1 for p in device.peripherals if p.derived_from is not None)
+    derived_warnings = resolve_derived(device)
+    log(
+        logging.INFO,
+        "resolved derivedFrom: %d peripheral(s), %d warning(s)",
+        derived_count,
+        len(derived_warnings),
+    )
+    for warning in derived_warnings:
         log(logging.WARNING, "%s", warning)
+
+    # Consistency checks are advisory here (findings are logged, not fatal); the
+    # dedicated `regforge check` subcommand will add non-zero exit on ERROR.
+    findings = run_checks(device)
+    warning_count = sum(1 for finding in findings if finding.severity is Severity.WARNING)
+    error_count = sum(1 for finding in findings if finding.severity is Severity.ERROR)
+    log(
+        logging.INFO,
+        "ran %d consistency check(s): %d warning(s), %d error(s)",
+        len(ALL_CHECKS),
+        warning_count,
+        error_count,
+        color="red" if error_count else "blue",
+    )
+    for finding in findings:
+        level = logging.ERROR if finding.severity is Severity.ERROR else logging.WARNING
+        log(level, "%s", finding.message)
 
     provenance = None
     if not args.no_provenance:
-        command = "regforge " + " ".join(raw_args)
-        provenance = build_provenance(args.input, tool_version=__version__, command=command)
+        provenance = build_provenance(
+            args.input, tool_version=__version__, command=_provenance_command(args)
+        )
 
     try:
         output = writer.render(device, provenance)
@@ -215,5 +306,5 @@ def main(argv: list[str] | None = None) -> int:
     else:
         sys.stdout.write(output)
 
-    log(logging.INFO, "done")
+    log(logging.INFO, "done", color="green")
     return ExitCode.OK

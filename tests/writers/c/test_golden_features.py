@@ -90,6 +90,7 @@ def test_fixture_emits_irqn_enum_sorted_no_trailing_comma(demo_device):
         "DC_UART1_IRQn    = 21,  /* UART1 global interrupt */",
         "DC_TIM1_UP_IRQn  = 25,  /* TIM1 update */",
         "DC_TIM1_BRK_IRQn = 26,  /* TIM1 break */",
+        "DC_ADC0_IRQn     = 27,  /* ADC0 conversion complete */",
         "DC_SPI0_IRQn     = 30,  /* SPI0 interrupt */",
         "DC_SPI1_IRQn     = 30  /* SPI1 interrupt */",  # shared vector, last -> no comma
     ]
@@ -116,6 +117,14 @@ def test_fixture_emits_cortex_m_nvic_helpers(demo_device):
     # set_priority routes through the renamed, prefix-namespaced shift helper.
     assert "REGFORGE_INLINE uint8_t dc_irq_prio(uint8_t priority)" in output
     assert "(uint32_t)dc_irq_prio(priority)" in output
+
+
+def test_fixture_derived_peripheral_does_not_inherit_interrupt(demo_device):
+    output = CWriter().render(demo_device)
+    # ADC0 has vector 27; ADC1 (derivedFrom ADC0) declares none -> no inherited IRQ.
+    assert "#define DC_ADC0_IRQ DC_ADC0_IRQn" in output
+    assert "DC_ADC1_IRQ" not in output  # interrupts are per-instance, never inherited
+    assert "DC_ADC1_IRQn" not in output
 
 
 def test_fixture_surfaces_shared_irq_at_both_sites(demo_device):

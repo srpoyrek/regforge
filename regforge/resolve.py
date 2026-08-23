@@ -103,6 +103,11 @@ def resolve_derived(device: Device) -> list[str]:
         resolving.add(peripheral.name)
         ensure(base)  # resolve the base first, so chains inherit a full set
         resolving.discard(peripheral.name)
+        # Registers are inherited; interrupts are NOT. An interrupt is
+        # per-instance (each peripheral has its own vector), so a derived
+        # peripheral uses only its own <interrupt>. Inheriting the base's
+        # verbatim would put two peripherals on one vector under the base's
+        # name -- almost always a bug, surfaced by check_derived_interrupts().
         peripheral.registers = [copy.deepcopy(register) for register in base.registers]
 
     for peripheral in device.peripherals:

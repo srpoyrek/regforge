@@ -1,7 +1,31 @@
 """Command-line interface behavior."""
 
-from regforge.cli import ExitCode, main
+import logging
+
+from regforge.cli import ExitCode, _Formatter, main
 from regforge.provenance import sha256_file
+
+
+def _record(level: int, message: str, color: str | None = None) -> logging.LogRecord:
+    record = logging.LogRecord("regforge", level, "", 0, message, (), None)
+    record.color = color
+    return record
+
+
+def test_formatter_colors_by_level():
+    fmt = _Formatter(use_color=True)
+    assert "\033[33m" in fmt.format(_record(logging.WARNING, "oops"))  # warn -> yellow
+    assert "\033[31m" in fmt.format(_record(logging.ERROR, "bad"))  # error -> red
+    assert "\033[36m" in fmt.format(_record(logging.INFO, "step"))  # info -> cyan
+    assert fmt.format(_record(logging.WARNING, "x")).endswith("\033[0m")  # reset
+
+
+def test_formatter_color_override_and_disabled():
+    fmt = _Formatter(use_color=True)
+    assert "\033[32m" in fmt.format(_record(logging.INFO, "done", color="green"))  # override
+    assert "\033[34m" in fmt.format(_record(logging.INFO, "checks", color="blue"))
+    plain = _Formatter(use_color=False)
+    assert "\033[" not in plain.format(_record(logging.WARNING, "oops"))  # no codes off-tty
 
 
 def test_writes_header_to_file(tmp_path, minimal_svd_path):
@@ -70,11 +94,53 @@ def test_verbose_logs_stages_and_timing(capsys, minimal_svd_path):
     assert captured.out.startswith("/*")  # header still on stdout, logs on stderr
 
 
-def test_quiet_by_default(capsys, minimal_svd_path):
-    assert main([str(minimal_svd_path), "--no-provenance"]) == ExitCode.OK
+def _clean_svd(tmp_path):
+    # A well-formed device that produces no resolve warnings and no check findings.
+    svd = tmp_path / "clean.svd"
+    svd.write_text(
+        "<device><name>C</name><peripherals><peripheral><name>P</name>"
+        "<baseAddress>0x0</baseAddress><registers><register><name>R</name>"
+        "<addressOffset>0x0</addressOffset><size>32</size><access>read-write</access>"
+        "</register></registers></peripheral></peripherals></device>",
+        encoding="utf-8",
+    )
+    return svd
+
+
+def test_quiet_by_default(tmp_path, capsys):
+    # A clean device: no INFO progress and no warnings -> nothing on stderr.
+    assert main([str(_clean_svd(tmp_path)), "--no-provenance"]) == ExitCode.OK
     captured = capsys.readouterr()
-    assert "parsed" not in captured.err  # no INFO progress
-    assert "ms" not in captured.err
+    assert captured.err == ""  # no INFO progress, no timing, no warnings
+
+
+def test_verbosity_flag_does_not_change_output(tmp_path, minimal_svd_path):
+    # -v is cosmetic (logging only); it must never leak into the provenance
+    # banner or otherwise change the generated file.
+    out = tmp_path / "h.h"
+    assert main([str(minimal_svd_path), "-o", str(out)]) == ExitCode.OK
+    without_v = out.read_text(encoding="utf-8")
+    assert main([str(minimal_svd_path), "-o", str(out), "-v"]) == ExitCode.OK
+    with_v = out.read_text(encoding="utf-8")
+    assert with_v == without_v
+
+
+def test_check_findings_surface(capsys, minimal_svd_path):
+    # The consistency checks run during emit; their findings show as warnings
+    # even without -v (they are logged at WARNING level).
+    assert main([str(minimal_svd_path), "--no-provenance"]) == ExitCode.OK
+    err = capsys.readouterr().err
+    assert "ADC1" in err  # I4: derived peripheral omitted its own vector
+    assert "differing register layouts" in err  # group divergence (TIM)
+    assert "parsed" not in err  # but INFO progress stays suppressed without -v
+
+
+def test_check_summary_shown_with_verbose(capsys, minimal_svd_path):
+    assert main([str(minimal_svd_path), "--no-provenance", "-v"]) == ExitCode.OK
+    err = capsys.readouterr().err
+    # The summary count matches the warnings actually shown (2 warn: lines).
+    assert "consistency check(s): 2 warning(s), 0 error(s)" in err
+    assert err.count("warn:") == 2
 
 
 def test_warnings_show_without_verbose(tmp_path, capsys):

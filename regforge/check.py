@@ -142,6 +142,57 @@ def check_derived_chains(device: Device) -> list[Finding]:
     return findings
 
 
+def check_derived_interrupts(device: Device) -> list[Finding]:
+    """Flag interrupt mistakes on ``derivedFrom`` peripherals.
+
+    An interrupt is per-instance: a derived peripheral shares its base's register
+    layout but has its own vector, so regforge does not inherit ``<interrupt>``
+    across ``derivedFrom`` (see :func:`regforge.resolve.resolve_derived`). Two
+    vendor-file bugs follow, both of which stock tooling accepts silently:
+
+    * **omission** -- the derived peripheral declares no interrupt while its base
+      has one. Per the SVD spec it would silently inherit the base's vector (two
+      peripherals, one vector, undeclared); regforge does not, so the derived
+      peripheral ends up with no vector at all.
+    * **copy-paste** -- the derived peripheral declares an interrupt whose value
+      equals the base's. A distinct instance almost always needs its own vector.
+    """
+    findings: list[Finding] = []
+    by_name = {peripheral.name: peripheral for peripheral in device.peripherals}
+    for peripheral in device.peripherals:
+        if peripheral.derived_from is None:
+            continue
+        base = by_name.get(peripheral.derived_from)
+        if base is None or not base.interrupts:
+            continue
+        if not peripheral.interrupts:
+            vectors = ", ".join(str(interrupt.value) for interrupt in base.interrupts)
+            findings.append(
+                Finding(
+                    Severity.WARNING,
+                    f"{peripheral.name}: derivedFrom '{base.name}' but declares no "
+                    f"interrupt of its own; per SVD spec it would inherit the base's "
+                    f"vector(s) ({vectors}) -- two peripherals on one vector. regforge "
+                    f"treats interrupts as per-instance and does not inherit, so "
+                    f"{peripheral.name} has no vector; declare its own <interrupt>.",
+                )
+            )
+            continue
+        base_values = {interrupt.value for interrupt in base.interrupts}
+        for interrupt in peripheral.interrupts:
+            if interrupt.value in base_values:
+                findings.append(
+                    Finding(
+                        Severity.WARNING,
+                        f"{peripheral.name}: interrupt '{interrupt.name}' uses vector "
+                        f"{interrupt.value}, identical to its base '{base.name}' -- a "
+                        f"derived instance almost always needs its own vector "
+                        f"(likely a copy-paste).",
+                    )
+                )
+    return findings
+
+
 def check_group_divergence(device: Device) -> list[Finding]:
     """Warn when a ``groupName`` covers peripherals with different layouts.
 
@@ -171,4 +222,22 @@ def check_group_divergence(device: Device) -> list[Finding]:
                     "type; regforge emits separate types",
                 )
             )
+    return findings
+
+
+#: Every consistency check, run in order by :func:`run_checks`. Add a new check
+#: here and it is picked up by the CLI and any other caller automatically.
+ALL_CHECKS = (
+    check_address_math,
+    check_derived_chains,
+    check_derived_interrupts,
+    check_group_divergence,
+)
+
+
+def run_checks(device: Device) -> list[Finding]:
+    """Run every consistency check over ``device`` and return all findings."""
+    findings: list[Finding] = []
+    for check in ALL_CHECKS:
+        findings.extend(check(device))
     return findings

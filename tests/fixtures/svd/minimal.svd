@@ -188,11 +188,21 @@ Licensed under the Apache License, Version 2.0.
         <register><name>ARR</name><description>Auto-reload register</description><addressOffset>0x04</addressOffset></register>
       </registers>
     </peripheral>
-    <!-- derivedFrom WITHOUT groupName: merge, type named after the root (ADC0). -->
+    <!-- derivedFrom WITHOUT groupName: merge, type named after the root (ADC0).
+         Also the interrupt-inheritance case: ADC0 has a vector, ADC1 (derived)
+         declares none. An interrupt is per-instance, so regforge does NOT copy
+         ADC0's vector onto ADC1, and ADC1 emits no _IRQ (see the header). Per SVD
+         spec ADC1 would silently inherit ADC0's vector (two peripherals, one
+         slot); check_derived_interrupts warns to declare ADC1's own. -->
     <peripheral>
       <name>ADC0</name>
       <description>Analog-to-digital converter</description>
       <baseAddress>0x40012000</baseAddress>
+      <interrupt>
+        <name>ADC0</name>
+        <description>ADC0 conversion complete</description>
+        <value>27</value>
+      </interrupt>
       <registers>
         <register><name>CR</name><description>Control register</description><addressOffset>0x00</addressOffset></register>
         <register><name>DR</name><description>Data register</description><addressOffset>0x04</addressOffset><access>read-only</access></register>
