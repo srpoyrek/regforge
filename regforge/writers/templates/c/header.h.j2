@@ -119,6 +119,17 @@ REGFORGE_INLINE uint8_t {{ device.name|lower }}_irq_prio(uint8_t priority)
 {% set pf = prefix ~ periph.name|upper %}
 /* {{ periph.name }}{% if periph.description %} - {{ periph.description }}{% endif %} */
 #define {{ pf }}_BASE ({{ to_bytes(periph.base_address)|hex32 }}UL)
+{% set tname = prefix|lower ~ periph.name|lower ~ "_t" %}
+{% set members = layout(periph) %}
+{% set width = members|map(attribute='decl')|map('length')|max %}
+
+typedef struct {
+{% for m in members %}
+    {{ "%-*s"|format(width, m.decl) }}  /* 0x{{ "%02X"|format(m.offset) }} */
+{% endfor %}
+} {{ tname }};
+
+REGFORGE_MAYBE_UNUSED static {{ tname }} *const {{ pf }} = ({{ tname }} *){{ pf }}_BASE;
 {% for reg in periph.registers %}
 
 /* {{ periph.name }}.{{ reg.name }}{% if reg.description %} - {{ reg.description }}{% endif %} */

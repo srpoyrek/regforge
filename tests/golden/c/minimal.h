@@ -116,6 +116,14 @@ REGFORGE_INLINE uint8_t demomcu_irq_prio(uint8_t priority)
 /* GPIOA - General purpose I/O port A */
 #define DC_GPIOA_BASE (0x40020000UL)
 
+typedef struct {
+    volatile uint32_t MODER;  /* 0x00 */
+    uint8_t RESERVED0[16];    /* 0x04 */
+    volatile uint32_t ODR;    /* 0x14 */
+} dc_gpioa_t;
+
+REGFORGE_MAYBE_UNUSED static dc_gpioa_t *const DC_GPIOA = (dc_gpioa_t *)DC_GPIOA_BASE;
+
 /* GPIOA.MODER - Mode register */
 #define DC_GPIOA_MODER (*(volatile uint32_t *)(DC_GPIOA_BASE + 0x00000000UL))
 #define DC_GPIOA_MODER_RESET_VALUE (0x00000000UL)

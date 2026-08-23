@@ -16,7 +16,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
-from ..ir import Device
+from ..ir import Device, Peripheral
 from ..provenance import Provenance
 from .base import EmitError, Writer
 
@@ -46,6 +46,37 @@ def _units_to_bytes(units: int, address_unit_bits: int) -> int:
     not at all).
     """
     return units * address_unit_bits // BITS_PER_BYTE
+
+
+def _peripheral_layout(peripheral: Peripheral, address_unit_bits: int) -> list[dict]:
+    """Lay a peripheral's registers out as struct members, in offset order.
+
+    Returns ordered entries -- each a register member or a reserved padding gap
+    -- so the emitted struct places every register at its true offset.
+    Overlapping registers cannot be represented as a plain struct and are
+    refused (alternateRegister / union layouts are a later feature).
+    """
+    entries: list[dict] = []
+    cursor = 0
+    pad_index = 0
+    for register in sorted(peripheral.registers, key=lambda r: r.address_offset):
+        offset = _units_to_bytes(register.address_offset, address_unit_bits)
+        if offset < cursor:
+            raise EmitError(
+                f"{peripheral.name}.{register.name}: register at offset 0x{offset:X} "
+                "overlaps the preceding register (overlapping / alternateRegister "
+                "layouts are not yet supported)"
+            )
+        if offset > cursor:
+            entries.append(
+                {"offset": cursor, "decl": f"uint8_t RESERVED{pad_index}[{offset - cursor}];"}
+            )
+            pad_index += 1
+        entries.append(
+            {"offset": offset, "decl": f"volatile {_C_TYPE[register.size]} {register.name};"}
+        )
+        cursor = offset + register.size // BITS_PER_BYTE
+    return entries
 
 
 class CWriter(Writer):
@@ -85,6 +116,10 @@ class CWriter(Writer):
                         f"{register.size} bits has no C type mapping "
                         f"(supported: {sorted(_C_TYPE)})"
                     )
+        layouts = {
+            id(peripheral): _peripheral_layout(peripheral, device.address_unit_bits)
+            for peripheral in device.peripherals
+        }
         template = self._env.get_template("header.h.j2")
         return template.render(
             device=device,
@@ -93,4 +128,5 @@ class CWriter(Writer):
             to_bytes=lambda units: _units_to_bytes(units, device.address_unit_bits),
             c_type=_C_TYPE,
             full_mask=lambda size: (1 << size) - 1,
+            layout=lambda peripheral: layouts[id(peripheral)],
         )
