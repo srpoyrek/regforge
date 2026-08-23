@@ -3,8 +3,9 @@
 import pytest
 
 from regforge.ir import Device, Peripheral, Register
+from regforge.layout import units_to_bytes
 from regforge.writers.base import EmitError
-from regforge.writers.c import CWriter, _units_to_bytes
+from regforge.writers.c import CWriter
 
 
 def test_byte_addressable_emits_byte_offsets():
@@ -42,11 +43,11 @@ def test_word_addressable_is_refused():
 
 def test_units_to_bytes_is_one_word_addressable_ready_conversion():
     # 8 bits/unit (byte-addressable): a no-op -- base and offsets stay as written.
-    assert _units_to_bytes(0x14, 8) == 0x14
-    assert _units_to_bytes(0x40020000, 8) == 0x40020000
+    assert units_to_bytes(0x14, 8) == 0x14
+    assert units_to_bytes(0x40020000, 8) == 0x40020000
     # 16 bits/unit (word-addressable, e.g. TI C2000): units become bytes. The C
     # emitter refuses 16 today, but the math a future emitter will reuse -- the
     # same helper that feeds _BASE, the register offsets, and the struct layout --
     # is already correct.
-    assert _units_to_bytes(0x14, 16) == 0x28
-    assert _units_to_bytes(1, 32) == 4
+    assert units_to_bytes(0x14, 16) == 0x28
+    assert units_to_bytes(1, 32) == 4

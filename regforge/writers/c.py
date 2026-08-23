@@ -20,14 +20,13 @@ from ..arch import NVIC_REGISTER_BANKS, is_cortex_m
 from ..families import group_families
 from ..interrupts import all_interrupts
 from ..ir import Access, Device, Peripheral, Register
+from ..layout import BITS_PER_BYTE, LayoutError, peripheral_layout, units_to_bytes
 from ..provenance import Provenance
 from .base import EmitError, Writer
 
 _TEMPLATE_DIR = Path(__file__).parent / "templates" / "c"
 
 # --- C emitter constants ---
-#: Bits in one byte; this emitter targets byte-addressable devices.
-BITS_PER_BYTE = 8
 #: Mask and hex-digit width for formatting 32-bit register values.
 _UINT32_MASK = 0xFFFFFFFF
 _HEX32_DIGITS = 8
@@ -42,16 +41,6 @@ _MAX_INLINE_DESC = 40
 def _hex32(value: int) -> str:
     """Format ``value`` as a zero-padded 32-bit hexadecimal literal."""
     return f"0x{value & _UINT32_MASK:0{_HEX32_DIGITS}X}"
-
-
-def _units_to_bytes(units: int, address_unit_bits: int) -> int:
-    """Convert an address-unit count to bytes for this byte-addressed target.
-
-    A no-op for byte-addressable devices; the conversion lives here, at the
-    emitter, because a word-addressable target would convert differently (or
-    not at all).
-    """
-    return units * address_unit_bits // BITS_PER_BYTE
 
 
 def _short_desc(description: str | None) -> str:
@@ -72,46 +61,42 @@ def _member_type(register: Register) -> str:
     return f"volatile {const}{_C_TYPE[register.size]}"
 
 
-def _peripheral_layout(peripheral: Peripheral, address_unit_bits: int) -> list[dict]:
-    """Lay a peripheral's registers out as struct members, in offset order.
+def _c_layout(peripheral: Peripheral, address_unit_bits: int) -> list[dict]:
+    """Render the shared block layout into the C struct members the template needs.
 
-    Returns ordered entries -- each a register member or a reserved padding gap
-    -- so the emitted struct places every register at its true offset.
-    Overlapping registers cannot be represented as a plain struct and are
-    refused (alternateRegister / union layouts are a later feature).
+    The offset / reserved-gap / overlap math is language-neutral and lives in
+    :func:`regforge.layout.peripheral_layout`; this adapter only maps each slot
+    to C syntax (``uint8_t`` padding, ``volatile`` member types, trailing ``;``).
     """
+    try:
+        slots = peripheral_layout(peripheral, address_unit_bits)
+    except LayoutError as error:  # surface as the writer's error type (CLI exit)
+        raise EmitError(str(error)) from error
     entries: list[dict] = []
-    cursor = 0
     pad_index = 0
-    for register in sorted(peripheral.registers, key=lambda r: r.address_offset):
-        offset = _units_to_bytes(register.address_offset, address_unit_bits)
-        if offset < cursor:
-            raise EmitError(
-                f"{peripheral.name}.{register.name}: register at offset 0x{offset:X} "
-                "overlaps the preceding register (overlapping / alternateRegister "
-                "layouts are not yet supported)"
-            )
-        if offset > cursor:
+    for slot in slots:
+        if slot.is_reserved:
             entries.append(
                 {
-                    "offset": cursor,
+                    "offset": slot.offset,
                     "type": "uint8_t",
-                    "field": f"RESERVED{pad_index}[{offset - cursor}];",
+                    "field": f"RESERVED{pad_index}[{slot.gap_bytes}];",
                     "desc": "(reserved)",
                     "member": None,
                 }
             )
             pad_index += 1
-        entries.append(
-            {
-                "offset": offset,
-                "type": _member_type(register),
-                "field": f"{register.name};",
-                "desc": _short_desc(register.description),
-                "member": register.name,
-            }
-        )
-        cursor = offset + register.size // BITS_PER_BYTE
+        else:
+            register = slot.register
+            entries.append(
+                {
+                    "offset": slot.offset,
+                    "type": _member_type(register),
+                    "field": f"{register.name};",
+                    "desc": _short_desc(register.description),
+                    "member": register.name,
+                }
+            )
     return entries
 
 
@@ -153,7 +138,7 @@ class CWriter(Writer):
                         f"(supported: {sorted(_C_TYPE)})"
                     )
         layouts = {
-            id(peripheral): _peripheral_layout(peripheral, device.address_unit_bits)
+            id(peripheral): _c_layout(peripheral, device.address_unit_bits)
             for peripheral in device.peripherals
         }
         template = self._env.get_template("header.h.j2")
@@ -161,7 +146,7 @@ class CWriter(Writer):
             device=device,
             provenance=provenance,
             prefix=device.header_prefix or "",
-            to_bytes=lambda units: _units_to_bytes(units, device.address_unit_bits),
+            to_bytes=lambda units: units_to_bytes(units, device.address_unit_bits),
             member_type=_member_type,
             full_mask=lambda size: (1 << size) - 1,
             layout=lambda peripheral: layouts[id(peripheral)],
