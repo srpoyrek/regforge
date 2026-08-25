@@ -255,6 +255,11 @@ Licensed under the Apache License, Version 2.0.
          slot); check_derived_interrupts warns to declare ADC1's own. -->
     <peripheral>
       <name>ADC0</name>
+      <!-- headerStructName: the vendor naming the generated struct. Without it
+           the type is named after the root instance (dc_adc0_t) because this
+           pair has no groupName; with it the family is ADC -> dc_adc_t. ADC1
+           inherits it through derivedFrom, as nRF relies on. -->
+      <headerStructName>ADC</headerStructName>
       <description>Analog-to-digital converter</description>
       <baseAddress>0x40012000</baseAddress>
       <!-- Inherited verbatim by ADC1 (derivedFrom), so both are sized identically. -->

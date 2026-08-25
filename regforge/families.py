@@ -59,6 +59,22 @@ def _family_key(peripheral: Peripheral, by_name: dict[str, Peripheral]) -> str:
     return root.group_name or root.name
 
 
+def family_name(source: Peripheral, fallback: str) -> str:
+    """The emitted type name for a family: what the vendor asked for, else ``fallback``.
+
+    One precedence, written once: ``headerStructName`` (the vendor named the
+    struct) -> the family label from the ``derivedFrom``/``groupName`` machinery
+    -> the root instance's own name. Infineon needs the first rung -- ``CAN_NODE0``
+    carries ``groupName=CAN`` because it is a CAN thing, but its struct is a CAN
+    *node*, and naming it ``can_t`` is simply wrong. Cypress needs it too, where
+    ``DW0`` alone would name the type after instance zero.
+
+    Naming only: which peripherals share a type is still decided by layout, so a
+    vendor name never merges or splits anything.
+    """
+    return source.header_struct_name or fallback
+
+
 def layout_signature(peripheral: Peripheral) -> tuple:
     """A hashable key for a peripheral's emitted struct shape.
 
@@ -121,7 +137,13 @@ def group_families(device: Device) -> list[Family]:
         if len(buckets) == 1:
             (bucket,) = buckets.values()
             source = next((m for m in bucket if m.derived_from is None), bucket[0])
-            families.append(Family(name=key, type_source=source, instances=tuple(bucket)))
+            families.append(
+                Family(
+                    name=family_name(source, key),
+                    type_source=source,
+                    instances=tuple(bucket),
+                )
+            )
             continue
 
         # Divergent group: largest identical subgroup keeps the name (stable sort
@@ -144,7 +166,10 @@ def group_families(device: Device) -> list[Family]:
         for index, (group, source) in enumerate(zip(subgroups, sources)):
             families.append(
                 Family(
-                    name=key if index == keeper else source.name,
+                    # Each subgroup takes the vendor's name when it has one; the
+                    # namesake subgroup otherwise keeps the plain group label and
+                    # the rest fall back to their own root's name.
+                    name=family_name(source, key if index == keeper else source.name),
                     type_source=source,
                     instances=tuple(group),
                     note=note if index == keeper else None,

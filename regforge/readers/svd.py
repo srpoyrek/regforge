@@ -210,6 +210,7 @@ def _build_peripheral(peripheral_element: ET.Element) -> Peripheral:
         description=_text(peripheral_element, "description"),
         derived_from=peripheral_element.get("derivedFrom"),  # XML attribute, not a child
         group_name=_text(peripheral_element, "groupName"),
+        header_struct_name=_text(peripheral_element, "headerStructName"),
         default_size=_int(peripheral_element, "size"),
         default_access=_access(peripheral_element),
         default_reset_value=_int(peripheral_element, "resetValue"),

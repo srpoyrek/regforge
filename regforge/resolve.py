@@ -113,6 +113,10 @@ def resolve_derived(device: Device) -> list[str]:
         # the base) is identical for every instance of a type.
         if not peripheral.address_blocks:
             peripheral.address_blocks = [copy.deepcopy(block) for block in base.address_blocks]
+        # headerStructName is inherited too: it names the shared type, and nRF
+        # relies on this -- only SPIM0 carries it, SPIM1/SPIM2 derive from it.
+        if peripheral.header_struct_name is None:
+            peripheral.header_struct_name = base.header_struct_name
 
     for peripheral in device.peripherals:
         ensure(peripheral)

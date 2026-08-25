@@ -83,12 +83,14 @@ def test_clean_fixture_timer_group_does_not_diverge(demo_device):
     assert output.count("} dc_tim1_t;") == 1
 
 
-def test_fixture_derivedfrom_without_groupname_uses_root_name(demo_device):
+def test_fixture_derivedfrom_without_groupname_merges(demo_device):
     output = CWriter().render(demo_device)
-    # ADC0 + ADC1 (derivedFrom, NO groupName) -> merge, type named after the root.
-    assert output.count("} dc_adc0_t;") == 1
-    assert "static dc_adc0_t *const DC_ADC0" in output
-    assert "static dc_adc0_t *const DC_ADC1" in output
+    # ADC0 + ADC1 (derivedFrom, NO groupName) -> one merged type, two instances.
+    # The type is named from ADC0's headerStructName; the bare root-name
+    # fallback (no vendor name either) is covered in test_header_struct_name.
+    assert output.count("} dc_adc_t;") == 1
+    assert "static dc_adc_t *const DC_ADC0" in output
+    assert "static dc_adc_t *const DC_ADC1" in output
 
 
 def test_fixture_derived_override_is_split(demo_device):
@@ -224,5 +226,19 @@ def test_no_self_alias_is_emitted(demo_device):
     # The instance the type is already named after must NOT be re-aliased:
     # redefining a typedef is an error before C11, and the headers build as C89.
     assert "typedef dc_gpioa_t dc_gpioa_t;" not in output  # singleton family
-    assert "typedef dc_adc0_t dc_adc0_t;" not in output  # family named after ADC0
-    assert "typedef dc_adc0_t dc_adc1_t;" in output  # ...but ADC1 still gets one
+    assert "typedef dc_crc_t dc_crc_t;" not in output  # groupName equals the instance
+    assert "typedef dc_adc_t dc_adc0_t;" in output  # a differing name still gets one
+
+
+def test_fixture_honors_header_struct_name(demo_device):
+    output = CWriter().render(demo_device)
+    # ADC0/ADC1 have no groupName, so without the vendor's headerStructName the
+    # type would be named after instance zero (dc_adc0_t). ADC1 inherits the
+    # name through derivedFrom, and both instances still get their own alias.
+    assert demo_device.peripherals[8].header_struct_name == "ADC"
+    assert output.count("} dc_adc_t;") == 1
+    assert "} dc_adc0_t;" not in output
+    assert "typedef dc_adc_t dc_adc0_t;" in output
+    assert "typedef dc_adc_t dc_adc1_t;" in output
+    assert "static dc_adc_t *const DC_ADC0" in output
+    assert "static dc_adc_t *const DC_ADC1" in output

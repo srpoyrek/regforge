@@ -183,6 +183,12 @@ class Peripheral:
             ``derivedFrom``); the resolver copies that base's registers in.
         group_name: SVD ``groupName`` -- a family label (e.g. ``GPIO``);
             peripherals sharing it are candidates for one shared type.
+        header_struct_name: SVD ``headerStructName`` -- the vendor's preferred
+            name for the generated struct. Nordic ships it so generated types
+            match their hand-written SDK; Cypress uses it where the instance
+            name (``DW0``, ``CSD0``) would make a poor type name. It names the
+            type only: grouping still follows ``derivedFrom``/``groupName``,
+            since a shared name is not a claim about layout.
         default_size: Peripheral-level default register width in bits.
         default_access: Peripheral-level default access policy.
         default_reset_value: Peripheral-level default reset value.
@@ -197,6 +203,7 @@ class Peripheral:
     description: str | None = None
     derived_from: str | None = None
     group_name: str | None = None
+    header_struct_name: str | None = None
     default_size: int | None = None
     default_access: Access | None = None
     default_reset_value: int | None = None
