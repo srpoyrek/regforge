@@ -119,6 +119,21 @@ def test_fixture_emits_cortex_m_nvic_helpers(demo_device):
     assert "(uint32_t)dc_irq_prio(priority)" in output
 
 
+def test_fixture_asserts_struct_size_from_address_block(demo_device):
+    output = CWriter().render(demo_device)
+    # GPIOA block (0x20) exceeds the last register end (0x18) -> padded + asserted.
+    assert "RESERVED1[8];" in output  # trailing pad to 0x20
+    assert (
+        "REGFORGE_STATIC_ASSERT(sizeof(dc_gpioa_t) == 0x20, DC_GPIOA_SIZE, "
+        '"GPIOA struct size vs addressBlock");' in output
+    )
+    # UART block (0x8) exactly fits -> no pad, exact-size assert.
+    assert (
+        "REGFORGE_STATIC_ASSERT(sizeof(dc_uart_t) == 0x8, DC_UART_SIZE, "
+        '"UART struct size vs addressBlock");' in output
+    )
+
+
 def test_fixture_derived_peripheral_does_not_inherit_interrupt(demo_device):
     output = CWriter().render(demo_device)
     # ADC0 has vector 27; ADC1 (derivedFrom ADC0) declares none -> no inherited IRQ.

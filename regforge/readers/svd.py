@@ -20,6 +20,7 @@ from ..ir import (
     DEFAULT_ADDRESS_UNIT_BITS,
     DEFAULT_BUS_WIDTH,
     Access,
+    AddressBlock,
     Cpu,
     Device,
     EnumeratedValue,
@@ -185,6 +186,14 @@ def _build_interrupt(interrupt_element: ET.Element) -> Interrupt:
     )
 
 
+def _build_address_block(block_element: ET.Element) -> AddressBlock:
+    return AddressBlock(
+        offset=_int(block_element, "offset", 0),
+        size=_int(block_element, "size", 0),
+        usage=_text(block_element, "usage"),
+    )
+
+
 def _build_peripheral(peripheral_element: ET.Element) -> Peripheral:
     return Peripheral(
         name=_text(peripheral_element, "name") or "",
@@ -198,6 +207,9 @@ def _build_peripheral(peripheral_element: ET.Element) -> Peripheral:
         default_reset_mask=_int(peripheral_element, "resetMask"),
         registers=[_build_register(r) for r in peripheral_element.findall("./registers/register")],
         interrupts=[_build_interrupt(i) for i in peripheral_element.findall("./interrupt")],
+        address_blocks=[
+            _build_address_block(b) for b in peripheral_element.findall("./addressBlock")
+        ],
     )
 
 

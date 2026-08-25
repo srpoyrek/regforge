@@ -1,6 +1,6 @@
 """derivedFrom resolution: a derived peripheral inherits its base's registers."""
 
-from regforge.ir import Device, Interrupt, Peripheral, Register
+from regforge.ir import AddressBlock, Device, Interrupt, Peripheral, Register
 from regforge.resolve import resolve_defaults, resolve_derived
 
 
@@ -92,6 +92,26 @@ def test_resolve_derived_keeps_only_its_own_interrupts():
     uart1 = device.peripherals[1]
     assert [r.name for r in uart1.registers] == ["DR"]  # registers inherited
     assert [(i.name, i.value) for i in uart1.interrupts] == [("UART1", 21)]  # its own only
+
+
+def test_resolve_derived_inherits_address_block():
+    # The footprint is identical for every instance of a type, so it IS inherited.
+    device = Device(
+        name="Chip",
+        peripherals=[
+            Peripheral(
+                name="UART0",
+                base_address=0x4000,
+                registers=[Register("DR", 0x0, size=32)],
+                address_blocks=[AddressBlock(0, 0x8, "registers")],
+            ),
+            Peripheral(name="UART1", base_address=0x5000, derived_from="UART0"),
+        ],
+    )
+    resolve_defaults(device)
+    resolve_derived(device)
+    uart1 = device.peripherals[1]
+    assert [(b.offset, b.size, b.usage) for b in uart1.address_blocks] == [(0, 0x8, "registers")]
 
 
 def test_resolve_derived_unknown_base_warns_and_leaves_empty():

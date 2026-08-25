@@ -98,3 +98,18 @@ def test_interrupts_are_captured(tmp_path):
     interrupts = device.peripherals[0].interrupts
     assert [(i.name, i.value) for i in interrupts] == [("DMA_CH0", 10), ("DMA_ERR", 11)]
     assert interrupts[0].description == "Channel 0"
+
+
+def test_address_block_is_captured(tmp_path):
+    svd = tmp_path / "block.svd"
+    svd.write_text(
+        "<device><name>X</name><peripherals><peripheral><name>P</name>"
+        "<baseAddress>0x0</baseAddress>"
+        "<addressBlock><offset>0</offset><size>0x100</size><usage>registers</usage></addressBlock>"
+        "</peripheral></peripherals></device>",
+        encoding="utf-8",
+    )
+    device = SvdReader().read(svd)
+    blocks = device.peripherals[0].address_blocks
+    assert len(blocks) == 1
+    assert (blocks[0].offset, blocks[0].size, blocks[0].usage) == (0, 0x100, "registers")

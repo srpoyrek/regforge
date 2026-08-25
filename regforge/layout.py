@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .ir import Peripheral, Register
+from .ir import AddressBlock, Peripheral, Register
 
 #: Bits in one byte. The layout math and every byte-addressable writer share it.
 BITS_PER_BYTE = 8
@@ -56,12 +56,58 @@ class LayoutEntry:
         return self.register is None
 
 
-def peripheral_layout(peripheral: Peripheral, address_unit_bits: int) -> list[LayoutEntry]:
+def struct_block(peripheral: Peripheral) -> AddressBlock | None:
+    """The single ``registers`` block that defines the struct's size, or ``None``.
+
+    Only the clean case yields a size contract: exactly one block, ``registers``
+    usage (or unspecified), starting at offset 0. Anything else -- no block,
+    several blocks, a ``buffer``/``reserved`` block, or a non-zero offset -- has
+    no single struct-size contract and returns ``None`` (handled by later work).
+    """
+    if len(peripheral.address_blocks) != 1:
+        return None
+    block = peripheral.address_blocks[0]
+    if block.offset != 0 or block.usage not in (None, "registers"):
+        return None
+    return block
+
+
+def registers_end(peripheral: Peripheral, address_unit_bits: int) -> int:
+    """The byte offset just past the peripheral's last register."""
+    end = 0
+    for register in peripheral.registers:
+        offset = units_to_bytes(register.address_offset, address_unit_bits)
+        end = max(end, offset + register.size // BITS_PER_BYTE)
+    return end
+
+
+def asserted_struct_size(peripheral: Peripheral, address_unit_bits: int) -> int | None:
+    """The struct size (bytes) to static-assert from the addressBlock, or ``None``.
+
+    With a clean ``registers`` block (see :func:`struct_block`) that *covers* the
+    registers, the size is the block size -- the struct is padded to it, so the
+    assert is an equality contract and array stride is correct. If the block is
+    *smaller* than the registers (a vendor bug), the honest floor is the natural
+    register-derived size (and :mod:`regforge.check` flags the bad block). Without
+    a clean block, there is no contract -- ``None``.
+    """
+    block = struct_block(peripheral)
+    if block is None:
+        return None
+    block_bytes = units_to_bytes(block.size, address_unit_bits)
+    return max(block_bytes, registers_end(peripheral, address_unit_bits))
+
+
+def peripheral_layout(
+    peripheral: Peripheral, address_unit_bits: int, pad_to_bytes: int | None = None
+) -> list[LayoutEntry]:
     """Order a peripheral's registers into members + reserved gaps, by offset.
 
     Every register's size must already be resolved. Overlapping registers cannot
     be represented as a linear block and raise :class:`LayoutError` (union /
-    alternateRegister layouts are a later feature).
+    alternateRegister layouts are a later feature). When ``pad_to_bytes`` exceeds
+    the last register's end, a trailing reserved gap fills the struct out to that
+    size (so ``sizeof`` matches the declared addressBlock).
     """
     entries: list[LayoutEntry] = []
     cursor = 0
@@ -77,4 +123,6 @@ def peripheral_layout(peripheral: Peripheral, address_unit_bits: int) -> list[La
             entries.append(LayoutEntry(offset=cursor, register=None, gap_bytes=offset - cursor))
         entries.append(LayoutEntry(offset=offset, register=register))
         cursor = offset + register.size // BITS_PER_BYTE
+    if pad_to_bytes is not None and pad_to_bytes > cursor:
+        entries.append(LayoutEntry(offset=cursor, register=None, gap_bytes=pad_to_bytes - cursor))
     return entries

@@ -29,6 +29,13 @@ Licensed under the Apache License, Version 2.0.
       <name>GPIOA</name>
       <description>General purpose I/O port A</description>
       <baseAddress>0x40020000</baseAddress>
+      <!-- addressBlock larger than the last register (ODR ends at 0x18): the
+           struct is padded to 0x20 and sizeof is asserted == 0x20. -->
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x20</size>
+        <usage>registers</usage>
+      </addressBlock>
       <registers>
         <register>
           <name>MODER</name>
@@ -79,6 +86,13 @@ Licensed under the Apache License, Version 2.0.
       <description>Universal async receiver/transmitter</description>
       <groupName>UART</groupName>
       <baseAddress>0x40004000</baseAddress>
+      <!-- addressBlock exactly fits the registers (DR, SR end at 0x08): no
+           padding, sizeof asserted == 0x08. Inherited by UART1 (derived). -->
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x8</size>
+        <usage>registers</usage>
+      </addressBlock>
       <interrupt>
         <name>UART0</name>
         <description>UART0 global interrupt</description>

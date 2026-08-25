@@ -1,6 +1,11 @@
 {% set guard = "REGFORGE_" ~ device.name|upper ~ "_H" -%}
 {% set dev = device.name|upper -%}
 {% set ns = prefix if prefix else device.name ~ "_" -%}
+{% macro area(title) -%}
+/* {{ "=" * 74 }} */
+/* {{ title }} */
+/* {{ "=" * 74 }} */
+{%- endmacro -%}
 /*
  * {{ device.name }} register definitions.
 {% if device.description %}
@@ -48,8 +53,10 @@
 #include <assert.h>
 {% endif %}
 
+{{ area("Compiler compatibility") }}
 {% include "compat.h.j2" %}
 
+{{ area("Device") }}
 #define {{ dev }}_ADDRESS_UNIT_BITS {{ device.address_unit_bits }}
 REGFORGE_STATIC_ASSERT(CHAR_BIT == {{ dev }}_ADDRESS_UNIT_BITS, {{ dev }}_address_unit_bits,
     "regforge: this header targets {{ device.address_unit_bits }}-bit address units; "
@@ -65,7 +72,7 @@ REGFORGE_STATIC_ASSERT(CHAR_BIT == {{ dev }}_ADDRESS_UNIT_BITS, {{ dev }}_addres
 {% if device.cpu %}
 {% set cpu = device.cpu %}
 
-/* CPU ---------------------------------------------------------------------- */
+{{ area("CPU") }}
 {% if cpu.name %}
 #define {{ dev }}_CPU_CORE "{{ cpu.name }}"
 {% endif %}
@@ -124,7 +131,7 @@ REGFORGE_INLINE uint8_t {{ ns|lower }}irq_prio(uint8_t priority)
 {% if interrupts %}
 {% set ipad = (interrupts|map(attribute='name')|map('length')|max) + prefix|length + 5 %}
 
-/* Interrupts -------------------------------------------------------------- */
+{{ area("Interrupts") }}
 /* Device interrupt vector numbers (CMSIS IRQn_Type equivalent). Peripherals
  * link to these via their <NAME>_IRQ constants; the NVIC helpers take this
  * enum, so a raw int can't stand in for a vector number. */
@@ -142,6 +149,7 @@ typedef enum {
 {% set irq_bound = dev ~ "_IRQ_COUNT" %}
 {% endif %}
 
+{{ area("NVIC") }}
 /* Cortex-M NVIC (fixed-address interrupt controller; emitted only for Cortex-M
  * cores). The register banks live in the System Control Space at addresses ARM
  * fixes for every Cortex-M core and vendor. Each helper takes {{ prefix|lower }}irqn_e --
@@ -208,7 +216,10 @@ REGFORGE_INLINE uint8_t {{ ns|lower }}nvic_get_priority({{ prefix|lower }}irqn_e
 {% endif %}
 {% endif %}
 {% endif %}
+{% if families %}
 
+{{ area("Peripherals") }}
+{% endif %}
 {% for family in families %}
 {% set src = family.type_source %}
 {% set spf = prefix ~ family.name|upper %}
@@ -216,7 +227,8 @@ REGFORGE_INLINE uint8_t {{ ns|lower }}nvic_get_priority({{ prefix|lower }}irqn_e
 {% set members = layout(src) %}
 {% set tw = members|map(attribute='type')|map('length')|max %}
 {% set fw = members|map(attribute='field')|map('length')|max %}
-/* ========================================================================== */
+
+/* {{ "-" * 74 }} */
 /* {{ family.name }}{% if src.description %} -- {{ src.description }}{% endif %}{% if family.instances|length > 1 %} (family: {{ family.instances|map(attribute='name')|join(', ') }}){% endif %} */
 {% if family.note %}
 /* {{ family.note }} */
@@ -230,6 +242,10 @@ typedef struct {
 {% for m in members if m.member %}
 REGFORGE_STATIC_ASSERT(offsetof({{ tname }}, {{ m.member }}) == 0x{{ "%02X"|format(m.offset) }}, {{ spf }}_{{ m.member|upper }}_offset, "{{ family.name }}.{{ m.member }} offset");
 {% endfor %}
+{% set ssize = struct_size(src) %}
+{% if ssize is not none %}
+REGFORGE_STATIC_ASSERT(sizeof({{ tname }}) == 0x{{ "%X"|format(ssize) }}, {{ spf }}_SIZE, "{{ family.name }} struct size vs addressBlock");
+{% endif %}
 {% for periph in family.instances %}
 {% set pf = prefix ~ periph.name|upper %}
 

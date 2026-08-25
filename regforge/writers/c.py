@@ -20,7 +20,13 @@ from ..arch import NVIC_REGISTER_BANKS, is_cortex_m
 from ..families import group_families
 from ..interrupts import all_interrupts, shared_vectors
 from ..ir import Access, Device, Peripheral, Register
-from ..layout import BITS_PER_BYTE, LayoutError, peripheral_layout, units_to_bytes
+from ..layout import (
+    BITS_PER_BYTE,
+    LayoutError,
+    asserted_struct_size,
+    peripheral_layout,
+    units_to_bytes,
+)
 from ..provenance import Provenance
 from .base import EmitError, Writer
 
@@ -69,7 +75,8 @@ def _c_layout(peripheral: Peripheral, address_unit_bits: int) -> list[dict]:
     to C syntax (``uint8_t`` padding, ``volatile`` member types, trailing ``;``).
     """
     try:
-        slots = peripheral_layout(peripheral, address_unit_bits)
+        size = asserted_struct_size(peripheral, address_unit_bits)
+        slots = peripheral_layout(peripheral, address_unit_bits, pad_to_bytes=size)
     except LayoutError as error:  # surface as the writer's error type (CLI exit)
         raise EmitError(str(error)) from error
     entries: list[dict] = []
@@ -150,6 +157,9 @@ class CWriter(Writer):
             member_type=_member_type,
             full_mask=lambda size: (1 << size) - 1,
             layout=lambda peripheral: layouts[id(peripheral)],
+            struct_size=lambda peripheral: asserted_struct_size(
+                peripheral, device.address_unit_bits
+            ),
             families=group_families(device),
             interrupts=all_interrupts(device),
             shared_vectors=shared_vectors(device),

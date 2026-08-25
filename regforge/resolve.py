@@ -109,6 +109,10 @@ def resolve_derived(device: Device) -> list[str]:
         # verbatim would put two peripherals on one vector under the base's
         # name -- almost always a bug, surfaced by check_derived_interrupts().
         peripheral.registers = [copy.deepcopy(register) for register in base.registers]
+        # The addressBlock IS inherited: the footprint (offset/size relative to
+        # the base) is identical for every instance of a type.
+        if not peripheral.address_blocks:
+            peripheral.address_blocks = [copy.deepcopy(block) for block in base.address_blocks]
 
     for peripheral in device.peripherals:
         ensure(peripheral)

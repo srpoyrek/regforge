@@ -108,6 +108,27 @@ class Register:
 
 
 @dataclass
+class AddressBlock:
+    """A peripheral's declared memory footprint (SVD ``<addressBlock>``).
+
+    A peripheral may declare several blocks (registers at one offset, a FIFO
+    buffer window at another). The block is the vendor's contract for how much
+    address space the peripheral occupies; the C writer turns a ``registers``
+    block into a ``sizeof`` static-assert on the generated struct.
+
+    Attributes:
+        offset: Start of the block, in address units, relative to the base.
+        size: Size of the block, in address units.
+        usage: What the block holds -- ``"registers"``, ``"buffer"``, or
+            ``"reserved"`` (``None`` when the source omits it).
+    """
+
+    offset: int
+    size: int
+    usage: str | None = None
+
+
+@dataclass
 class Interrupt:
     """An interrupt line a peripheral raises (SVD ``<interrupt>``).
 
@@ -147,6 +168,7 @@ class Peripheral:
         default_reset_mask: Peripheral-level default reset mask.
         registers: Registers belonging to the peripheral.
         interrupts: Interrupt lines the peripheral raises (SVD ``<interrupt>``).
+        address_blocks: Declared memory footprint(s) (SVD ``<addressBlock>``).
     """
 
     name: str
@@ -160,6 +182,7 @@ class Peripheral:
     default_reset_mask: int | None = None
     registers: list[Register] = field(default_factory=list)
     interrupts: list[Interrupt] = field(default_factory=list)
+    address_blocks: list[AddressBlock] = field(default_factory=list)
 
 
 @dataclass

@@ -15,6 +15,7 @@ from enum import Enum
 
 from .families import first_divergence, layout_signature
 from .ir import Device
+from .layout import registers_end, units_to_bytes
 
 
 class Severity(Enum):
@@ -225,10 +226,99 @@ def check_group_divergence(device: Device) -> list[Finding]:
     return findings
 
 
+def check_address_blocks(device: Device) -> list[Finding]:
+    """Check a peripheral's registers lie within its declared ``registers``
+    addressBlock(s), and that a peripheral's own blocks do not overlap.
+
+    ``addressBlock`` is the vendor's footprint contract; CMSIS discards it. A
+    register beyond the block means the block under-declares the peripheral, and
+    two blocks of one peripheral overlapping is a self-contradiction -- both are
+    real vendor-file bugs, surfaced here (advisory ``WARNING``).
+    """
+    findings: list[Finding] = []
+    unit_bits = device.address_unit_bits
+    for peripheral in device.peripherals:
+        blocks = peripheral.address_blocks
+        registers_blocks = [b for b in blocks if b.usage in (None, "registers")]
+        for register in peripheral.registers:
+            if not registers_blocks:
+                continue
+            start = register.address_offset
+            end = start + (register.size or 0) // unit_bits
+            if not any(b.offset <= start and end <= b.offset + b.size for b in registers_blocks):
+                findings.append(
+                    Finding(
+                        Severity.WARNING,
+                        f"{peripheral.name}.{register.name}: at offset {start:#x} lies "
+                        "outside the peripheral's registers addressBlock(s) -- the block "
+                        "under-declares the footprint",
+                    )
+                )
+        for i in range(len(blocks)):
+            for j in range(i + 1, len(blocks)):
+                first, second = blocks[i], blocks[j]
+                if first.offset < second.offset + second.size and second.offset < (
+                    first.offset + first.size
+                ):
+                    findings.append(
+                        Finding(
+                            Severity.WARNING,
+                            f"{peripheral.name}: addressBlocks at offsets "
+                            f"{first.offset:#x} and {second.offset:#x} overlap",
+                        )
+                    )
+    return findings
+
+
+def check_peripheral_overlap(device: Device) -> list[Finding]:
+    """Flag two peripherals occupying overlapping address ranges (completes B2).
+
+    Each peripheral's extent is its ``addressBlock`` interval(s)
+    ``[base+offset, base+offset+size)``, or -- absent a block -- the span of its
+    registers. Two different peripherals whose extents intersect claim the same
+    bytes: a hardware contradiction unless declared as ``alternatePeripheral``
+    (the nRF shared-engine case). regforge does not parse ``alternatePeripheral``
+    yet, so for now **every** overlap is flagged (``ERROR``); suppression for
+    declared alternates is the remaining B2 piece (see TODO).
+    """
+    findings: list[Finding] = []
+    unit_bits = device.address_unit_bits
+    extents: list[tuple[int, str, int, int]] = []  # (peripheral index, name, start, end)
+    for index, peripheral in enumerate(device.peripherals):
+        base = peripheral.base_address
+        if peripheral.address_blocks:
+            for block in peripheral.address_blocks:
+                start = base + units_to_bytes(block.offset, unit_bits)
+                extents.append(
+                    (index, peripheral.name, start, start + units_to_bytes(block.size, unit_bits))
+                )
+        else:
+            span = registers_end(peripheral, unit_bits)
+            extents.append((index, peripheral.name, base, base + max(span, 1)))
+    for i in range(len(extents)):
+        for j in range(i + 1, len(extents)):
+            index_a, name_a, start_a, end_a = extents[i]
+            index_b, name_b, start_b, end_b = extents[j]
+            if index_a == index_b:
+                continue  # a peripheral's own blocks are check_address_blocks's job
+            if start_a < end_b and start_b < end_a:
+                findings.append(
+                    Finding(
+                        Severity.ERROR,
+                        f"{name_a} and {name_b} occupy overlapping address ranges "
+                        f"[{start_a:#x}, {end_a:#x}) / [{start_b:#x}, {end_b:#x}) -- "
+                        "not declared as alternatePeripheral",
+                    )
+                )
+    return findings
+
+
 #: Every consistency check, run in order by :func:`run_checks`. Add a new check
 #: here and it is picked up by the CLI and any other caller automatically.
 ALL_CHECKS = (
     check_address_math,
+    check_address_blocks,
+    check_peripheral_overlap,
     check_derived_chains,
     check_derived_interrupts,
     check_group_divergence,

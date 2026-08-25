@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A deliberately-flawed device: every peripheral trips a regforge consistency
+     check, so the linter's flagging is exercised end to end. Run
+     `regforge tests/fixtures/svd/lint_demo.svd -v` to see the warnings/errors in
+     colour; tests/check/test_lint_demo.py locks the exact findings and the
+     emitted header. This is NOT a well-formed chip; minimal.svd is the clean
+     reference. Note: no device-level <access>, so a register that omits it warns. -->
+<device schemaVersion="1.3">
+  <vendor>DemoCorp</vendor>
+  <name>LintDemo</name>
+  <headerDefinitionsPrefix>LD_</headerDefinitionsPrefix>
+  <addressUnitBits>8</addressUnitBits>
+  <width>32</width>
+  <peripherals>
+    <!-- Cross-peripheral overlap (ERROR): UART's block [0x40004000, 0x40004400)
+         and TIMER's, starting at 0x40004200, claim the same bytes. -->
+    <peripheral>
+      <name>UART</name>
+      <baseAddress>0x40004000</baseAddress>
+      <addressBlock><offset>0</offset><size>0x400</size><usage>registers</usage></addressBlock>
+      <registers>
+        <register><name>DR</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
+    <peripheral>
+      <name>TIMER</name>
+      <baseAddress>0x40004200</baseAddress>
+      <addressBlock><offset>0</offset><size>0x100</size><usage>registers</usage></addressBlock>
+      <registers>
+        <register><name>CR</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
+    <!-- Register outside its block (WARNING): FLASH declares a 0x20 block but FAR
+         sits at 0x40. The struct floor-asserts sizeof == 0x44 (block below regs). -->
+    <peripheral>
+      <name>FLASH</name>
+      <baseAddress>0x40010000</baseAddress>
+      <addressBlock><offset>0</offset><size>0x20</size><usage>registers</usage></addressBlock>
+      <registers>
+        <register><name>CR</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+        <register><name>FAR</name><addressOffset>0x40</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
+    <!-- Intra-peripheral block overlap (WARNING): DMA's two blocks intersect. -->
+    <peripheral>
+      <name>DMA</name>
+      <baseAddress>0x40020000</baseAddress>
+      <addressBlock><offset>0x0</offset><size>0x20</size><usage>registers</usage></addressBlock>
+      <addressBlock><offset>0x10</offset><size>0x20</size><usage>buffer</usage></addressBlock>
+      <registers>
+        <register><name>CR</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
+    <!-- Access unspecified at every level (WARNING from the resolve pass): REG
+         declares no <access> and there is no device/peripheral default. -->
+    <peripheral>
+      <name>MISC</name>
+      <baseAddress>0x40030000</baseAddress>
+      <registers>
+        <register><name>REG</name><addressOffset>0x0</addressOffset><size>32</size></register>
+      </registers>
+    </peripheral>
+  </peripherals>
+</device>
