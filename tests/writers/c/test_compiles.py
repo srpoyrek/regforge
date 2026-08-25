@@ -24,9 +24,33 @@ from tools.toolchains import SOURCE_EXTENSION, cases, compile_command, resolve
 _CASES = cases()
 _IDS = [f"{language}-{toolchain.key}-{std}" for language, toolchain, std in _CASES]
 
+# main() bodies exercising each header's symbols. C89 requires declarations
+# before statements, so every declaration comes first.
+_MINIMAL_MAIN = (
+    "int main(void) {\n"
+    "    volatile uint32_t v = DC_GPIOA_MODER;\n"
+    "    dc_irqn_e irq = DC_TIM1_UP_IRQ;\n"
+    "    (void)v; (void)irq;\n"
+    "    dc_nvic_enable(DC_UART0_IRQ);\n"
+    "    dc_nvic_set_priority(DC_TIM1_UP_IRQ, 2);\n"
+    "    (void)dc_nvic_get_pending(DC_UART0_IRQ);\n"
+    "    return (int)dc_irq_prio(1);\n"
+    "}\n"
+)
+# The flawed lint-demo device: touch a plain register and the out-of-block one
+# (LD_FLASH_FAR) so the header's static-asserts -- including the floor-asserted
+# sizeof -- are compiled on every toolchain.
+_LINT_DEMO_MAIN = (
+    "int main(void) {\n"
+    "    volatile uint32_t a = LD_UART_DR;\n"
+    "    volatile uint32_t b = LD_FLASH_FAR;\n"
+    "    (void)a; (void)b;\n"
+    "    return 0;\n"
+    "}\n"
+)
 
-@pytest.mark.parametrize("language,toolchain,std", _CASES, ids=_IDS)
-def test_golden_header_compiles(language, toolchain, std, tmp_path, golden_header_path):
+
+def _assert_header_compiles(language, toolchain, std, tmp_path, header_path, main_body):
     exe = resolve(toolchain.executables)
     if exe is None:
         pytest.skip(f"{toolchain.key} not on PATH")
@@ -34,19 +58,7 @@ def test_golden_header_compiles(language, toolchain, std, tmp_path, golden_heade
         pytest.skip("cl found but no MSVC environment (INCLUDE unset)")
 
     source = tmp_path / f"main.{SOURCE_EXTENSION[language]}"
-    source.write_text(
-        f'#include "{golden_header_path.as_posix()}"\n' "int main(void) {\n"
-        # C89 requires declarations before statements -- keep both decls first.
-        "    volatile uint32_t v = DC_GPIOA_MODER;\n"
-        "    dc_irqn_e irq = DC_TIM1_UP_IRQ;\n"
-        "    (void)v; (void)irq;\n"
-        "    dc_nvic_enable(DC_UART0_IRQ);\n"
-        "    dc_nvic_set_priority(DC_TIM1_UP_IRQ, 2);\n"
-        "    (void)dc_nvic_get_pending(DC_UART0_IRQ);\n"
-        "    return (int)dc_irq_prio(1);\n"
-        "}\n",
-        encoding="utf-8",
-    )
+    source.write_text(f'#include "{header_path.as_posix()}"\n{main_body}', encoding="utf-8")
     output = tmp_path / ("out.obj" if toolchain.style == "msvc" else "out.o")
     result = subprocess.run(
         compile_command(toolchain, exe, std, str(source), str(output)),
@@ -54,6 +66,20 @@ def test_golden_header_compiles(language, toolchain, std, tmp_path, golden_heade
         text=True,
     )
     assert result.returncode == 0, f"{toolchain.key} {std}:\n{result.stdout}\n{result.stderr}"
+
+
+@pytest.mark.parametrize("language,toolchain,std", _CASES, ids=_IDS)
+def test_golden_header_compiles(language, toolchain, std, tmp_path, golden_header_path):
+    _assert_header_compiles(language, toolchain, std, tmp_path, golden_header_path, _MINIMAL_MAIN)
+
+
+@pytest.mark.parametrize("language,toolchain,std", _CASES, ids=_IDS)
+def test_lint_demo_header_compiles(language, toolchain, std, tmp_path, lint_demo_golden_path):
+    # A flawed footprint is a linter finding, not a codegen failure -- the header
+    # must still compile cleanly on every toolchain the golden does.
+    _assert_header_compiles(
+        language, toolchain, std, tmp_path, lint_demo_golden_path, _LINT_DEMO_MAIN
+    )
 
 
 def _gnu_c_compiler() -> str | None:

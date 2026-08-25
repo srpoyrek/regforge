@@ -5,17 +5,12 @@ purpose. These tests lock the exact findings -- the whole point of the fixture -
 and confirm regforge still emits valid, byte-stable C for a flawed footprint.
 """
 
-import subprocess
-
-import pytest
-
 from regforge import __version__
 from regforge.check import Severity, run_checks
 from regforge.provenance import Provenance, sha256_file
 from regforge.readers.svd import SvdReader
 from regforge.resolve import resolve_defaults
 from regforge.writers.c import CWriter
-from tools.toolchains import resolve
 
 GOLDEN_COMMAND = "regforge tests/fixtures/svd/lint_demo.svd -o tests/golden/c/lint_demo.h"
 
@@ -52,33 +47,5 @@ def test_header_matches_golden(lint_demo_device, lint_demo_svd_path, lint_demo_g
     generated = CWriter().render(lint_demo_device, provenance)
     assert generated == lint_demo_golden_path.read_text(encoding="utf-8")
 
-
-def test_flawed_footprint_still_compiles(tmp_path, lint_demo_golden_path):
-    # A flawed footprint is a linter finding, not a codegen failure: the header
-    # is still valid C (FLASH floor-asserts sizeof == 0x44, both overlapping
-    # peripherals emit distinct types/macros).
-    exe = resolve(("gcc", "cc", "clang"))
-    if exe is None:
-        pytest.skip("no GNU C compiler on PATH")
-    source = tmp_path / "main.c"
-    source.write_text(
-        f'#include "{lint_demo_golden_path.as_posix()}"\nint main(void) {{ return 0; }}\n',
-        encoding="utf-8",
-    )
-    result = subprocess.run(
-        [
-            exe,
-            "-std=c11",
-            "-pedantic-errors",
-            "-Wall",
-            "-Wextra",
-            "-Werror",
-            "-c",
-            str(source),
-            "-o",
-            str(tmp_path / "out.o"),
-        ],
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == 0, result.stderr
+    # Note: the demo header is compiled across the full toolchain matrix by
+    # tests/writers/c/test_compiles.py::test_lint_demo_header_compiles.

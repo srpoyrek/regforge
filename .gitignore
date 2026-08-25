@@ -232,6 +232,3 @@ desktop.ini
 # Locally generated headers from ad-hoc runs (test fixtures are committed separately)
 /*.h
 /out/
-
-# Private working notes (not for the repo)
-/TODO.md
