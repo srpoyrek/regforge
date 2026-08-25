@@ -26,9 +26,9 @@ pip install -e ".[dev]"
 ## Usage
 
 ```bash
-regforge device.svd -o device.h        # SVD in, C header out
-regforge device.svd                    # write to standard output
-regforge device.svd -o device.h --uncrustify   # format the generated C
+regforge device.svd -o device.h                 # SVD in, C header out
+regforge device.svd                             # write to standard output
+regforge device.svd -o device.h --uncrustify    # format the generated C
 ```
 
 Options:
