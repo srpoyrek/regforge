@@ -15,7 +15,7 @@ from enum import Enum
 
 from .families import first_divergence, layout_signature
 from .ir import Device
-from .layout import registers_end, units_to_bytes
+from .layout import LayoutError, peripheral_layout, registers_end, units_to_bytes
 
 
 class Severity(Enum):
@@ -228,6 +228,75 @@ def check_group_divergence(device: Device) -> list[Finding]:
     return findings
 
 
+#: Uncovered padding, in bytes, tolerated inside a peripheral before it is
+#: reported. Two bytes absorbs the sub-word alignment holes vendors leave
+#: constantly (the median gap across a 2,499-gap survey is 2 bytes) while still
+#: naming anything the peripheral pads over without having claimed it.
+MAX_UNOWNED_GAP_BYTES = 2
+
+
+def check_unowned_gaps(device: Device) -> list[Finding]:
+    """Flag padding a peripheral emits over space no ``addressBlock`` claims.
+
+    A C struct cannot have holes, so the space between two registers becomes
+    RESERVED padding. That is honest while some block covers the range -- the
+    vendor declared the peripheral owns it, and a sifive PLIC really does span
+    64 MB. Where no block covers it, regforge is inventing a claim: esp32's UART
+    puts ``TX_FIFO`` 0x200C0000 past its register window, and the emitted struct
+    grows a 537 MB reserved array that nothing in the source declares.
+
+    The padding is still emitted -- the offsets it produces are correct, and
+    splitting the peripheral would deny a footprint the vendor may simply have
+    described badly. This says so rather than passing it off as a real layout.
+    """
+    findings: list[Finding] = []
+    unit_bits = device.address_unit_bits
+    for peripheral in device.peripherals:
+        spans = sorted(
+            (
+                units_to_bytes(block.offset, unit_bits),
+                units_to_bytes(block.offset + block.size, unit_bits),
+            )
+            for block in peripheral.address_blocks
+        )
+        try:
+            slots = peripheral_layout(peripheral, unit_bits)
+        except LayoutError:
+            continue  # overlapping registers: a different check's story
+        for slot in slots:
+            if not slot.is_reserved:
+                continue
+            uncovered = _uncovered_bytes(slot.offset, slot.offset + slot.gap_bytes, spans)
+            if uncovered > MAX_UNOWNED_GAP_BYTES:
+                findings.append(
+                    Finding(
+                        Severity.WARNING,
+                        f"{peripheral.name}: [{slot.offset:#x}, "
+                        f"{slot.offset + slot.gap_bytes:#x}) is padded into the struct "
+                        f"but {uncovered} byte(s) of it lie outside every declared "
+                        "addressBlock -- the peripheral never claimed that space",
+                    )
+                )
+    return findings
+
+
+def _uncovered_bytes(start: int, end: int, spans: list[tuple[int, int]]) -> int:
+    """Bytes of ``[start, end)`` that no span in ``spans`` covers.
+
+    ``spans`` must be sorted by start. Walks a cursor forward through the
+    overlapping-or-not block ranges, accumulating whatever they skip over.
+    """
+    uncovered = 0
+    cursor = start
+    for span_start, span_end in spans:
+        if span_start > cursor:
+            uncovered += min(span_start, end) - cursor
+        cursor = max(cursor, span_end)
+        if cursor >= end:
+            return uncovered
+    return uncovered + (end - cursor)
+
+
 def check_address_blocks(device: Device) -> list[Finding]:
     """Check a peripheral's registers lie within its declared ``registers``
     addressBlock(s), and that a peripheral's own blocks do not overlap.
@@ -320,6 +389,7 @@ def check_peripheral_overlap(device: Device) -> list[Finding]:
 ALL_CHECKS = (
     check_address_math,
     check_address_blocks,
+    check_unowned_gaps,
     check_peripheral_overlap,
     check_derived_chains,
     check_derived_interrupts,

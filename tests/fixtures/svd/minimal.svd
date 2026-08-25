@@ -143,7 +143,10 @@ Licensed under the Apache License, Version 2.0.
       <description>Serial peripheral interface</description>
       <groupName>SPI</groupName>
       <baseAddress>0x40008000</baseAddress>
-      <!-- 0x400 stride to SPI1; the block is far larger than the two registers, which is the normal vendor pattern. -->
+      <!-- The pad-to-block case: SPI0 and SPI1 sit 0x400 apart, so padding the
+           struct to the block makes sizeof equal the hardware stride and an array
+           over the instances index correctly. The other peripherals keep tight
+           blocks so the golden stays readable. -->
       <addressBlock>
         <offset>0</offset>
         <size>0x400</size>
@@ -188,7 +191,7 @@ Licensed under the Apache License, Version 2.0.
       <!-- Advanced timer: its own type (extra RCR), still a 0x400 footprint. -->
       <addressBlock>
         <offset>0</offset>
-        <size>0x400</size>
+        <size>0x20</size>
         <usage>registers</usage>
       </addressBlock>
       <!-- A peripheral with several interrupt lines, each its own vector: the
@@ -217,7 +220,7 @@ Licensed under the Apache License, Version 2.0.
       <!-- Instances sit 0x400 apart; padding to the block makes the struct stride match, so an array over TIM2/TIM3 indexes correctly. -->
       <addressBlock>
         <offset>0</offset>
-        <size>0x400</size>
+        <size>0x20</size>
         <usage>registers</usage>
       </addressBlock>
       <registers>
@@ -233,7 +236,7 @@ Licensed under the Apache License, Version 2.0.
       <!-- Must match TIM2's block exactly: they share one emitted type. -->
       <addressBlock>
         <offset>0</offset>
-        <size>0x400</size>
+        <size>0x20</size>
         <usage>registers</usage>
       </addressBlock>
       <registers>
@@ -254,7 +257,7 @@ Licensed under the Apache License, Version 2.0.
       <!-- Inherited verbatim by ADC1 (derivedFrom), so both are sized identically. -->
       <addressBlock>
         <offset>0</offset>
-        <size>0x400</size>
+        <size>0x10</size>
         <usage>registers</usage>
       </addressBlock>
       <interrupt>
@@ -281,7 +284,7 @@ Licensed under the Apache License, Version 2.0.
       <!-- Smallest register set on the chip (0x4) against a 0x400 block: the widest pad-to-block case. -->
       <addressBlock>
         <offset>0</offset>
-        <size>0x400</size>
+        <size>0x10</size>
         <usage>registers</usage>
       </addressBlock>
       <registers>
@@ -302,7 +305,7 @@ Licensed under the Apache License, Version 2.0.
       </addressBlock>
       <addressBlock>
         <offset>0x8</offset>
-        <size>0x3F8</size>
+        <size>0x8</size>
         <usage>reserved</usage>
       </addressBlock>
       <registers>
