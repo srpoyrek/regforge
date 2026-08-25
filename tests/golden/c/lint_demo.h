@@ -147,9 +147,13 @@ REGFORGE_MAYBE_UNUSED static ld_flash_t *const LD_FLASH = (ld_flash_t *)LD_FLASH
 /* DMA */
 
 typedef struct {
-    volatile uint32_t CR;  /* 0x00 */
+    volatile uint32_t CR;             /* 0x00 */
+    uint8_t           RESERVED0[12];  /* 0x04  (reserved) */
+    volatile uint32_t BUFFER0[8];     /* 0x10  (buffer) */
 } ld_dma_t;
 REGFORGE_STATIC_ASSERT(offsetof(ld_dma_t, CR) == 0x00, LD_DMA_CR_offset, "DMA.CR offset");
+REGFORGE_STATIC_ASSERT(offsetof(ld_dma_t, BUFFER0) == 0x10, LD_DMA_BUFFER0_offset, "DMA.BUFFER0 offset");
+REGFORGE_STATIC_ASSERT(sizeof(ld_dma_t) == 0x30, LD_DMA_SIZE, "DMA struct size vs addressBlock");
 
 /* DMA @ 0x40020000 */
 #define LD_DMA_BASE (0x40020000UL)

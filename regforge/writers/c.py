@@ -42,6 +42,9 @@ _C_TYPE = {8: "uint8_t", 16: "uint16_t", 32: "uint32_t", 64: "uint64_t"}
 #: Register descriptions at most this long sit inline in the struct comment;
 #: longer ones stay in the per-register banner so the layout stays a tight map.
 _MAX_INLINE_DESC = 40
+#: Fallback element width, in bits, for a buffer window the bus width cannot
+#: tile evenly. Bytes divide any window and are always representable.
+_BUFFER_FALLBACK_BITS = 8
 
 
 def _hex32(value: int) -> str:
@@ -68,7 +71,22 @@ def _member_type(register: Register) -> str:
     return f"volatile {const}{_C_TYPE[register.size]}"
 
 
-def _c_layout(peripheral: Peripheral, address_unit_bits: int) -> list[dict]:
+def _buffer_element_bits(window_bytes: int, bus_width: int) -> int:
+    """The element width, in bits, for a buffer window of ``window_bytes``.
+
+    A ``buffer`` block is a range you stream through, so the natural element is
+    one bus access -- the device's ``<width>``. The vendor gives no width for the
+    window itself (``<addressBlock>`` carries only offset, size and usage), so
+    the device's bus width is the closest thing to a declared answer. A window
+    the bus width cannot tile evenly, or a width with no C type, falls back to
+    bytes rather than rounding the window or dropping its tail.
+    """
+    if bus_width in _C_TYPE and window_bytes % (bus_width // BITS_PER_BYTE) == 0:
+        return bus_width
+    return _BUFFER_FALLBACK_BITS
+
+
+def _c_layout(peripheral: Peripheral, address_unit_bits: int, bus_width: int) -> list[dict]:
     """Render the shared block layout into the C struct members the template needs.
 
     The offset / reserved-gap / overlap math is language-neutral and lives in
@@ -82,8 +100,22 @@ def _c_layout(peripheral: Peripheral, address_unit_bits: int) -> list[dict]:
         raise EmitError(str(error)) from error
     entries: list[dict] = []
     pad_index = 0
+    buffer_index = 0
     for slot in slots:
-        if slot.is_reserved:
+        if slot.buffer:
+            bits = _buffer_element_bits(slot.gap_bytes, bus_width)
+            name = f"BUFFER{buffer_index}"
+            entries.append(
+                {
+                    "offset": slot.offset,
+                    "type": f"volatile {_C_TYPE[bits]}",
+                    "field": f"{name}[{slot.gap_bytes // (bits // BITS_PER_BYTE)}];",
+                    "desc": "(buffer)",
+                    "member": name,
+                }
+            )
+            buffer_index += 1
+        elif slot.is_reserved:
             entries.append(
                 {
                     "offset": slot.offset,
@@ -147,7 +179,7 @@ class CWriter(Writer):
                         f"(supported: {sorted(_C_TYPE)})"
                     )
         layouts = {
-            id(peripheral): _c_layout(peripheral, device.address_unit_bits)
+            id(peripheral): _c_layout(peripheral, device.address_unit_bits, device.bus_width)
             for peripheral in device.peripherals
         }
         template = self._env.get_template("header.h.j2")

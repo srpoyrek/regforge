@@ -127,11 +127,26 @@ def test_fixture_asserts_struct_size_from_address_block(demo_device):
         "REGFORGE_STATIC_ASSERT(sizeof(dc_gpioa_t) == 0x20, DC_GPIOA_SIZE, "
         '"GPIOA struct size vs addressBlock");' in output
     )
-    # UART block (0x8) exactly fits -> no pad, exact-size assert.
+    # UART registers block (0x8) exactly fits the registers; its buffer window
+    # (0x8..0x28) is a member too, so the contract reaches 0x28.
     assert (
-        "REGFORGE_STATIC_ASSERT(sizeof(dc_uart_t) == 0x8, DC_UART_SIZE, "
+        "REGFORGE_STATIC_ASSERT(sizeof(dc_uart_t) == 0x28, DC_UART_SIZE, "
         '"UART struct size vs addressBlock");' in output
     )
+
+
+def test_fixture_buffer_block_emits_one_raw_window(demo_device):
+    output = CWriter().render(demo_device)
+    # The vendor names no registers for a buffer block, so none are invented:
+    # one array, typed from the device bus width (32 bits -> 0x20 bytes / 8).
+    assert "volatile uint32_t       BUFFER0[8];" in output
+    # Its position is locked as tightly as a register's.
+    assert (
+        "REGFORGE_STATIC_ASSERT(offsetof(dc_uart_t, BUFFER0) == 0x08, "
+        'DC_UART_BUFFER0_offset, "UART.BUFFER0 offset");' in output
+    )
+    # It is a window, not padding -- no RESERVED member covers that range.
+    assert "RESERVED0[32];" not in output
 
 
 def test_fixture_derived_peripheral_does_not_inherit_interrupt(demo_device):

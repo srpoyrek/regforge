@@ -67,10 +67,81 @@ def test_struct_block_accepts_only_a_clean_registers_block():
 
     assert struct_block(periph(AddressBlock(0, 0x20, "registers"))) is not None
     assert struct_block(periph(AddressBlock(0, 0x20, None))) is not None  # usage omitted
-    assert struct_block(periph(AddressBlock(0, 0x20, "buffer"))) is None  # buffer -> later
+    assert struct_block(periph(AddressBlock(0, 0x20, "buffer"))) is None  # window, not registers
     assert struct_block(periph(AddressBlock(0x10, 0x20, "registers"))) is None  # non-zero offset
     assert struct_block(periph(AddressBlock(0, 0x20), AddressBlock(0x800, 0x10))) is None  # multi
     assert struct_block(periph()) is None  # no block
+    assert struct_block(periph(AddressBlock(0, 0, "registers"))) is None  # zero-size window
+
+
+def test_struct_block_looks_past_buffer_and_reserved_blocks():
+    # One register window plus a buffer and a reserved range: those two are
+    # emitted (member / padding), so the peripheral keeps its size contract.
+    peripheral = Peripheral(
+        name="P",
+        base_address=0x0,
+        address_blocks=[
+            AddressBlock(0x0, 0x20, "registers"),
+            AddressBlock(0x20, 0x40, "buffer"),
+            AddressBlock(0x60, 0x10, "reserved"),
+        ],
+    )
+    block = struct_block(peripheral)
+    assert block is not None and block.usage == "registers"
+    # The contract reaches past every declared block: 0x60 + 0x10.
+    assert asserted_struct_size(peripheral, address_unit_bits=8) == 0x70
+
+
+def test_buffer_block_becomes_a_window_slot_ordered_by_offset():
+    # CR @ 0x0 (4 bytes), gap to 0x10, then a 0x20-byte buffer window.
+    peripheral = Peripheral(
+        name="DMA",
+        base_address=0x0,
+        registers=[Register("CR", 0x0, size=32)],
+        address_blocks=[
+            AddressBlock(0x0, 0x20, "registers"),
+            AddressBlock(0x10, 0x20, "buffer"),
+        ],
+    )
+    size = asserted_struct_size(peripheral, address_unit_bits=8)
+    assert size == 0x30
+    slots = peripheral_layout(peripheral, address_unit_bits=8, pad_to_bytes=size)
+    assert [(s.offset, s.gap_bytes, s.buffer, s.is_reserved) for s in slots] == [
+        (0x00, 0, False, False),  # CR
+        (0x04, 12, False, True),  # reserved gap
+        (0x10, 32, True, False),  # buffer window
+    ]
+
+
+def test_buffer_window_overlapping_a_register_is_an_error():
+    peripheral = Peripheral(
+        name="P",
+        base_address=0x0,
+        registers=[Register("R", 0x0, size=32)],
+        address_blocks=[AddressBlock(0x2, 0x10, "buffer")],  # starts inside R
+    )
+    with pytest.raises(LayoutError, match="buffer addressBlock"):
+        peripheral_layout(peripheral, address_unit_bits=8)
+
+
+def test_reserved_block_is_padding_not_a_member():
+    # A reserved range contributes no slot of its own; it only extends the pad.
+    peripheral = Peripheral(
+        name="P",
+        base_address=0x0,
+        registers=[Register("R", 0x0, size=32)],
+        address_blocks=[
+            AddressBlock(0x0, 0x4, "registers"),
+            AddressBlock(0x4, 0xC, "reserved"),
+        ],
+    )
+    size = asserted_struct_size(peripheral, address_unit_bits=8)
+    assert size == 0x10
+    slots = peripheral_layout(peripheral, address_unit_bits=8, pad_to_bytes=size)
+    assert [(s.offset, s.gap_bytes, s.buffer) for s in slots] == [
+        (0x0, 0, False),  # R
+        (0x4, 12, False),  # trailing pad over the reserved range
+    ]
 
 
 def test_asserted_size_covers_floors_or_none():

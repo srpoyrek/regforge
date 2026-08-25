@@ -87,11 +87,20 @@ Licensed under the Apache License, Version 2.0.
       <groupName>UART</groupName>
       <baseAddress>0x40004000</baseAddress>
       <!-- addressBlock exactly fits the registers (DR, SR end at 0x08): no
-           padding, sizeof asserted == 0x08. Inherited by UART1 (derived). -->
+           padding. Inherited by UART1 (derived). -->
       <addressBlock>
         <offset>0</offset>
         <size>0x8</size>
         <usage>registers</usage>
+      </addressBlock>
+      <!-- A buffer window right after the registers: the vendor names no
+           registers for a FIFO, so the struct gets one raw array (BUFFER0)
+           rather than invented member names. Extends the size contract to
+           0x28, and rides the derivedFrom copy into UART1. -->
+      <addressBlock>
+        <offset>0x8</offset>
+        <size>0x20</size>
+        <usage>buffer</usage>
       </addressBlock>
       <interrupt>
         <name>UART0</name>
