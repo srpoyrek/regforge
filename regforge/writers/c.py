@@ -71,17 +71,36 @@ def _member_type(register: Register) -> str:
     return f"volatile {const}{_C_TYPE[register.size]}"
 
 
-def _type_aliases(family: Family) -> list[Peripheral]:
+def _type_aliases(family: Family, taken: set[str]) -> list[Peripheral]:
     """Instances of ``family`` that need a ``<name>_t`` alias for the shared type.
 
     Every peripheral should have a type spelled after itself, so a signature does
-    not have to know that TIM2 and TIM3 share one layout. The instance the type
-    is *already* named after is skipped: aliasing a typedef to itself is legal
-    only from C11 on, and the generated headers must compile as C89.
+    not have to know that TIM2 and TIM3 share one layout. Two instances are
+    skipped:
+
+    * the one the type is *already* named after -- aliasing a typedef to itself
+      is legal only from C11 on, and these headers must compile as C89;
+    * one whose name another emitted type already claims. Nuvoton's M051 puts a
+      peripheral called ``GPIO`` in the ``GPIO_GCR`` group while a separate
+      ``GPIO`` group covers GP0..GP4, so the alias would redefine that group's
+      type. The group owns the name; the alias gives way.
     """
     return [
-        instance for instance in family.instances if instance.name.lower() != family.name.lower()
+        instance
+        for instance in family.instances
+        if instance.name.lower() != family.name.lower() and instance.name.lower() not in taken
     ]
+
+
+def _alias_map(families: list[Family]) -> dict[int, list[Peripheral]]:
+    """Per-family alias lists, resolved against every type name the header emits."""
+    taken = {family.name.lower() for family in families}
+    aliases: dict[int, list[Peripheral]] = {}
+    for family in families:
+        chosen = _type_aliases(family, taken)
+        taken.update(instance.name.lower() for instance in chosen)
+        aliases[id(family)] = chosen
+    return aliases
 
 
 def _buffer_element_bits(window_bytes: int, bus_width: int) -> int:
@@ -191,6 +210,8 @@ class CWriter(Writer):
                         f"{register.size} bits has no C type mapping "
                         f"(supported: {sorted(_C_TYPE)})"
                     )
+        families = group_families(device)
+        aliases = _alias_map(families)
         layouts = {
             id(peripheral): _c_layout(peripheral, device.address_unit_bits, device.bus_width)
             for peripheral in device.peripherals
@@ -207,8 +228,8 @@ class CWriter(Writer):
             struct_size=lambda peripheral: asserted_struct_size(
                 peripheral, device.address_unit_bits
             ),
-            families=group_families(device),
-            type_aliases=_type_aliases,
+            families=families,
+            type_aliases=lambda family: aliases[id(family)],
             interrupts=all_interrupts(device),
             shared_vectors=shared_vectors(device),
             is_cortex_m=is_cortex_m(device.cpu),

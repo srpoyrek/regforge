@@ -47,18 +47,40 @@ def test_fixture_groupname_only_family_merges(demo_device):
     assert "static dc_spi_t *const DC_SPI1" in output
 
 
-def test_fixture_divergent_groupname_is_split(demo_device):
-    output = CWriter().render(demo_device)
-    # TIM1 (advanced, has RCR) diverges from TIM2/TIM3 (general) under groupName
-    # "TIM": the largest identical subgroup keeps the name, the outlier splits off
-    # (so DC_TIM2->RCR is a compile error, not a reserved-address write).
-    assert output.count("} dc_tim_t;") == 1
-    assert output.count("} dc_tim1_t;") == 1
-    assert "static dc_tim_t *const DC_TIM2" in output  # majority keeps the name
-    assert "static dc_tim_t *const DC_TIM3" in output
-    assert "static dc_tim1_t *const DC_TIM1" in output  # outlier gets its own
+def test_lint_fixture_divergent_groupname_is_split(lint_demo_device):
+    output = CWriter().render(lint_demo_device)
+    # TIMER_ADV (has RCR) diverges from TMR0 under groupName "TMR": the largest
+    # identical subgroup keeps the name and the outlier splits off, so
+    # LD_TMR0->RCR is a compile error rather than a reserved-address write.
+    assert output.count("} ld_tmr_t;") == 1
+    assert output.count("} ld_timer_adv_t;") == 1
+    assert "static ld_tmr_t *const LD_TMR0" in output  # majority keeps the name
+    assert "static ld_timer_adv_t *const LD_TIMER_ADV" in output  # outlier, own type
     assert "split 2 ways" in output  # the split is recorded as a note
     assert "first differs at RCR" in output
+
+
+def test_lint_fixture_namesake_keeps_the_plain_group_name(lint_demo_device):
+    output = CWriter().render(lint_demo_device)
+    # FPU and FPU_CPACR share groupName "FPU" with different layouts. The
+    # peripheral literally called FPU takes ld_fpu_t; without that rule the
+    # outlier is named after itself -- which IS the group name -- and both
+    # typedefs collide (a redefinition the compiler rejects).
+    assert output.count("} ld_fpu_t;") == 1
+    assert output.count("} ld_fpu_cpacr_t;") == 1
+    assert "static ld_fpu_t *const LD_FPU" in output
+    assert "static ld_fpu_cpacr_t *const LD_FPU_CPACR" in output
+
+
+def test_clean_fixture_timer_group_does_not_diverge(demo_device):
+    # TIM1 carries its own groupName on the clean chip, so the TIM label covers
+    # only the identical TIM2/TIM3 and no groupName divergence is reported.
+    # (WDT0/WDT1 still split -- a derivedFrom override, which is warning-free
+    # because no groupName claims the two are one type.)
+    output = CWriter().render(demo_device)
+    assert "family TIM:" not in output
+    assert output.count("} dc_tim_t;") == 1
+    assert output.count("} dc_tim1_t;") == 1
 
 
 def test_fixture_derivedfrom_without_groupname_uses_root_name(demo_device):
@@ -91,6 +113,7 @@ def test_fixture_emits_irqn_enum_sorted_no_trailing_comma(demo_device):
         "DC_TIM1_UP_IRQn  = 25,  /* TIM1 update */",
         "DC_TIM1_BRK_IRQn = 26,  /* TIM1 break */",
         "DC_ADC0_IRQn     = 27,  /* ADC0 conversion complete */",
+        "DC_ADC1_IRQn     = 28,  /* ADC1 conversion complete */",
         "DC_SPI0_IRQn     = 30,  /* SPI0 interrupt */",
         "DC_SPI1_IRQn     = 30  /* SPI1 interrupt */",  # shared vector, last -> no comma
     ]
@@ -149,12 +172,19 @@ def test_fixture_buffer_block_emits_one_raw_window(demo_device):
     assert "RESERVED0[32];" not in output
 
 
-def test_fixture_derived_peripheral_does_not_inherit_interrupt(demo_device):
+def test_lint_fixture_derived_peripheral_does_not_inherit_interrupt(lint_demo_device):
+    output = CWriter().render(lint_demo_device)
+    # ADCA has vector 40; ADCB (derivedFrom ADCA) declares none -> no inherited IRQ.
+    assert "#define LD_ADCA_IRQ LD_ADCA_IRQn" in output
+    assert "LD_ADCB_IRQ" not in output  # interrupts are per-instance, never inherited
+    assert "LD_ADCB_IRQn" not in output
+
+
+def test_clean_fixture_derived_peripheral_declares_its_own(demo_device):
+    # On the clean chip ADC1 carries its own vector, so both instances link one.
     output = CWriter().render(demo_device)
-    # ADC0 has vector 27; ADC1 (derivedFrom ADC0) declares none -> no inherited IRQ.
     assert "#define DC_ADC0_IRQ DC_ADC0_IRQn" in output
-    assert "DC_ADC1_IRQ" not in output  # interrupts are per-instance, never inherited
-    assert "DC_ADC1_IRQn" not in output
+    assert "#define DC_ADC1_IRQ DC_ADC1_IRQn" in output
 
 
 def test_fixture_surfaces_shared_irq_at_both_sites(demo_device):

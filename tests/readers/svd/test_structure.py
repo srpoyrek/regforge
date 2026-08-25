@@ -32,6 +32,7 @@ def test_peripherals_registers_fields(demo_device):
         "ADC1",
         "WDT0",
         "WDT1",
+        "CRC",
     ]
 
     gpioa = demo_device.peripherals[0]

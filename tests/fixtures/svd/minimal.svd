@@ -186,7 +186,10 @@ Licensed under the Apache License, Version 2.0.
     <peripheral>
       <name>TIM1</name>
       <description>Advanced timer</description>
-      <groupName>TIM</groupName>
+      <!-- Its own groupName: the advanced timer has an extra RCR, so labelling
+           it TIM alongside TIM2/TIM3 would be the vendor claiming one type for
+           two layouts. That divergence case lives in lint_demo.svd. -->
+      <groupName>TIM1</groupName>
       <baseAddress>0x40010000</baseAddress>
       <!-- Advanced timer: its own type (extra RCR), still a 0x400 footprint. -->
       <addressBlock>
@@ -274,6 +277,14 @@ Licensed under the Apache License, Version 2.0.
       <name>ADC1</name>
       <description>ADC, instance 1</description>
       <baseAddress>0x40012400</baseAddress>
+      <!-- Declares its own vector: interrupts are per-instance and regforge
+           never inherits them across derivedFrom. The omission case (a derived
+           peripheral with no vector of its own) lives in lint_demo.svd. -->
+      <interrupt>
+        <name>ADC1</name>
+        <description>ADC1 conversion complete</description>
+        <value>28</value>
+      </interrupt>
     </peripheral>
     <!-- derivedFrom but the derived peripheral ADDS a register: layouts differ, so
          "same type" would be a lie -> regforge splits them. -->
@@ -311,6 +322,19 @@ Licensed under the Apache License, Version 2.0.
       <registers>
         <register><name>CR</name><description>Control register</description><addressOffset>0x00</addressOffset></register>
         <register><name>RELOAD</name><description>Reload value</description><addressOffset>0x04</addressOffset></register>
+      </registers>
+    </peripheral>
+    <!-- Type-name collision: groupName equals the only instance's
+         name, so the type is already spelled after it and no self-alias is
+         emitted (redefining a typedef is an error before C11). -->
+    <peripheral>
+      <name>CRC</name>
+      <description>Cyclic redundancy check</description>
+      <groupName>CRC</groupName>
+      <baseAddress>0x40014000</baseAddress>
+      <addressBlock><offset>0</offset><size>0x8</size><usage>registers</usage></addressBlock>
+      <registers>
+        <register><name>DR</name><description>Data register</description><addressOffset>0x00</addressOffset></register>
       </registers>
     </peripheral>
   </peripherals>

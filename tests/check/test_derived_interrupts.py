@@ -60,8 +60,13 @@ def test_base_without_interrupt_is_clean():
     assert check_derived_interrupts(device) == []
 
 
-def test_fixture_flags_only_the_adc1_omission(demo_device):
-    findings = check_derived_interrupts(demo_device)
-    # UART1 has its own distinct vector; WDT1's base has no vector -> both clean.
+def test_clean_fixture_has_no_omission(demo_device):
+    # Every derived peripheral on the clean chip declares its own vector, so
+    # nothing here inherits silently. The omission case lives in lint_demo.
+    assert check_derived_interrupts(demo_device) == []
+
+
+def test_lint_fixture_flags_the_derived_omission(lint_demo_device):
+    findings = check_derived_interrupts(lint_demo_device)
     assert len(findings) == 1
-    assert "ADC1" in findings[0].message
+    assert "ADCB" in findings[0].message

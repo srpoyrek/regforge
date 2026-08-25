@@ -125,22 +125,30 @@ def test_verbosity_flag_does_not_change_output(tmp_path, minimal_svd_path):
     assert with_v == without_v
 
 
-def test_check_findings_surface(capsys, minimal_svd_path):
+def test_check_findings_surface(capsys, tmp_path, lint_demo_svd_path):
     # The consistency checks run during emit; their findings show as warnings
     # even without -v (they are logged at WARNING level).
+    out = tmp_path / "out.h"
+    main([str(lint_demo_svd_path), "-o", str(out), "--no-provenance"])
+    err = capsys.readouterr().err
+    assert "ADCB" in err  # derived peripheral omitted its own vector
+    assert "differing layouts" in err  # group divergence (FPU, TMR)
+    assert "parsed" not in err  # but INFO progress stays suppressed without -v
+
+
+def test_clean_fixture_reports_nothing(capsys, minimal_svd_path):
+    # The clean chip is the contract: every check silent, both severities zero.
     assert main([str(minimal_svd_path), "--no-provenance"]) == ExitCode.OK
     err = capsys.readouterr().err
-    assert "ADC1" in err  # I4: derived peripheral omitted its own vector
-    assert "differing layouts" in err  # group divergence (TIM)
-    assert "parsed" not in err  # but INFO progress stays suppressed without -v
+    assert "warn:" not in err and "error:" not in err
 
 
 def test_check_summary_shown_with_verbose(capsys, minimal_svd_path):
     assert main([str(minimal_svd_path), "--no-provenance", "-v"]) == ExitCode.OK
     err = capsys.readouterr().err
-    # The summary count matches the warnings actually shown (2 warn: lines).
-    assert "consistency check(s): 2 warning(s), 0 error(s)" in err
-    assert err.count("warn:") == 2
+    # Nothing to report on the clean fixture, and the summary says so.
+    assert "consistency check(s): 0 warning(s), 0 error(s)" in err
+    assert err.count("warn:") == 0
 
 
 def test_warnings_show_without_verbose(tmp_path, capsys):

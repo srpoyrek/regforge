@@ -127,6 +127,12 @@ def group_families(device: Device) -> list[Family]:
         # Divergent group: largest identical subgroup keeps the name (stable sort
         # keeps declaration order among equal-sized subgroups).
         subgroups = sorted(buckets.values(), key=len, reverse=True)
+        sources = [next((m for m in g if m.derived_from is None), g[0]) for g in subgroups]
+        # The plain group name goes to the subgroup whose own peripheral carries
+        # it -- STM32 ships FPU beside FPU_CPACR, both groupName=FPU. Without
+        # this the outlier is named after itself, which *is* the group name, and
+        # two families are emitted under one name (a duplicate C typedef).
+        keeper = next((i for i, s in enumerate(sources) if s.name.lower() == key.lower()), 0)
         summary = " | ".join(",".join(m.name for m in group) for group in subgroups)
         differ_at = first_divergence(
             layout_signature(subgroups[0][0]), layout_signature(subgroups[1][0])
@@ -135,14 +141,48 @@ def group_families(device: Device) -> list[Family]:
             f"family {key}: split {len(subgroups)} ways by layout "
             f"({summary}); first differs at {differ_at}"
         )
-        for index, group in enumerate(subgroups):
-            source = next((m for m in group if m.derived_from is None), group[0])
+        for index, (group, source) in enumerate(zip(subgroups, sources)):
             families.append(
                 Family(
-                    name=key if index == 0 else source.name,
+                    name=key if index == keeper else source.name,
                     type_source=source,
                     instances=tuple(group),
-                    note=note if index == 0 else None,
+                    note=note if index == keeper else None,
                 )
             )
-    return families
+    return _uniquify(families)
+
+
+def _uniquify(families: list[Family]) -> list[Family]:
+    """Rename families that would emit the same type name.
+
+    Every family becomes one C typedef, so two families sharing a name is a
+    redefinition the compiler rejects -- and the build breaks in the user's
+    project, naming neither peripheral. Names are compared case-insensitively
+    because the writers lowercase them into the type spelling.
+
+    A collision falls back to the root instance's own name, then to a numeric
+    suffix, and the family records what happened so the header says why.
+    """
+    taken: set[str] = set()
+    result: list[Family] = []
+    for family in families:
+        name = family.name
+        if name.lower() in taken:
+            candidate = family.type_source.name
+            if candidate.lower() in taken:
+                index = 2
+                while f"{name}_{index}".lower() in taken:
+                    index += 1
+                candidate = f"{name}_{index}"
+            note = f"renamed from {name}: another peripheral group already emits that type"
+            family = Family(
+                name=candidate,
+                type_source=family.type_source,
+                instances=family.instances,
+                note=f"{family.note}; {note}" if family.note else note,
+            )
+            name = candidate
+        taken.add(name.lower())
+        result.append(family)
+    return result

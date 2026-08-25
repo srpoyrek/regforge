@@ -75,5 +75,62 @@
         <register><name>REG</name><addressOffset>0x0</addressOffset><size>32</size></register>
       </registers>
     </peripheral>
+    <!-- Namesake split (WARNING): FPU and FPU_CPACR both claim groupName FPU
+         with different layouts. Two types are emitted, and the peripheral
+         literally named FPU takes the plain name; without that rule the outlier
+         is named after itself, which IS the group name, and both typedefs
+         collide. Real shape from STM32F7. -->
+    <peripheral>
+      <name>FPU_CPACR</name>
+      <groupName>FPU</groupName>
+      <baseAddress>0x40050000</baseAddress>
+      <registers>
+        <register><name>CPACR</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
+    <peripheral>
+      <name>FPU</name>
+      <groupName>FPU</groupName>
+      <baseAddress>0x40051000</baseAddress>
+      <registers>
+        <register><name>FPCCR</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+        <register><name>FPCAR</name><addressOffset>0x4</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
+    <!-- Divergent groupName (WARNING), moved off the clean fixture: TIMER_ADV
+         carries an extra RCR while sharing groupName TMR with TMR0, so the
+         label is not one verified type. -->
+    <peripheral>
+      <name>TMR0</name>
+      <groupName>TMR</groupName>
+      <baseAddress>0x40052000</baseAddress>
+      <registers>
+        <register><name>CR1</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
+    <peripheral>
+      <name>TIMER_ADV</name>
+      <groupName>TMR</groupName>
+      <baseAddress>0x40053000</baseAddress>
+      <registers>
+        <register><name>CR1</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+        <register><name>RCR</name><addressOffset>0x4</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
+    <!-- Derived peripheral with no vector of its own (WARNING), moved off the
+         clean fixture: per SVD spec ADCB would silently inherit ADCA's vector
+         (two peripherals, one slot). regforge does not inherit, so it warns. -->
+    <peripheral>
+      <name>ADCA</name>
+      <baseAddress>0x40054000</baseAddress>
+      <interrupt><name>ADCA</name><value>40</value></interrupt>
+      <registers>
+        <register><name>CR</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
+    <peripheral derivedFrom="ADCA">
+      <name>ADCB</name>
+      <baseAddress>0x40055000</baseAddress>
+    </peripheral>
   </peripherals>
 </device>
