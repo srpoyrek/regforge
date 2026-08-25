@@ -177,3 +177,22 @@ def test_fixture_preserves_vendor_extensions_without_emitting(demo_device):
     assert demo_device.vendor_extensions_xml is not None
     assert "calibrated" in demo_device.vendor_extensions_xml
     assert "calibrated" not in CWriter().render(demo_device)  # opaque, never emitted
+
+
+def test_shared_type_gets_per_instance_aliases(demo_device):
+    output = CWriter().render(demo_device)
+    # TIM2 and TIM3 share dc_tim_t, but each is nameable in its own right so a
+    # signature never has to know about the family grouping.
+    assert "typedef dc_tim_t dc_tim2_t;" in output
+    assert "typedef dc_tim_t dc_tim3_t;" in output
+    assert "typedef dc_uart_t dc_uart0_t;" in output
+    assert "typedef dc_uart_t dc_uart1_t;" in output
+
+
+def test_no_self_alias_is_emitted(demo_device):
+    output = CWriter().render(demo_device)
+    # The instance the type is already named after must NOT be re-aliased:
+    # redefining a typedef is an error before C11, and the headers build as C89.
+    assert "typedef dc_gpioa_t dc_gpioa_t;" not in output  # singleton family
+    assert "typedef dc_adc0_t dc_adc0_t;" not in output  # family named after ADC0
+    assert "typedef dc_adc0_t dc_adc1_t;" in output  # ...but ADC1 still gets one

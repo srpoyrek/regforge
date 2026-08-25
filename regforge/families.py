@@ -60,27 +60,41 @@ def _family_key(peripheral: Peripheral, by_name: dict[str, Peripheral]) -> str:
 
 
 def layout_signature(peripheral: Peripheral) -> tuple:
-    """A hashable key for a peripheral's register layout.
+    """A hashable key for a peripheral's emitted struct shape.
 
-    Two peripherals share a C type exactly when this matches: same registers at
-    the same offsets, sizes, and access (access drives the member's const-ness).
+    Two peripherals share a C type exactly when this matches: the same registers
+    at the same offsets, sizes, and access (access drives the member's
+    const-ness), *and* the same declared footprint. The blocks belong here
+    because they shape the struct as surely as the registers do -- a ``buffer``
+    block is a member, a ``reserved`` block is padding, and the ``registers``
+    block sets the asserted size. Identical registers behind different blocks are
+    different types, and merging them would size one from the other's footprint.
     """
-    return tuple(
+    registers = tuple(
         (register.name, register.address_offset, register.size, register.access)
         for register in sorted(peripheral.registers, key=lambda r: r.address_offset)
     )
+    blocks = tuple(
+        (block.offset, block.size, block.usage)
+        for block in sorted(peripheral.address_blocks, key=lambda b: (b.offset, b.size))
+    )
+    return (registers, blocks)
 
 
 def first_divergence(left: tuple, right: tuple) -> str:
-    """Name a register where two layout signatures first differ."""
-    names_left = [entry[0] for entry in left]
-    names_right = [entry[0] for entry in right]
+    """Name where two layout signatures first differ."""
+    left_registers, left_blocks = left
+    right_registers, right_blocks = right
+    names_left = [entry[0] for entry in left_registers]
+    names_right = [entry[0] for entry in right_registers]
     only_one_side = set(names_left) ^ set(names_right)
     if only_one_side:
         return sorted(only_one_side)[0]  # a register present on one side only
-    for entry_left, entry_right in zip(left, right):
+    for entry_left, entry_right in zip(left_registers, right_registers):
         if entry_left != entry_right:
             return entry_left[0]  # same name, differing offset/size/access
+    if left_blocks != right_blocks:
+        return "addressBlock"  # same registers, different declared footprint
     return "layout"
 
 

@@ -17,7 +17,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 
 from ..arch import NVIC_REGISTER_BANKS, is_cortex_m
-from ..families import group_families
+from ..families import Family, group_families
 from ..interrupts import all_interrupts, shared_vectors
 from ..ir import Access, Device, Peripheral, Register
 from ..layout import (
@@ -69,6 +69,19 @@ def _member_type(register: Register) -> str:
     const = "const " if register.access == Access.READ_ONLY else ""
     assert register.size is not None  # size is resolved (and validated) before emission
     return f"volatile {const}{_C_TYPE[register.size]}"
+
+
+def _type_aliases(family: Family) -> list[Peripheral]:
+    """Instances of ``family`` that need a ``<name>_t`` alias for the shared type.
+
+    Every peripheral should have a type spelled after itself, so a signature does
+    not have to know that TIM2 and TIM3 share one layout. The instance the type
+    is *already* named after is skipped: aliasing a typedef to itself is legal
+    only from C11 on, and the generated headers must compile as C89.
+    """
+    return [
+        instance for instance in family.instances if instance.name.lower() != family.name.lower()
+    ]
 
 
 def _buffer_element_bits(window_bytes: int, bus_width: int) -> int:
@@ -195,6 +208,7 @@ class CWriter(Writer):
                 peripheral, device.address_unit_bits
             ),
             families=group_families(device),
+            type_aliases=_type_aliases,
             interrupts=all_interrupts(device),
             shared_vectors=shared_vectors(device),
             is_cortex_m=is_cortex_m(device.cpu),

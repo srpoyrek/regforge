@@ -143,6 +143,12 @@ Licensed under the Apache License, Version 2.0.
       <description>Serial peripheral interface</description>
       <groupName>SPI</groupName>
       <baseAddress>0x40008000</baseAddress>
+      <!-- 0x400 stride to SPI1; the block is far larger than the two registers, which is the normal vendor pattern. -->
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x400</size>
+        <usage>registers</usage>
+      </addressBlock>
       <interrupt>
         <name>SPI0</name>
         <description>SPI0 interrupt</description>
@@ -158,6 +164,12 @@ Licensed under the Apache License, Version 2.0.
       <description>Serial peripheral interface</description>
       <groupName>SPI</groupName>
       <baseAddress>0x40008400</baseAddress>
+      <!-- Must match SPI0's block exactly: they share one emitted type. -->
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x400</size>
+        <usage>registers</usage>
+      </addressBlock>
       <interrupt>
         <name>SPI1</name>
         <description>SPI1 interrupt</description>
@@ -173,6 +185,12 @@ Licensed under the Apache License, Version 2.0.
       <description>Advanced timer</description>
       <groupName>TIM</groupName>
       <baseAddress>0x40010000</baseAddress>
+      <!-- Advanced timer: its own type (extra RCR), still a 0x400 footprint. -->
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x400</size>
+        <usage>registers</usage>
+      </addressBlock>
       <!-- A peripheral with several interrupt lines, each its own vector: the
            enum lists both, named after the interrupt (not the peripheral). -->
       <interrupt>
@@ -196,6 +214,12 @@ Licensed under the Apache License, Version 2.0.
       <description>General-purpose timer</description>
       <groupName>TIM</groupName>
       <baseAddress>0x40000000</baseAddress>
+      <!-- Instances sit 0x400 apart; padding to the block makes the struct stride match, so an array over TIM2/TIM3 indexes correctly. -->
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x400</size>
+        <usage>registers</usage>
+      </addressBlock>
       <registers>
         <register><name>CR1</name><description>Control register 1</description><addressOffset>0x00</addressOffset></register>
         <register><name>ARR</name><description>Auto-reload register</description><addressOffset>0x04</addressOffset></register>
@@ -206,6 +230,12 @@ Licensed under the Apache License, Version 2.0.
       <description>General-purpose timer</description>
       <groupName>TIM</groupName>
       <baseAddress>0x40000400</baseAddress>
+      <!-- Must match TIM2's block exactly: they share one emitted type. -->
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x400</size>
+        <usage>registers</usage>
+      </addressBlock>
       <registers>
         <register><name>CR1</name><description>Control register 1</description><addressOffset>0x00</addressOffset></register>
         <register><name>ARR</name><description>Auto-reload register</description><addressOffset>0x04</addressOffset></register>
@@ -221,6 +251,12 @@ Licensed under the Apache License, Version 2.0.
       <name>ADC0</name>
       <description>Analog-to-digital converter</description>
       <baseAddress>0x40012000</baseAddress>
+      <!-- Inherited verbatim by ADC1 (derivedFrom), so both are sized identically. -->
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x400</size>
+        <usage>registers</usage>
+      </addressBlock>
       <interrupt>
         <name>ADC0</name>
         <description>ADC0 conversion complete</description>
@@ -242,6 +278,12 @@ Licensed under the Apache License, Version 2.0.
       <name>WDT0</name>
       <description>Watchdog timer</description>
       <baseAddress>0x40013000</baseAddress>
+      <!-- Smallest register set on the chip (0x4) against a 0x400 block: the widest pad-to-block case. -->
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x400</size>
+        <usage>registers</usage>
+      </addressBlock>
       <registers>
         <register><name>CR</name><description>Control register</description><addressOffset>0x00</addressOffset></register>
       </registers>
@@ -250,6 +292,19 @@ Licensed under the Apache License, Version 2.0.
       <name>WDT1</name>
       <description>Watchdog, instance 1 (adds a reload register)</description>
       <baseAddress>0x40013400</baseAddress>
+      <!-- registers window plus an explicit reserved range: the reserved block
+           contributes padding only, never a named member, and still extends the
+           size contract to 0x400. -->
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x8</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <addressBlock>
+        <offset>0x8</offset>
+        <size>0x3F8</size>
+        <usage>reserved</usage>
+      </addressBlock>
       <registers>
         <register><name>CR</name><description>Control register</description><addressOffset>0x00</addressOffset></register>
         <register><name>RELOAD</name><description>Reload value</description><addressOffset>0x04</addressOffset></register>

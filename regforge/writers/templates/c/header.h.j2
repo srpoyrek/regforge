@@ -246,6 +246,16 @@ REGFORGE_STATIC_ASSERT(offsetof({{ tname }}, {{ m.member }}) == 0x{{ "%02X"|form
 {% if ssize is not none %}
 REGFORGE_STATIC_ASSERT(sizeof({{ tname }}) == 0x{{ "%X"|format(ssize) }}, {{ spf }}_SIZE, "{{ family.name }} struct size vs addressBlock");
 {% endif %}
+{% set aliases = type_aliases(family) %}
+{% if aliases %}
+
+/* Per-instance names for the shared type, so a signature never has to know
+ * which instances share a layout. Aliases, not distinct types: a function
+ * taking {{ tname }} * accepts any of them. */
+{% for periph in aliases %}
+typedef {{ tname }} {{ prefix|lower }}{{ periph.name|lower }}_t;
+{% endfor %}
+{% endif %}
 {% for periph in family.instances %}
 {% set pf = prefix ~ periph.name|upper %}
 

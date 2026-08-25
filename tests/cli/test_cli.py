@@ -131,7 +131,7 @@ def test_check_findings_surface(capsys, minimal_svd_path):
     assert main([str(minimal_svd_path), "--no-provenance"]) == ExitCode.OK
     err = capsys.readouterr().err
     assert "ADC1" in err  # I4: derived peripheral omitted its own vector
-    assert "differing register layouts" in err  # group divergence (TIM)
+    assert "differing layouts" in err  # group divergence (TIM)
     assert "parsed" not in err  # but INFO progress stays suppressed without -v
 
 

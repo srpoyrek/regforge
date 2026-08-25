@@ -220,7 +220,7 @@ def check_group_divergence(device: Device) -> list[Finding]:
             findings.append(
                 Finding(
                     Severity.WARNING,
-                    f"groupName '{group}': members have differing register layouts "
+                    f"groupName '{group}': members have differing layouts "
                     f"(first differs at {register}) -- the label is not one verified "
                     "type; regforge emits separate types",
                 )
