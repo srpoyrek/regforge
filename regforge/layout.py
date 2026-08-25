@@ -77,7 +77,7 @@ def registers_end(peripheral: Peripheral, address_unit_bits: int) -> int:
     end = 0
     for register in peripheral.registers:
         offset = units_to_bytes(register.address_offset, address_unit_bits)
-        end = max(end, offset + register.size // BITS_PER_BYTE)
+        end = max(end, offset + (register.size or 0) // BITS_PER_BYTE)
     return end
 
 
@@ -122,7 +122,7 @@ def peripheral_layout(
         if offset > cursor:
             entries.append(LayoutEntry(offset=cursor, register=None, gap_bytes=offset - cursor))
         entries.append(LayoutEntry(offset=offset, register=register))
-        cursor = offset + register.size // BITS_PER_BYTE
+        cursor = offset + (register.size or 0) // BITS_PER_BYTE
     if pad_to_bytes is not None and pad_to_bytes > cursor:
         entries.append(LayoutEntry(offset=cursor, register=None, gap_bytes=pad_to_bytes - cursor))
     return entries

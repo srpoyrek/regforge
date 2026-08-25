@@ -84,6 +84,8 @@ def check_address_math(device: Device) -> list[Finding]:
 
     for peripheral in device.peripherals:
         for register in peripheral.registers:
+            if register.size is None:
+                continue  # size checks need a resolved size; nothing to check here
             name = f"{peripheral.name}.{register.name}"
             if register.size > bus_width:
                 findings.append(

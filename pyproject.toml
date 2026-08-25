@@ -21,7 +21,7 @@ classifiers = [
 dependencies = ["jinja2>=3.0"]
 
 [project.optional-dependencies]
-dev = ["pytest>=7", "ruff>=0.5", "black>=24", "nox>=2024", "pre-commit>=3"]
+dev = ["pytest>=7", "ruff>=0.5", "black>=24", "nox>=2024", "pre-commit>=3", "pyright>=1.1"]
 
 [project.scripts]
 regforge = "regforge.cli:main"
@@ -55,3 +55,9 @@ select = ["E", "F", "I", "W", "B", "UP"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["regforge", "tools"]
+
+[tool.pyright]
+include = ["regforge", "tools"]
+exclude = ["**/__pycache__", ".venv", ".nox", "build", "dist", ".ai-context", "scripts/ai-context"]
+pythonVersion = "3.9"
+typeCheckingMode = "standard"

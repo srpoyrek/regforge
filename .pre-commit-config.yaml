@@ -20,3 +20,12 @@ repos:
       - id: trailing-whitespace
       - id: check-yaml
       - id: check-toml
+
+  - repo: local
+    hooks:
+      - id: pyright
+        name: pyright (type check)
+        entry: pyright
+        language: system
+        types: [python]
+        pass_filenames: false

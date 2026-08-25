@@ -45,8 +45,8 @@ jobs:
       - name: Install nox
         run: pip install nox
 
-      - name: Tests + lint
-        run: nox -s tests lint
+      - name: Tests + lint + types
+        run: nox -s tests lint types
 
       - name: Size report (Linux)
         if: runner.os == 'Linux'

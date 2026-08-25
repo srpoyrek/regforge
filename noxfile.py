@@ -5,6 +5,7 @@ lint) with a bare ``nox``. Sessions:
 
 * ``tests``   -- run the pytest suite.
 * ``lint``    -- check formatting and lint rules without modifying files.
+* ``types``   -- static type-check the sources with pyright.
 * ``format``  -- apply ruff fixes and black formatting in place.
 * ``build``     -- build the wheel and source distribution.
 * ``goldens``   -- regenerate the golden test fixtures.
@@ -14,7 +15,7 @@ lint) with a bare ``nox``. Sessions:
 
 import nox
 
-nox.options.sessions = ["tests", "lint"]
+nox.options.sessions = ["tests", "lint", "types"]
 
 PYTHON_PATHS = ["regforge", "tests", "tools", "noxfile.py"]
 
@@ -32,6 +33,13 @@ def lint(session: nox.Session) -> None:
     session.install("ruff>=0.5", "black>=24")
     session.run("ruff", "check", *PYTHON_PATHS)
     session.run("black", "--check", *PYTHON_PATHS)
+
+
+@nox.session
+def types(session: nox.Session) -> None:
+    """Static type-check the sources with pyright."""
+    session.install("-e", ".[dev]")
+    session.run("pyright")
 
 
 @nox.session

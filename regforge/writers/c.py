@@ -64,6 +64,7 @@ def _member_type(register: Register) -> str:
     plain ``volatile`` -- C has no type qualifier for "write-only" or "once".
     """
     const = "const " if register.access == Access.READ_ONLY else ""
+    assert register.size is not None  # size is resolved (and validated) before emission
     return f"volatile {const}{_C_TYPE[register.size]}"
 
 
@@ -95,6 +96,7 @@ def _c_layout(peripheral: Peripheral, address_unit_bits: int) -> list[dict]:
             pad_index += 1
         else:
             register = slot.register
+            assert register is not None  # a non-reserved slot always carries a register
             entries.append(
                 {
                     "offset": slot.offset,

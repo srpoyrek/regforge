@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 from enum import IntEnum
+from typing import overload
 
 from ..ir import (
     DEFAULT_ADDRESS_UNIT_BITS,
@@ -79,8 +80,16 @@ def _text(element: ET.Element, tag: str) -> str | None:
     return None
 
 
+@overload
+def _int(element: ET.Element, tag: str) -> int | None: ...
+@overload
+def _int(element: ET.Element, tag: str, default: int) -> int: ...
 def _int(element: ET.Element, tag: str, default: int | None = None) -> int | None:
-    """Return the integer value of ``element``'s ``tag`` child, or ``default``."""
+    """Return the integer value of ``element``'s ``tag`` child, or ``default``.
+
+    Overloaded so a caller that passes an ``int`` default gets ``int`` back (not
+    ``int | None``) -- so the parsed value can flow straight into an ``int`` field.
+    """
     raw = _text(element, tag)
     return parse_svd_int(raw) if raw is not None else default
 
