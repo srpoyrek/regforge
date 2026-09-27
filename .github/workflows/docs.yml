@@ -43,7 +43,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install mkdocs
-        run: pip install "mkdocs>=1.6" "mkdocs-material>=9"
+        run: pip install "mkdocs>=1.6,<2" "mkdocs-material>=9"
 
       # --strict fails on a broken link or a page missing from the nav,
       # matching tests/docs/test_rules_docs.py and `nox -s docs`.

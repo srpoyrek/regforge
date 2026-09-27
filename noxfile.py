@@ -16,6 +16,9 @@ lint) with a bare ``nox``. Sessions:
 import nox
 
 nox.options.sessions = ["tests", "lint", "types"]
+# uv builds each session's environment far faster than virtualenv; it is a
+# dev dependency (pyproject.toml), so `pip install -e ".[dev]"` provides it.
+nox.options.default_venv_backend = "uv"
 
 PYTHON_PATHS = ["regforge", "tests", "tools", "noxfile.py"]
 
@@ -38,7 +41,7 @@ def lint(session: nox.Session) -> None:
 @nox.session
 def docs(session: nox.Session) -> None:
     """Build the documentation site; a broken link or missing nav entry fails."""
-    session.install("mkdocs>=1.6", "mkdocs-material>=9")
+    session.install("mkdocs>=1.6,<2", "mkdocs-material>=9")
     session.run("mkdocs", "build", "--strict")
 
 
@@ -64,7 +67,7 @@ def build(session: nox.Session) -> None:
     The site goes to ``site/`` and is built strictly, so a release build fails
     on a broken documentation link rather than shipping one.
     """
-    session.install("build", "mkdocs>=1.6", "mkdocs-material>=9")
+    session.install("build", "mkdocs>=1.6,<2", "mkdocs-material>=9")
     session.run("python", "-m", "build")
     session.run("mkdocs", "build", "--strict")
 
