@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .ir import Device, Peripheral
+from .ir import Cluster, Device, Peripheral, Register
 
 
 @dataclass
@@ -73,42 +73,88 @@ def family_name(source: Peripheral, fallback: str) -> str:
     return source.header_struct_name or fallback
 
 
+def _shape(dim) -> tuple[int, int] | None:
+    """An array's (count, increment), or ``None`` for a single element."""
+    return (dim.count, dim.increment) if dim is not None else None
+
+
+def _register_signature(register: Register) -> tuple:
+    return (
+        register.name,
+        register.address_offset,
+        register.size,
+        register.access,
+        _shape(register.dim),
+    )
+
+
+def cluster_signature(cluster: Cluster) -> tuple:
+    """A cluster's shape: its name, offset and array shape, then its registers and
+    nested clusters. Slices ``[2:]`` describe the contents alone, which is what two
+    clusters must share to share one emitted type."""
+    registers = tuple(
+        _register_signature(register)
+        for register in sorted(cluster.registers, key=lambda r: r.address_offset)
+    )
+    clusters = tuple(
+        cluster_signature(inner)
+        for inner in sorted(cluster.clusters, key=lambda c: c.address_offset)
+    )
+    return (cluster.name, cluster.address_offset, _shape(cluster.dim), registers, clusters)
+
+
 def layout_signature(peripheral: Peripheral) -> tuple:
     """A hashable key for a peripheral's emitted struct shape.
 
     Two peripherals share a C type exactly when this matches: the same registers
-    at the same offsets, sizes, and access (access drives the member's
-    const-ness), *and* the same declared footprint. The blocks belong here
-    because they shape the struct as surely as the registers do -- a ``buffer``
-    block is a member, a ``reserved`` block is padding, and the ``registers``
-    block sets the asserted size. Identical registers behind different blocks are
-    different types, and merging them would size one from the other's footprint.
+    at the same offsets, sizes, access (access drives the member's const-ness)
+    and array shape, the same clusters with the same contents, *and* the same
+    declared footprint. The blocks belong here because they shape the struct as
+    surely as the registers do -- a ``buffer`` block is a member, a ``reserved``
+    block is padding, and the ``registers`` block sets the asserted size.
+    Identical registers behind different blocks are different types, and
+    merging them would size one from the other's footprint.
     """
     registers = tuple(
-        (register.name, register.address_offset, register.size, register.access)
+        _register_signature(register)
         for register in sorted(peripheral.registers, key=lambda r: r.address_offset)
+    )
+    clusters = tuple(
+        cluster_signature(cluster)
+        for cluster in sorted(peripheral.clusters, key=lambda c: c.address_offset)
     )
     blocks = tuple(
         (block.offset, block.size, block.usage)
         for block in sorted(peripheral.address_blocks, key=lambda b: (b.offset, b.size))
     )
-    return (registers, blocks)
+    return (registers, clusters, blocks)
+
+
+def _first_named_difference(left: tuple, right: tuple) -> str | None:
+    """The name of the first entry differing between two name-keyed tuples, if any."""
+    names_left = [entry[0] for entry in left]
+    names_right = [entry[0] for entry in right]
+    only_one_side = set(names_left) ^ set(names_right)
+    if only_one_side:
+        return sorted(only_one_side)[0]  # present on one side only
+    for entry_left, entry_right in zip(left, right):
+        if entry_left != entry_right:
+            return entry_left[0]  # same name, differing shape
+    return None
 
 
 def first_divergence(left: tuple, right: tuple) -> str:
-    """Name where two layout signatures first differ."""
-    left_registers, left_blocks = left
-    right_registers, right_blocks = right
-    names_left = [entry[0] for entry in left_registers]
-    names_right = [entry[0] for entry in right_registers]
-    only_one_side = set(names_left) ^ set(names_right)
-    if only_one_side:
-        return sorted(only_one_side)[0]  # a register present on one side only
-    for entry_left, entry_right in zip(left_registers, right_registers):
-        if entry_left != entry_right:
-            return entry_left[0]  # same name, differing offset/size/access
+    """Name where two layout signatures first differ: a register, a cluster, or the blocks."""
+    left_registers, left_clusters, left_blocks = left
+    right_registers, right_clusters, right_blocks = right
+    register = _first_named_difference(left_registers, right_registers)
+    if register is not None:
+        return register
+    cluster = _first_named_difference(left_clusters, right_clusters)
+    if cluster is not None:
+        return cluster
     if left_blocks != right_blocks:
-        return "addressBlock"  # same registers, different declared footprint
+        return "addressBlock"  # same members, different declared footprint
     return "layout"
 
 

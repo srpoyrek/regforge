@@ -33,6 +33,9 @@ def test_peripherals_registers_fields(demo_device):
         "WDT0",
         "WDT1",
         "CRC",
+        "PWMA",
+        "PWMB",
+        "DMA",
     ]
 
     gpioa = demo_device.peripherals[0]
@@ -48,7 +51,7 @@ def test_peripherals_registers_fields(demo_device):
 
 
 def test_bit_range_encoding(demo_device):
-    # ODR.OD0 uses the "[0:0]" bitRange encoding.
+    # ODR.OD (an array field) uses the "[0:0]" bitRange encoding for element 0.
     odr = next(r for r in demo_device.peripherals[0].registers if r.name == "ODR")
     od0 = odr.fields[0]
     assert (od0.bit_offset, od0.bit_width) == (0, 1)

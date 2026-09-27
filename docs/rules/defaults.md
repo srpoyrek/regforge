@@ -8,7 +8,9 @@ the rule below is unchanged.
 
 A register can omit `size`, `access`, `resetValue`, and `resetMask` and take
 them from an enclosing element. regforge resolves this once before emission, so
-writers read finished values.
+writers read finished values. It is the last of the three resolution passes,
+after array expansion and `derivedFrom`, so a derived peripheral's copied
+registers resolve under the derived peripheral's own chain.
 
 Code: `regforge/resolve.py`. Tests: `tests/resolve/test_defaults.py`.
 
@@ -17,13 +19,13 @@ Code: `regforge/resolve.py`. Tests: `tests/resolve/test_defaults.py`.
 Each property is taken from the first level that declares it:
 
 ```
-register  ->  peripheral  ->  device
+register  ->  cluster (innermost first)  ->  peripheral  ->  device
 ```
 
 `size` has one more step, falling back to the data bus width:
 
 ```
-register <size>  ->  peripheral <size>  ->  device <size>  ->  device <width>
+register <size>  ->  cluster <size>  ->  peripheral <size>  ->  device <size>  ->  device <width>
 ```
 
 ### Example
@@ -81,5 +83,6 @@ declared.
 | Case | Result |
 |---|---|
 | A property absent at every level | Stays absent. No value is invented. |
-| Register inheritance across peripherals | Handled by `resolve_derived`, not this pass. Both run before emission. |
+| Register inheritance across peripherals | Handled by `resolve_derived`, which runs first. It also hands the base's peripheral-level defaults to a derived peripheral that declares none, so the copies resolve as the base's registers do; a default the derived peripheral declares itself wins. |
+| A register inside a cluster | The cluster's own `size` / `access` / `resetValue` / `resetMask` sit between the peripheral's and the register's; each nested cluster adds a rung. |
 | Running resolution twice | No change. Each step only fills values that are still unset. |

@@ -8,11 +8,12 @@ touches its own package.
 
 The hierarchy mirrors the structure of a memory-mapped device:
 
-``Device`` -> ``Peripheral`` -> ``Register`` -> ``Field`` -> ``EnumeratedValue``
+``Device`` -> ``Peripheral`` -> (``Cluster`` ->) ``Register`` -> ``Field`` -> ``EnumeratedValue``
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -50,6 +51,38 @@ class EnumeratedValue:
 
 
 @dataclass
+class Dim:
+    """An array of copies (SVD ``<dim>``, ``<dimIncrement>``, ``<dimIndex>``).
+
+    A peripheral, cluster, register or field carrying a ``Dim`` is a template:
+    ``count`` copies of it exist, ``increment`` apart, and each copy's name is
+    the template's name with ``%s`` replaced by one of :attr:`labels`. The
+    reader stores it as parsed; :func:`regforge.resolve.expand_dim` turns a
+    ``%s`` template into its copies, and keeps a ``[%s]`` template as one
+    element with ``dim`` still set so a writer can emit it as an array.
+
+    Attributes:
+        count: Number of copies (``<dim>``).
+        increment: Distance between the starts of two neighbouring copies
+            (``<dimIncrement>``): address units for a peripheral, cluster or
+            register, like every other offset in the IR; bits for a field.
+        index: The labels that replace ``%s``, in order (``<dimIndex>``);
+            ``None`` when the source omits it and the copies are numbered from 0.
+    """
+
+    count: int
+    increment: int
+    index: list[str] | None = None
+
+    @property
+    def labels(self) -> list[str]:
+        """One label per copy: ``index`` as given, else ``"0"``, ``"1"``, ..."""
+        if self.index is not None:
+            return list(self.index)
+        return [str(i) for i in range(self.count)]
+
+
+@dataclass
 class Field:
     """A contiguous group of bits within a :class:`Register`.
 
@@ -61,6 +94,9 @@ class Field:
         access: Access policy. Raw (possibly ``None``) as parsed; filled in by
             the defaults resolution pass so every field carries a resolved value.
         enums: Enumerated values the field may take, if any.
+        dim: Array shape when the field is one of several copies (SVD
+            ``<dim>``, increment in bits); ``None`` for a single field. After
+            expansion only a ``[%s]`` array keeps it, with ``name`` bare.
     """
 
     name: str
@@ -69,6 +105,7 @@ class Field:
     description: str | None = None
     access: Access | None = None
     enums: list[EnumeratedValue] = field(default_factory=list)
+    dim: Dim | None = None
 
     @property
     def mask(self) -> int:
@@ -95,6 +132,11 @@ class Register:
         description: Optional human-readable description.
         access: Access policy (resolved).
         fields: Bit fields defined within the register.
+        dim: Array shape when the register is one of several copies (SVD
+            ``<dim>``); ``None`` for a single register. After expansion only a
+            ``[%s]`` array keeps it, and ``name`` is then the bare array name.
+            Its stride is compared to the resolved ``size`` only after defaults
+            resolution, in the checks and the layout, never here.
     """
 
     name: str
@@ -105,6 +147,52 @@ class Register:
     description: str | None = None
     access: Access | None = None
     fields: list[Field] = field(default_factory=list)
+    dim: Dim | None = None
+
+
+@dataclass
+class Cluster:
+    """A named group of registers within a :class:`Peripheral` (SVD ``<cluster>``).
+
+    A cluster is a sub-block: its registers and nested clusters sit at offsets
+    relative to the cluster's own ``address_offset``, and it is emitted as its
+    own struct type used as one member of the enclosing struct -- or as an
+    array of them when it carries a :class:`Dim` (DMA channels, timer capture
+    units). The ``default_*`` fields are register-property defaults declared
+    at cluster level, one rung between the peripheral and its registers.
+
+    Attributes:
+        name: Identifier of the cluster.
+        address_offset: Offset from the enclosing peripheral or cluster, in
+            address units.
+        description: Optional human-readable description.
+        header_struct_name: SVD ``headerStructName`` -- the vendor's name for
+            the cluster's struct type; the cluster's own name when absent.
+        derived_from: SVD ``derivedFrom`` (another cluster's name). Parsed and
+            reported; not resolved yet.
+        default_size: Cluster-level default register width in bits.
+        default_access: Cluster-level default access policy.
+        default_reset_value: Cluster-level default reset value.
+        default_reset_mask: Cluster-level default reset mask.
+        registers: Registers belonging to the cluster.
+        clusters: Clusters nested inside this one.
+        dim: Array shape when the cluster is one of several copies (SVD
+            ``<dim>``); ``None`` for a single cluster. After expansion only a
+            ``[%s]`` array keeps it, with ``name`` bare.
+    """
+
+    name: str
+    address_offset: int
+    description: str | None = None
+    header_struct_name: str | None = None
+    derived_from: str | None = None
+    default_size: int | None = None
+    default_access: Access | None = None
+    default_reset_value: int | None = None
+    default_reset_mask: int | None = None
+    registers: list[Register] = field(default_factory=list)
+    clusters: list[Cluster] = field(default_factory=list)
+    dim: Dim | None = None
 
 
 #: The ``usage`` values CMSIS-SVD defines for an ``<addressBlock>``. A block that
@@ -196,6 +284,11 @@ class Peripheral:
         registers: Registers belonging to the peripheral.
         interrupts: Interrupt lines the peripheral raises (SVD ``<interrupt>``).
         address_blocks: Declared memory footprint(s) (SVD ``<addressBlock>``).
+        clusters: Register groups (SVD ``<cluster>``), each emitted as a nested
+            struct member.
+        dim: Array shape when the peripheral is a ``%s`` template for several
+            copies (SVD ``<dim>``); cleared by expansion, which replaces the
+            template with its copies.
     """
 
     name: str
@@ -211,6 +304,8 @@ class Peripheral:
     registers: list[Register] = field(default_factory=list)
     interrupts: list[Interrupt] = field(default_factory=list)
     address_blocks: list[AddressBlock] = field(default_factory=list)
+    clusters: list[Cluster] = field(default_factory=list)
+    dim: Dim | None = None
 
 
 @dataclass
@@ -296,3 +391,16 @@ class Device:
     default_reset_value: int | None = None
     default_reset_mask: int | None = None
     peripherals: list[Peripheral] = field(default_factory=list)
+
+
+def walk_clusters(clusters: list[Cluster], where: str) -> Iterator[tuple[str, Cluster]]:
+    """Every cluster under ``clusters``, depth first, with its dotted path.
+
+    ``where`` is the enclosing name (``"DMA"``); a nested cluster is reported
+    as ``"DMA.CH.SUB"``. Shared by the passes, the checks and the writers so
+    no two of them walk the tree differently.
+    """
+    for cluster in clusters:
+        path = f"{where}.{cluster.name}"
+        yield path, cluster
+        yield from walk_clusters(cluster.clusters, path)

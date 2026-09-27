@@ -27,6 +27,11 @@ The type name is taken from the first of these that is present:
 `headerStructName` sets the type name only. Which peripherals share a type is decided
 by layout (see [families.md](families.md)).
 
+Peripherals expanded from a `<dim>` template (`UART%s`) take the pattern's stem,
+`UART`, as their `groupName` when they have none, so the copies share one type
+named after the stem; a declared `groupName` or `headerStructName` still wins.
+See [arrays.md](arrays.md#rule-5-peripheral-copies-form-one-family).
+
 ### Example
 
 Input — read as [CMSIS-SVD](formats/svd.md#peripheral):
@@ -300,3 +305,23 @@ lowercases them.
 If two families want one name, the second falls back to its root instance's
 name, then to a numeric suffix. The family records the rename in its note, which
 is printed in the header.
+
+## Rule 4: a cluster's type is named inside its family
+
+A cluster becomes a struct type of its own. Its name is the family's name, then
+the cluster's [`headerStructName`](formats/svd.md#cluster) or, when absent, the
+cluster's own name; a nested cluster appends its name to its parent's:
+
+```
+DMA  cluster CH                            ->  dma_ch_t
+DMA  cluster CH  headerStructName=CHANNEL  ->  dma_channel_t
+DMA  cluster CH  nested cluster SUB        ->  dma_ch_sub_t
+```
+
+The family prefix keeps the vendor habit of calling every channel block `CH`
+from colliding across peripherals. Two clusters of one family asking for the
+same name fall back to the cluster's own name, then to a numeric suffix, as in
+Rule 3. Copies expanded from a `CH%s` template share one type named after the
+stem, `dma_ch_t`, with members `CH0`, `CH1`, ... The member itself always keeps
+the cluster's own name; only the type is renamed. Spelled as C in
+[targets/c.md](targets/c.md#cluster-members).

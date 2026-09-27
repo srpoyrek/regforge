@@ -72,7 +72,8 @@ peripherals with different registers: STM32's `TIM1` has `RCR` and `BDTR` that
 So members are compared, and members that do not match are split into separate
 types. Two peripherals share a type when all of this matches:
 
-- each register's name, offset, size, and access
+- each register's name, offset, size, access, and array shape (count and stride)
+- each cluster's name, offset, array shape, and contents, recursively
 - each addressBlock's offset, size, and usage
 
 Access is included because it decides whether the member is `const`.
@@ -101,6 +102,8 @@ instead, each sized from its own block.
 | Same registers, different blocks | Two types. The reported difference is [`addressBlock`](formats/svd.md#peripheral). |
 | A `buffer` window on one instance only | Two types. The other instance must not get a member it did not declare. |
 | `derivedFrom` override adds a register | Two types. No warning, because no `groupName` claimed they matched. |
+| Same registers, one an array of a different length | Two types. The reported difference is that register. |
+| Same registers, a cluster differs | Two types. The reported difference is the cluster's name. |
 
 ## Rule 3: a split under a `groupName` is reported
 
@@ -123,8 +126,9 @@ Recorded in the output — see [targets/c.md](targets/c.md#type-names):
 The reported difference is the first of:
 
 1. a register present on one side only
-2. the first register whose offset, size, or access differs
-3. `addressBlock`
+2. the first register whose offset, size, access, or array shape differs
+3. a cluster present on one side only, or the first cluster whose contents differ
+4. `addressBlock`
 
 A split caused by a `derivedFrom` override is not reported, because no
 `groupName` claimed the peripherals were one type.

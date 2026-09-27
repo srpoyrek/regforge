@@ -50,6 +50,26 @@ another architecture leaves them absent rather than guessing.
 | `<addressBlock>` | declared footprint, repeatable | see [ir/address-blocks.md](../address-blocks.md) |
 | `<interrupt>` | a vector, repeatable | see [ir/interrupts.md](../interrupts.md) |
 | `<registers><register>` | the registers | |
+| `<registers><cluster>` | a register group, see [Cluster](#cluster) | see [ir/clusters.md](../clusters.md) |
+| `<dim>`, `<dimIncrement>`, `<dimIndex>` | a template for several copies, see [Arrays](#arrays) | see [ir/arrays.md](../arrays.md) |
+
+## Cluster
+
+A `<cluster>` groups registers inside a peripheral at an offset of its own. Its
+registers and nested clusters are read the same way as a peripheral's, with
+offsets relative to the cluster.
+
+| Element | Becomes | Notes |
+|---|---|---|
+| `<name>` | cluster name | |
+| `<addressOffset>` | offset from the enclosing peripheral or cluster, in address units | defaults to `0` |
+| `<description>` | comment text | |
+| `derivedFrom` | the cluster it copies from | an **XML attribute**; parsed and reported, not resolved yet |
+| `<headerStructName>` | the vendor's name for the cluster's struct type | |
+| `<size>`, `<access>`, `<resetValue>`, `<resetMask>` | cluster-level defaults, one rung below the peripheral's | see [ir/defaults.md](../defaults.md) |
+| `<register>` | the registers, as direct children | |
+| `<cluster>` | nested clusters, as direct children | |
+| `<dim>`, `<dimIncrement>`, `<dimIndex>` | a template for several copies, see [Arrays](#arrays) | see [ir/arrays.md](../arrays.md) |
 
 ## Register
 
@@ -60,6 +80,7 @@ another architecture leaves them absent rather than guessing.
 | `<size>`, `<resetValue>`, `<resetMask>`, `<access>` | resolved through the defaults chain | absent |
 | `<description>` | comment text | absent |
 | `<fields><field>` | the bit fields | none |
+| `<dim>`, `<dimIncrement>`, `<dimIndex>` | a template for several copies, see [Arrays](#arrays) | see [ir/arrays.md](../arrays.md) |
 
 ## Field
 
@@ -74,18 +95,58 @@ The bit range can be written three ways, and all three are accepted:
 `<enumeratedValues><enumeratedValue>` becomes the field's named constants. A
 value with no `<value>` child is skipped, because there is nothing to name.
 
+`<dim>`, `<dimIncrement>` and `<dimIndex>` are read on a field too, with the
+increment in bits; see [Arrays](#arrays).
+
+## Arrays
+
+`<dim>`, `<dimIncrement>` and `<dimIndex>` may appear on a peripheral, a
+cluster, a register or a field, and mean the same on each: the element is a
+template, `<dim>` copies of it exist, `<dimIncrement>` apart, and `%s` in the
+name is replaced by each copy's label. The reader stores the three values as
+read and leaves the template in place; a later pass expands it. The rules that
+act on them are in [ir/arrays.md](../arrays.md).
+
+| Element | Becomes |
+|---|---|
+| `<dim>` | the number of copies; at least 1 |
+| `<dimIncrement>` | the distance between two neighbouring copies: address units on a peripheral, cluster or register, bits on a field |
+| `<dimIndex>` | the labels that replace `%s`; absent means `0`, `1`, `2`, ... |
+
+`<dimIndex>` has three spellings, all accepted:
+
+| Written | Labels |
+|---|---|
+| `A,B,C` | `A`, `B`, `C` |
+| `0-3` | `0`, `1`, `2`, `3` |
+| `A-D` | `A`, `B`, `C`, `D` |
+
+A file that cannot be expanded is refused when it is read, the way a field
+with no bit range is:
+
+| Case | Result |
+|---|---|
+| `<dim>` without `<dimIncrement>` | error |
+| `<dim>` on a name without `%s` | error |
+| `%s` in a name without `<dim>` | error |
+| `<dimIndex>` naming more or fewer labels than `<dim>` | error |
+| `<dim>` of 0 | error |
+
+The stride is not judged here. Whether `<dimIncrement>` fits the element needs
+the resolved register size, which exists only after defaults resolution.
+
 ## Not read
 
 These are in the SVD schema but do not affect output today:
 
 | Element | Status |
 |---|---|
-| `<cluster>` | not walked; a register group inside a peripheral |
-| `<dim>`, `<dimIncrement>` | register arrays are not modelled |
+| `<dimName>`, `<dimArrayIndex>` | not parsed; nothing consumes them yet |
+| `alternateCluster` | not parsed |
 | `alternatePeripheral`, `alternateRegister` | not parsed; see [ir/address-blocks.md](../address-blocks.md) |
 | `<protection>` | not parsed |
 | `<prependToName>`, `<appendToName>` | not applied |
-| `<headerSystemFilename>`, `<headerStructName>` on clusters | not applied |
+| `<headerSystemFilename>` | not applied |
 | `<writeConstraint>`, `<readAction>`, `<modifiedWriteValues>` | not parsed |
 
 `<vendorExtensions>` is kept as text so nothing is lost, but its contents are
@@ -292,3 +353,63 @@ Demonstrates [defaults.md](../defaults.md#rule-1-the-inheritance-chain). Neither
 ```
 
 Produces [this C](../targets/c.md#inherited-register-properties).
+
+### A peripheral array with a register array
+
+Demonstrates [arrays.md](../arrays.md#rule-2-names-is-copies-names-is-an-array). `PWM%s` becomes `PWMA` and `PWMB`, one family; `CC[%s]` is one packed array member with an indexed macro; `DT%s` is two separately placed registers.
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<device schemaVersion="1.3">
+  <name>DEMO</name>
+  <addressUnitBits>8</addressUnitBits>
+  <width>32</width>
+  <size>32</size>
+  <access>read-write</access>
+  <peripherals>
+    <peripheral>
+      <dim>2</dim><dimIncrement>0x100</dimIncrement><dimIndex>A,B</dimIndex>
+      <name>PWM%s</name><baseAddress>0x40015000</baseAddress>
+      <addressBlock><offset>0</offset><size>0x30</size><usage>registers</usage></addressBlock>
+      <registers>
+        <register><name>CTRL</name><addressOffset>0x0</addressOffset></register>
+        <register><dim>4</dim><dimIncrement>4</dimIncrement><name>CC[%s]</name><addressOffset>0x10</addressOffset></register>
+        <register><dim>2</dim><dimIncrement>8</dimIncrement><name>DT%s</name><addressOffset>0x20</addressOffset></register>
+      </registers>
+    </peripheral>
+  </peripherals>
+</device>
+```
+
+Produces [this C](../targets/c.md#a-peripheral-array-with-a-register-array).
+
+### A cluster array
+
+Demonstrates [clusters.md](../clusters.md#rule-2-a-cluster-arrays-element-is-padded-to-the-stride). `CH[%s]` becomes one nested type, padded to the stride and size-asserted, used as `CH[4]`, with indexed macros for its registers.
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<device schemaVersion="1.3">
+  <name>DEMO</name>
+  <addressUnitBits>8</addressUnitBits>
+  <width>32</width>
+  <size>32</size>
+  <access>read-write</access>
+  <peripherals>
+    <peripheral>
+      <name>DMA</name><baseAddress>0x40016000</baseAddress>
+      <addressBlock><offset>0</offset><size>0x50</size><usage>registers</usage></addressBlock>
+      <registers>
+        <register><name>CFG</name><addressOffset>0x0</addressOffset></register>
+        <cluster>
+          <dim>4</dim><dimIncrement>0x10</dimIncrement><name>CH[%s]</name><addressOffset>0x10</addressOffset>
+          <register><name>CTRL</name><addressOffset>0x0</addressOffset></register>
+          <register><name>SRC</name><addressOffset>0x4</addressOffset></register>
+        </cluster>
+      </registers>
+    </peripheral>
+  </peripherals>
+</device>
+```
+
+Produces [this C](../targets/c.md#a-cluster-array).

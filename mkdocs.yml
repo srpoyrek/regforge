@@ -43,6 +43,8 @@ nav:
       - Interrupts: rules/interrupts.md
       - Defaults: rules/defaults.md
       - Address math: rules/address-math.md
+      - Arrays: rules/arrays.md
+      - Clusters: rules/clusters.md
   - Input formats:
       - CMSIS-SVD: rules/formats/svd.md
   - Output targets:

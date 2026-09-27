@@ -1,7 +1,7 @@
 """Linter: addressBlock consistency + cross-peripheral address overlap (B2)."""
 
 from regforge.check import Severity, check_address_blocks, check_peripheral_overlap
-from regforge.ir import AddressBlock, Device, Peripheral, Register
+from regforge.ir import AddressBlock, Cluster, Device, Dim, Peripheral, Register
 
 
 def _device(*peripherals: Peripheral) -> Device:
@@ -85,3 +85,53 @@ def test_spaced_peripherals_do_not_overlap():
 def test_fixture_has_no_address_block_findings(demo_device):
     assert check_address_blocks(demo_device) == []
     assert check_peripheral_overlap(demo_device) == []
+
+
+# --- arrays and clusters are measured to their last element ---
+
+
+def _array_in_block(count: int) -> Device:
+    return _device(
+        Peripheral(
+            name="P",
+            base_address=0x0,
+            registers=[Register("DATA", 0x10, size=32, dim=Dim(count, 4))],
+            address_blocks=[AddressBlock(0, 0x20, "registers")],
+        )
+    )
+
+
+def test_array_running_past_its_block_warns():
+    findings = check_address_blocks(_array_in_block(8))  # ends at 0x30, block is [0, 0x20)
+    assert len(findings) == 1
+    assert "P.DATA" in findings[0].message and "outside" in findings[0].message
+
+
+def test_array_fitting_its_block_is_clean():
+    assert check_address_blocks(_array_in_block(4)) == []  # ends at 0x20 == block end
+
+
+def _channels() -> Cluster:
+    return Cluster("CH", 0x10, dim=Dim(4, 0x10), registers=[Register("CTRL", 0x0, size=32)])
+
+
+def test_cluster_array_running_past_its_block_warns():
+    device = _device(
+        Peripheral(
+            name="DMA",
+            base_address=0x0,
+            clusters=[_channels()],  # last element ends at 0x44
+            address_blocks=[AddressBlock(0, 0x40, "registers")],
+        )
+    )
+    findings = check_address_blocks(device)
+    assert len(findings) == 1 and "DMA.CH" in findings[0].message
+
+
+def test_peripheral_overlap_uses_the_cluster_extent():
+    # No blocks: DMA's span reaches its cluster array's last element, into TIMER.
+    device = _device(
+        Peripheral(name="DMA", base_address=0x1000, clusters=[_channels()]),
+        Peripheral(name="TIMER", base_address=0x1040, registers=[Register("CR", 0x0, size=32)]),
+    )
+    assert len(check_peripheral_overlap(device)) == 1

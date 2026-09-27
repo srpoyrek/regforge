@@ -166,3 +166,11 @@ def test_warnings_show_without_verbose(tmp_path, capsys):
     assert "warn:" in captured.err
     assert "access unspecified" in captured.err
     assert "parsed" not in captured.err  # but INFO progress still suppressed
+
+
+def test_verbose_logs_every_pass_in_pipeline_order(capsys, minimal_svd_path):
+    # dim expansion -> derivedFrom -> defaults -> checks -> render, each on its own line.
+    assert main([str(minimal_svd_path), "-v"]) == ExitCode.OK
+    err = capsys.readouterr().err
+    order = [err.index(marker) for marker in ("expanded dim", "derivedFrom", "defaults", "check")]
+    assert order == sorted(order)

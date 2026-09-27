@@ -132,5 +132,43 @@
       <name>ADCB</name>
       <baseAddress>0x40055000</baseAddress>
     </peripheral>
+    <!-- Dimmed peripheral with an interrupt (WARNING from the expand pass):
+         <dim> cannot shift a vector number, so both copies of TMRX%s land on
+         vector 41; the template declares it for each, but it is reported and
+         the header notes the shared vector at both instances. -->
+    <peripheral>
+      <dim>2</dim>
+      <dimIncrement>0x100</dimIncrement>
+      <name>TMRX%s</name>
+      <baseAddress>0x40056000</baseAddress>
+      <interrupt><name>TMRX%s</name><value>41</value></interrupt>
+      <registers>
+        <register><name>CR</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
+    <!-- dimIndex on an array (WARNING): CH[%s] elements are indexed 0..1 by the
+         language, so the labels A,B name nothing and are ignored. Cluster
+         derivedFrom (WARNING): not resolved yet, so EXTRA is emitted as written;
+         it carries its own registers, since an empty cluster has no element
+         to lay out. -->
+    <peripheral>
+      <name>DMAX</name>
+      <baseAddress>0x40057000</baseAddress>
+      <registers>
+        <cluster>
+          <dim>2</dim>
+          <dimIncrement>0x10</dimIncrement>
+          <dimIndex>A,B</dimIndex>
+          <name>CH[%s]</name>
+          <addressOffset>0x0</addressOffset>
+          <register><name>CTRL</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+        </cluster>
+        <cluster derivedFrom="CH">
+          <name>EXTRA</name>
+          <addressOffset>0x20</addressOffset>
+          <register><name>CTRL</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+        </cluster>
+      </registers>
+    </peripheral>
   </peripherals>
 </device>

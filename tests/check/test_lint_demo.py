@@ -9,7 +9,7 @@ from regforge import __version__
 from regforge.check import Severity, run_checks
 from regforge.provenance import Provenance, sha256_file
 from regforge.readers.svd import SvdReader
-from regforge.resolve import resolve_defaults
+from regforge.resolve import expand_dim, resolve_defaults, resolve_derived
 from regforge.writers.c import CWriter
 
 GOLDEN_COMMAND = "regforge tests/fixtures/svd/lint_demo.svd -o tests/golden/c/lint_demo.h"
@@ -35,6 +35,33 @@ def test_resolve_warns_on_unspecified_access(lint_demo_svd_path):
     device = SvdReader().read(lint_demo_svd_path)
     warnings = resolve_defaults(device)
     assert any("MISC.REG" in w and "access unspecified" in w for w in warnings)
+
+
+def test_expand_warnings_are_locked(lint_demo_svd_path):
+    device = SvdReader().read(lint_demo_svd_path)
+    warnings = expand_dim(device)
+    assert any("TMRX%s" in w and "cannot shift a vector number" in w for w in warnings)
+    assert any("DMAX.CH[%s]: dimIndex ignored" in w for w in warnings)
+    assert len(warnings) == 2
+
+
+def test_cluster_derived_from_is_reported(lint_demo_svd_path):
+    device = SvdReader().read(lint_demo_svd_path)
+    expand_dim(device)
+    warnings = resolve_derived(device)
+    assert any("DMAX.EXTRA: derivedFrom 'CH' on a cluster" in w for w in warnings)
+
+
+def test_dimmed_instances_share_the_vector_in_the_header(lint_demo_device):
+    output = CWriter().render(lint_demo_device)
+    assert (
+        "#define LD_TMRX0_IRQ LD_TMRX0_IRQn  "
+        "/* vector 41 -- shared with LD_TMRX1; demux in ISR */" in output
+    )
+    assert (
+        "#define LD_TMRX1_IRQ LD_TMRX1_IRQn  "
+        "/* vector 41 -- shared with LD_TMRX0; demux in ISR */" in output
+    )
 
 
 def test_header_matches_golden(lint_demo_device, lint_demo_svd_path, lint_demo_golden_path):

@@ -10,12 +10,21 @@ unusual (a multi-access register), so a human decides.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import Enum
 
 from .families import first_divergence, layout_signature
-from .ir import Device
-from .layout import LayoutError, peripheral_layout, registers_end, units_to_bytes
+from .ir import Cluster, Device, Peripheral, Register
+from .layout import (
+    LayoutError,
+    cluster_element_units,
+    cluster_span_units,
+    peripheral_layout,
+    register_span_units,
+    registers_end,
+    units_to_bytes,
+)
 
 
 class Severity(Enum):
@@ -43,15 +52,39 @@ def _is_power_of_two(value: int) -> bool:
     return value > 0 and (value & (value - 1)) == 0
 
 
+def _clusters_with_offsets(
+    clusters: list[Cluster], where: str, base: int
+) -> Iterator[tuple[str, Cluster, int]]:
+    """Every cluster, depth first, with its dotted path and its offset from the peripheral."""
+    for cluster in clusters:
+        path = f"{where}.{cluster.name}"
+        offset = base + cluster.address_offset
+        yield path, cluster, offset
+        yield from _clusters_with_offsets(cluster.clusters, path, offset)
+
+
+def _registers_with_offsets(peripheral: Peripheral) -> Iterator[tuple[str, int, Register]]:
+    """Every register of ``peripheral``, clusters included, with its path and offset.
+
+    The offset is from the peripheral base, in address units; a register inside
+    an array cluster is reported at its first element's position.
+    """
+    for register in peripheral.registers:
+        yield f"{peripheral.name}.{register.name}", register.address_offset, register
+    for path, cluster, base in _clusters_with_offsets(peripheral.clusters, peripheral.name, 0):
+        for register in cluster.registers:
+            yield f"{path}.{register.name}", base + register.address_offset, register
+
+
 def check_address_math(device: Device) -> list[Finding]:
-    """Check that address units, bus width, and register sizes agree.
+    """Check that address units, bus width, register sizes and array strides agree.
 
     The pair ``(address_unit_bits, bus_width)`` defines the device's address
-    math; every register's size and offset must be consistent with it.
-
-    Note:
-        Register-array (``dim``) stride checks are omitted until arrays are
-        represented in the IR. Cluster walking is likewise deferred.
+    math; every register's size and offset must be consistent with it, and an
+    array's stride must at least cover one element -- a register, cluster or
+    field array whose elements overlap is a contradiction no hardware can
+    satisfy (``ERROR``). Registers inside clusters are checked at their offset
+    from the peripheral. Strides are compared only once sizes are resolved.
     """
     findings: list[Finding] = []
     unit_bits = device.address_unit_bits
@@ -83,10 +116,32 @@ def check_address_math(device: Device) -> list[Finding]:
         )
 
     for peripheral in device.peripherals:
-        for register in peripheral.registers:
+        for path, cluster, _ in _clusters_with_offsets(peripheral.clusters, peripheral.name, 0):
+            if cluster.dim is None:
+                continue
+            contents = cluster_element_units(cluster, unit_bits)
+            if cluster.dim.increment < contents:
+                findings.append(
+                    Finding(
+                        Severity.ERROR,
+                        f"{path}[{cluster.dim.count}]: stride {cluster.dim.increment} address "
+                        f"unit(s) is smaller than the cluster's contents ({contents}) -- "
+                        "the array's elements overlap",
+                    )
+                )
+        for name, offset, register in _registers_with_offsets(peripheral):
+            for field_ in register.fields:
+                if field_.dim is not None and field_.dim.increment < field_.bit_width:
+                    findings.append(
+                        Finding(
+                            Severity.ERROR,
+                            f"{name}.{field_.name}[{field_.dim.count}]: increment "
+                            f"{field_.dim.increment} bit(s) is smaller than the "
+                            f"{field_.bit_width}-bit field -- the array's elements overlap",
+                        )
+                    )
             if register.size is None:
                 continue  # size checks need a resolved size; nothing to check here
-            name = f"{peripheral.name}.{register.name}"
             if register.size > bus_width:
                 findings.append(
                     Finding(
@@ -104,12 +159,21 @@ def check_address_math(device: Device) -> list[Finding]:
                     )
                 )
             units_per_register = register.size // unit_bits
-            if units_per_register and register.address_offset % units_per_register != 0:
+            if units_per_register and offset % units_per_register != 0:
                 findings.append(
                     Finding(
                         Severity.WARNING,
-                        f"{name}: offset {register.address_offset:#x} is misaligned "
+                        f"{name}: offset {offset:#x} is misaligned "
                         f"for a {register.size}-bit register",
+                    )
+                )
+            if register.dim is not None and register.dim.increment < units_per_register:
+                findings.append(
+                    Finding(
+                        Severity.ERROR,
+                        f"{name}[{register.dim.count}]: stride {register.dim.increment} "
+                        f"address unit(s) is smaller than the {register.size}-bit element "
+                        "-- the array's elements overlap",
                     )
                 )
     return findings
@@ -304,23 +368,31 @@ def check_address_blocks(device: Device) -> list[Finding]:
     ``addressBlock`` is the vendor's footprint contract; CMSIS discards it. A
     register beyond the block means the block under-declares the peripheral, and
     two blocks of one peripheral overlapping is a self-contradiction -- both are
-    real vendor-file bugs, surfaced here (advisory ``WARNING``).
+    real vendor-file bugs, surfaced here (advisory ``WARNING``). An array is
+    measured to its last element, and a cluster as one extent covering its
+    every member and element.
     """
     findings: list[Finding] = []
     unit_bits = device.address_unit_bits
     for peripheral in device.peripherals:
         blocks = peripheral.address_blocks
         registers_blocks = [b for b in blocks if b.usage in (None, "registers")]
-        for register in peripheral.registers:
+        extents = [
+            (register.name, register.address_offset, register_span_units(register, unit_bits))
+            for register in peripheral.registers
+        ] + [
+            (cluster.name, cluster.address_offset, cluster_span_units(cluster, unit_bits))
+            for cluster in peripheral.clusters
+        ]
+        for name, start, span in extents:
             if not registers_blocks:
                 continue
-            start = register.address_offset
-            end = start + (register.size or 0) // unit_bits
+            end = start + span
             if not any(b.offset <= start and end <= b.offset + b.size for b in registers_blocks):
                 findings.append(
                     Finding(
                         Severity.WARNING,
-                        f"{peripheral.name}.{register.name}: at offset {start:#x} lies "
+                        f"{peripheral.name}.{name}: at offset {start:#x} lies "
                         "outside the peripheral's registers addressBlock(s) -- the block "
                         "under-declares the footprint",
                     )

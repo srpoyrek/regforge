@@ -1,15 +1,15 @@
 """Peripheral family grouping: one type per family, divergent members split."""
 
 from regforge.families import group_families
-from regforge.ir import AddressBlock, Device, Peripheral, Register
+from regforge.ir import AddressBlock, Cluster, Device, Dim, Peripheral, Register
 from regforge.layout import asserted_struct_size
 from regforge.resolve import resolve_defaults, resolve_derived
 
 
 def _resolved(*peripherals: Peripheral) -> Device:
     device = Device(name="Chip", peripherals=list(peripherals))
-    resolve_defaults(device)
     resolve_derived(device)
+    resolve_defaults(device)
     return device
 
 
@@ -205,3 +205,66 @@ def test_buffer_window_alone_splits_the_family():
         ),
     )
     assert len(group_families(device)) == 2
+
+
+# --- arrays and clusters ---
+
+
+def test_different_array_lengths_split_the_family():
+    device = _resolved(
+        Peripheral(
+            name="PWM0",
+            base_address=0x0,
+            group_name="PWM",
+            registers=[Register("CC", 0x10, size=32, dim=Dim(4, 4))],
+        ),
+        Peripheral(
+            name="PWM1",
+            base_address=0x100,
+            group_name="PWM",
+            registers=[Register("CC", 0x10, size=32, dim=Dim(2, 4))],
+        ),
+    )
+    families = group_families(device)
+    assert len(families) == 2
+    assert "first differs at CC" in (families[0].note or "")
+
+
+def _channels() -> Cluster:
+    return Cluster("CH", 0x10, dim=Dim(4, 0x10), registers=[Register("CTRL", 0x0, size=32)])
+
+
+def test_identical_clusters_share_one_type():
+    device = _resolved(
+        Peripheral(name="DMA0", base_address=0x0, group_name="DMA", clusters=[_channels()]),
+        Peripheral(name="DMA1", base_address=0x1000, group_name="DMA", clusters=[_channels()]),
+    )
+    families = group_families(device)
+    assert len(families) == 1
+    assert [p.name for p in families[0].instances] == ["DMA0", "DMA1"]
+
+
+def test_differing_clusters_split_the_family_and_name_the_cluster():
+    device = _resolved(
+        Peripheral(
+            name="DMA0",
+            base_address=0x0,
+            group_name="DMA",
+            clusters=[Cluster("CH", 0x10, registers=[Register("CTRL", 0x0, size=32)])],
+        ),
+        Peripheral(
+            name="DMA1",
+            base_address=0x1000,
+            group_name="DMA",
+            clusters=[
+                Cluster(
+                    "CH",
+                    0x10,
+                    registers=[Register("CTRL", 0x0, size=32), Register("SRC", 0x4, size=32)],
+                )
+            ],
+        ),
+    )
+    families = group_families(device)
+    assert len(families) == 2
+    assert "first differs at CH" in (families[0].note or "")

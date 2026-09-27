@@ -1,6 +1,6 @@
 """Defaults resolution: size / access / reset inheritance down the chain."""
 
-from regforge.ir import Access, Device, Field, Peripheral, Register
+from regforge.ir import Access, Cluster, Device, Field, Peripheral, Register
 from regforge.readers.svd import SvdReader
 from regforge.resolve import resolve_defaults
 
@@ -146,3 +146,65 @@ def test_reset_value_absent_stays_none():
     )
     resolve_defaults(device)
     assert _register(device).reset_value is None
+
+
+# --- clusters: one rung between the peripheral and its registers ---
+
+
+def _device_with_cluster(*, peripheral_access=None, cluster_access=None, inner_access=None):
+    return Device(
+        name="Chip",
+        default_access=Access.READ_WRITE,
+        default_size=32,
+        peripherals=[
+            Peripheral(
+                name="DMA",
+                base_address=0,
+                default_access=peripheral_access,
+                clusters=[
+                    Cluster(
+                        name="CH",
+                        address_offset=0x10,
+                        default_access=cluster_access,
+                        registers=[Register(name="CTRL", address_offset=0)],
+                        clusters=[
+                            Cluster(
+                                name="SUB",
+                                address_offset=0x8,
+                                default_access=inner_access,
+                                registers=[Register(name="R", address_offset=0, size=8)],
+                            )
+                        ],
+                    )
+                ],
+            )
+        ],
+    )
+
+
+def test_cluster_registers_inherit_size_and_access_through_the_cluster():
+    device = _device_with_cluster(cluster_access=Access.READ_ONLY)
+    resolve_defaults(device)
+    ctrl = device.peripherals[0].clusters[0].registers[0]
+    assert ctrl.size == 32  # from the device, through the peripheral and cluster
+    assert ctrl.access is Access.READ_ONLY  # the cluster's own default
+
+
+def test_cluster_default_beats_the_peripheral_and_nested_clusters_add_a_rung():
+    device = _device_with_cluster(
+        peripheral_access=Access.WRITE_ONLY, cluster_access=Access.READ_ONLY
+    )
+    resolve_defaults(device)
+    outer = device.peripherals[0].clusters[0]
+    assert outer.registers[0].access is Access.READ_ONLY  # cluster over peripheral
+    inner = outer.clusters[0].registers[0]
+    assert inner.access is Access.READ_ONLY  # inherited from the outer cluster
+    assert inner.size == 8  # its own size wins
+
+
+def test_cluster_register_warning_names_the_full_path():
+    device = _device_with_cluster()
+    device.default_access = None  # nothing declares access anywhere
+    warnings = resolve_defaults(device)
+    assert any(w.startswith("DMA.CH.CTRL:") for w in warnings)
+    assert any(w.startswith("DMA.CH.SUB.R:") for w in warnings)

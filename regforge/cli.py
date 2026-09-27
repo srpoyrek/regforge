@@ -20,7 +20,7 @@ from .check import ALL_CHECKS, Severity, run_checks
 from .postprocess import FormatterNotAvailable, uncrustify
 from .provenance import build_provenance
 from .readers import available_readers, get_reader, reader_for_path
-from .resolve import resolve_defaults, resolve_derived
+from .resolve import expand_dim, resolve_defaults, resolve_derived
 from .writers import EmitError, Writer, available_writers, get_writer, writer_for_path
 
 logger = logging.getLogger("regforge")
@@ -240,9 +240,17 @@ def main(argv: list[str] | None = None) -> int:
         sum(len(r.fields) for p in device.peripherals for r in p.registers),
     )
 
-    warnings = resolve_defaults(device)
-    log(logging.INFO, "resolved defaults: %d warning(s)", len(warnings))
-    for warning in warnings:
+    # The passes run in a fixed order: dim expansion first, so derivedFrom
+    # can name a copy; derivedFrom before defaults, so copied registers
+    # resolve under the derived peripheral's own chain.
+    dim_warnings = expand_dim(device)
+    log(
+        logging.INFO,
+        "expanded dim templates: %d peripheral(s), %d warning(s)",
+        len(device.peripherals),
+        len(dim_warnings),
+    )
+    for warning in dim_warnings:
         log(logging.WARNING, "%s", warning)
 
     derived_count = sum(1 for p in device.peripherals if p.derived_from is not None)
@@ -254,6 +262,11 @@ def main(argv: list[str] | None = None) -> int:
         len(derived_warnings),
     )
     for warning in derived_warnings:
+        log(logging.WARNING, "%s", warning)
+
+    warnings = resolve_defaults(device)
+    log(logging.INFO, "resolved defaults: %d warning(s)", len(warnings))
+    for warning in warnings:
         log(logging.WARNING, "%s", warning)
 
     # Consistency checks are advisory here (findings are logged, not fatal); the

@@ -1,7 +1,7 @@
 """Linter: padding emitted over space no addressBlock claims."""
 
 from regforge.check import Severity, check_unowned_gaps
-from regforge.ir import AddressBlock, Device, Peripheral, Register
+from regforge.ir import AddressBlock, Cluster, Device, Dim, Peripheral, Register
 
 
 def _device(*peripherals: Peripheral) -> Device:
@@ -68,3 +68,27 @@ def test_several_blocks_cover_between_them():
         )
     )
     assert check_unowned_gaps(device) == []
+
+
+def _dma(block_size: int) -> Device:
+    return _device(
+        Peripheral(
+            name="DMA",
+            base_address=0x0,
+            registers=[Register("CFG", 0x0, size=32)],
+            clusters=[
+                Cluster("CH", 0x100, dim=Dim(2, 0x10), registers=[Register("CTRL", 0x0, size=32)])
+            ],
+            address_blocks=[AddressBlock(0x0, block_size, "registers")],
+        )
+    )
+
+
+def test_gap_before_a_cluster_array_inside_the_block_is_silent():
+    assert check_unowned_gaps(_dma(0x400)) == []
+
+
+def test_gap_before_a_cluster_array_outside_the_block_warns():
+    findings = check_unowned_gaps(_dma(0x4))  # the block stops where CFG ends
+    assert len(findings) == 1
+    assert "DMA" in findings[0].message and "252 byte(s)" in findings[0].message

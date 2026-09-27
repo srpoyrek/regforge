@@ -3,7 +3,9 @@
 Renders the intermediate representation into a C header of CMSIS-style
 preprocessor definitions: a base-address macro per peripheral, a volatile
 pointer accessor per register, position and mask macros per field, and a
-constant per enumerated value.
+constant per enumerated value. A cluster becomes a nested struct type; an
+array (a register, cluster or field that kept its ``dim``) becomes one array
+member with indexed accessor macros.
 
 The output style lives in an editable Jinja2 template
 (``templates/c/header.h.j2``); this module only supplies the data and the
@@ -12,16 +14,18 @@ formatting helpers the template needs.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
 from ..arch import NVIC_REGISTER_BANKS, is_cortex_m
-from ..families import Family, group_families
+from ..families import Family, cluster_signature, group_families
 from ..interrupts import all_interrupts, shared_vectors
-from ..ir import Access, Device, Peripheral, Register
+from ..ir import Access, Cluster, Device, Dim, Peripheral, Register, walk_clusters
 from ..layout import (
     BITS_PER_BYTE,
+    LayoutEntry,
     LayoutError,
     asserted_struct_size,
     peripheral_layout,
@@ -45,6 +49,8 @@ _MAX_INLINE_DESC = 40
 #: Fallback element width, in bits, for a buffer window the bus width cannot
 #: tile evenly. Bytes divide any window and are always representable.
 _BUFFER_FALLBACK_BITS = 8
+#: Macro parameter names for array indices, outermost array first.
+_INDEX_NAMES = "ijklmn"
 
 
 def _hex32(value: int) -> str:
@@ -53,7 +59,7 @@ def _hex32(value: int) -> str:
 
 
 def _short_desc(description: str | None) -> str:
-    """A register description short enough to sit inline in the struct comment."""
+    """A description short enough to sit inline in the struct comment."""
     if description and len(description) <= _MAX_INLINE_DESC:
         return description
     return ""
@@ -118,26 +124,52 @@ def _buffer_element_bits(window_bytes: int, bus_width: int) -> int:
     return _BUFFER_FALLBACK_BITS
 
 
-def _c_layout(peripheral: Peripheral, address_unit_bits: int, bus_width: int) -> list[dict]:
-    """Render the shared block layout into the C struct members the template needs.
+def _all_registers(peripheral: Peripheral) -> Iterator[Register]:
+    """Every register of ``peripheral``, clusters included."""
+    yield from peripheral.registers
+    for _, cluster in walk_clusters(peripheral.clusters, peripheral.name):
+        yield from cluster.registers
+
+
+def _unexpanded_name(peripheral: Peripheral) -> str | None:
+    """The first name still carrying a ``%s`` placeholder, if expansion was skipped."""
+    if "%s" in peripheral.name:
+        return peripheral.name
+    for path, cluster in walk_clusters(peripheral.clusters, peripheral.name):
+        if "%s" in cluster.name:
+            return path
+    for register in _all_registers(peripheral):
+        if "%s" in register.name:
+            return f"{peripheral.name}.{register.name}"
+        for field_ in register.fields:
+            if "%s" in field_.name:
+                return f"{peripheral.name}.{register.name}.{field_.name}"
+    return None
+
+
+def _array_suffix(dim: Dim | None) -> str:
+    """``[N]`` for an array of N elements, nothing for a single one."""
+    return f"[{dim.count}]" if dim is not None else ""
+
+
+def _c_layout(
+    entries: list[LayoutEntry], cluster_names: dict[int, str], bus_width: int
+) -> list[dict]:
+    """Render layout slots into the C struct members the template needs.
 
     The offset / reserved-gap / overlap math is language-neutral and lives in
-    :func:`regforge.layout.peripheral_layout`; this adapter only maps each slot
-    to C syntax (``uint8_t`` padding, ``volatile`` member types, trailing ``;``).
+    :mod:`regforge.layout`; this adapter only maps each slot to C syntax
+    (``uint8_t`` padding, ``volatile`` member types, ``[N]`` for arrays, the
+    nested type for a cluster, trailing ``;``).
     """
-    try:
-        size = asserted_struct_size(peripheral, address_unit_bits)
-        slots = peripheral_layout(peripheral, address_unit_bits, pad_to_bytes=size)
-    except LayoutError as error:  # surface as the writer's error type (CLI exit)
-        raise EmitError(str(error)) from error
-    entries: list[dict] = []
+    entries_out: list[dict] = []
     pad_index = 0
     buffer_index = 0
-    for slot in slots:
+    for slot in entries:
         if slot.buffer:
             bits = _buffer_element_bits(slot.gap_bytes, bus_width)
             name = f"BUFFER{buffer_index}"
-            entries.append(
+            entries_out.append(
                 {
                     "offset": slot.offset,
                     "type": f"volatile {_C_TYPE[bits]}",
@@ -148,7 +180,7 @@ def _c_layout(peripheral: Peripheral, address_unit_bits: int, bus_width: int) ->
             )
             buffer_index += 1
         elif slot.is_reserved:
-            entries.append(
+            entries_out.append(
                 {
                     "offset": slot.offset,
                     "type": "uint8_t",
@@ -158,19 +190,175 @@ def _c_layout(peripheral: Peripheral, address_unit_bits: int, bus_width: int) ->
                 }
             )
             pad_index += 1
+        elif slot.cluster is not None:
+            cluster = slot.cluster
+            entries_out.append(
+                {
+                    "offset": slot.offset,
+                    "type": cluster_names[id(cluster)],
+                    "field": f"{cluster.name}{_array_suffix(cluster.dim)};",
+                    "desc": _short_desc(cluster.description),
+                    "member": cluster.name,
+                }
+            )
         else:
             register = slot.register
-            assert register is not None  # a non-reserved slot always carries a register
-            entries.append(
+            assert register is not None  # a non-reserved slot always carries a member
+            entries_out.append(
                 {
                     "offset": slot.offset,
                     "type": _member_type(register),
-                    "field": f"{register.name};",
+                    "field": f"{register.name}{_array_suffix(register.dim)};",
                     "desc": _short_desc(register.description),
                     "member": register.name,
                 }
             )
-    return entries
+    return entries_out
+
+
+def _unique_type_name(candidates: list[str], taken: set[str]) -> str:
+    """The first candidate not yet emitted, else the first with a numeric suffix."""
+    for candidate in candidates:
+        if candidate not in taken:
+            taken.add(candidate)
+            return candidate
+    base = candidates[0][: -len("_t")]
+    index = 2
+    while f"{base}_{index}_t" in taken:
+        index += 1
+    name = f"{base}_{index}_t"
+    taken.add(name)
+    return name
+
+
+def _cluster_types(
+    entries: list[LayoutEntry],
+    label: str,
+    tag_prefix: str,
+    type_base: str,
+    taken: set[str],
+    cluster_names: dict[int, str],
+    shared: dict[tuple, str],
+    bus_width: int,
+) -> list[dict]:
+    """The cluster struct types a block uses, innermost first, each emitted once.
+
+    A cluster's type is spelled after the enclosing family and the cluster's
+    ``headerStructName`` (else its own name), so vendors calling every channel
+    block ``CH`` never collide across peripherals; a nested cluster appends its
+    name to its parent's. Clusters that want the same name *and* have the same
+    contents -- the copies expanded from ``CH%s``, or one vendor block placed
+    twice -- share a single type. Two that want the same name with different
+    contents fall back to the cluster's own name, then to a numeric suffix.
+    Nested types come first in the list so each is defined before its user.
+    """
+    types: list[dict] = []
+    for slot in entries:
+        cluster = slot.cluster
+        if cluster is None:
+            continue
+        wanted = cluster.header_struct_name or cluster.name
+        inner_label = f"{label}.{wanted}"
+        inner_tag = f"{tag_prefix}_{wanted.upper()}"
+        inner_base = f"{type_base}_{wanted.lower()}"
+        key = (inner_base, cluster_signature(cluster)[2:])
+        if key in shared:
+            cluster_names[id(cluster)] = shared[key]
+            continue
+        types += _cluster_types(
+            slot.members,
+            inner_label,
+            inner_tag,
+            inner_base,
+            taken,
+            cluster_names,
+            shared,
+            bus_width,
+        )
+        candidates = [f"{inner_base}_t"]
+        if wanted.lower() != cluster.name.lower():
+            candidates.append(f"{type_base}_{cluster.name.lower()}_t")
+        type_name = _unique_type_name(candidates, taken)
+        shared[key] = type_name
+        cluster_names[id(cluster)] = type_name
+        types.append(
+            {
+                "tname": type_name,
+                "spf": inner_tag,
+                "label": inner_label,
+                "desc": cluster.description,
+                "members": _c_layout(slot.members, cluster_names, bus_width),
+                "element_bytes": slot.element_bytes,
+                "count": cluster.dim.count if cluster.dim is not None else None,
+            }
+        )
+    return types
+
+
+def _accessors(peripheral: Peripheral, address_unit_bits: int) -> list[dict]:
+    """Every register reachable from ``peripheral`` as a flat macro: name, indices, address.
+
+    A register inside a cluster is reached through the cluster's name
+    (``CH_CTRL``); every array on the path adds one macro parameter, outermost
+    first (``(i, j)``), and one ``(index) * stride`` term to the address. The
+    constant offsets along the path are folded into one literal, so a plain
+    register keeps the ``BASE + 0x00000010UL`` shape.
+    """
+    result: list[dict] = []
+
+    def stride_term(dim: Dim, params: list[str]) -> str:
+        index = _INDEX_NAMES[len(params)]
+        params.append(index)
+        return f"({index}) * {_hex32(units_to_bytes(dim.increment, address_unit_bits))}UL"
+
+    def visit(
+        register: Register,
+        names: list[str],
+        labels: list[str],
+        params: list[str],
+        constant: int,
+        terms: list[str],
+    ) -> None:
+        params = list(params)
+        terms = list(terms)
+        constant += units_to_bytes(register.address_offset, address_unit_bits)
+        if register.dim is not None:
+            terms.append(stride_term(register.dim, params))
+        result.append(
+            {
+                "name": "_".join([*names, register.name]),
+                "label": ".".join([*labels, register.name + _array_suffix(register.dim)]),
+                "params": f"({', '.join(params)})" if params else "",
+                "address": " + ".join([f"{_hex32(constant)}UL", *terms]),
+                "register": register,
+                "count": register.dim.count if register.dim is not None else None,
+            }
+        )
+
+    def walk(
+        clusters: list[Cluster],
+        names: list[str],
+        labels: list[str],
+        params: list[str],
+        constant: int,
+        terms: list[str],
+    ) -> None:
+        for cluster in clusters:
+            inner_params = list(params)
+            inner_terms = list(terms)
+            offset = constant + units_to_bytes(cluster.address_offset, address_unit_bits)
+            if cluster.dim is not None:
+                inner_terms.append(stride_term(cluster.dim, inner_params))
+            inner_names = [*names, cluster.name]
+            inner_labels = [*labels, cluster.name + _array_suffix(cluster.dim)]
+            for register in cluster.registers:
+                visit(register, inner_names, inner_labels, inner_params, offset, inner_terms)
+            walk(cluster.clusters, inner_names, inner_labels, inner_params, offset, inner_terms)
+
+    for register in peripheral.registers:
+        visit(register, [], [], [], 0, [])
+    walk(peripheral.clusters, [], [], [], 0, [])
+    return result
 
 
 class CWriter(Writer):
@@ -194,40 +382,77 @@ class CWriter(Writer):
         """Render ``device`` into a C header string.
 
         Refuses non-byte-addressable devices rather than emitting byte offsets
-        that would be silently wrong.
+        that would be silently wrong, a device that was never expanded (a name
+        still holding ``%s``), and any register size with no C type.
         """
-        if device.address_unit_bits != BITS_PER_BYTE:
+        unit_bits = device.address_unit_bits
+        if unit_bits != BITS_PER_BYTE:
             raise EmitError(
-                f"{device.name}: addressUnitBits={device.address_unit_bits} "
+                f"{device.name}: addressUnitBits={unit_bits} "
                 "(word-addressable, e.g. TI C2000) is not supported by the C "
                 "emitter yet -- offsets would be wrong if emitted as bytes."
             )
         for peripheral in device.peripherals:
-            for register in peripheral.registers:
+            unexpanded = _unexpanded_name(peripheral)
+            if unexpanded is not None:
+                raise EmitError(
+                    f"{unexpanded}: name still holds a %s placeholder -- run "
+                    "expand_dim before rendering"
+                )
+            for register in _all_registers(peripheral):
                 if register.size not in _C_TYPE:
                     raise EmitError(
                         f"{peripheral.name}.{register.name}: register size "
                         f"{register.size} bits has no C type mapping "
                         f"(supported: {sorted(_C_TYPE)})"
                     )
+
+        prefix = device.header_prefix or ""
         families = group_families(device)
         aliases = _alias_map(families)
-        layouts = {
-            id(peripheral): _c_layout(peripheral, device.address_unit_bits, device.bus_width)
-            for peripheral in device.peripherals
+        # Every type name the header emits, so cluster types can stay unique.
+        taken_types = {f"{prefix.lower()}{family.name.lower()}_t" for family in families}
+        taken_types |= {
+            f"{prefix.lower()}{instance.name.lower()}_t"
+            for chosen in aliases.values()
+            for instance in chosen
         }
+        cluster_names: dict[int, str] = {}
+        shared_clusters: dict[tuple, str] = {}
+        cluster_types: dict[int, list[dict]] = {}
+        layouts: dict[int, list[dict]] = {}
+        for family in families:
+            source = family.type_source
+            try:
+                size = asserted_struct_size(source, unit_bits)
+                entries = peripheral_layout(source, unit_bits, pad_to_bytes=size)
+            except LayoutError as error:  # surface as the writer's error type (CLI exit)
+                raise EmitError(str(error)) from error
+            cluster_types[id(family)] = _cluster_types(
+                entries,
+                family.name,
+                f"{prefix}{family.name.upper()}",
+                f"{prefix.lower()}{family.name.lower()}",
+                taken_types,
+                cluster_names,
+                shared_clusters,
+                device.bus_width,
+            )
+            layouts[id(source)] = _c_layout(entries, cluster_names, device.bus_width)
+        accessors = {id(p): _accessors(p, unit_bits) for p in device.peripherals}
+
         template = self._env.get_template("header.h.j2")
         return template.render(
             device=device,
             provenance=provenance,
-            prefix=device.header_prefix or "",
-            to_bytes=lambda units: units_to_bytes(units, device.address_unit_bits),
+            prefix=prefix,
+            to_bytes=lambda units: units_to_bytes(units, unit_bits),
             member_type=_member_type,
             full_mask=lambda size: (1 << size) - 1,
             layout=lambda peripheral: layouts[id(peripheral)],
-            struct_size=lambda peripheral: asserted_struct_size(
-                peripheral, device.address_unit_bits
-            ),
+            cluster_types=lambda family: cluster_types[id(family)],
+            accessors=lambda peripheral: accessors[id(peripheral)],
+            struct_size=lambda peripheral: asserted_struct_size(peripheral, unit_bits),
             families=families,
             type_aliases=lambda family: aliases[id(family)],
             interrupts=all_interrupts(device),

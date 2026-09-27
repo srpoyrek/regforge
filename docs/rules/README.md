@@ -31,6 +31,8 @@ rewritten.
 | [interrupts.md](interrupts.md) | Vectors, and what `derivedFrom` does not carry |
 | [defaults.md](defaults.md) | Inherited `size` / `access` / `reset*` |
 | [address-math.md](address-math.md) | Address units, bus width, member offsets |
+| [arrays.md](arrays.md) | `dim`: copies, arrays, strides |
+| [clusters.md](clusters.md) | Register groups as nested types |
 
 ## Input formats
 

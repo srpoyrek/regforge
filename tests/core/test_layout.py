@@ -2,11 +2,13 @@
 
 import pytest
 
-from regforge.ir import AddressBlock, Peripheral, Register
+from regforge.ir import AddressBlock, Cluster, Dim, Peripheral, Register
 from regforge.layout import (
     LayoutError,
     asserted_struct_size,
+    cluster_element_bytes,
     peripheral_layout,
+    registers_end,
     struct_block,
     units_to_bytes,
 )
@@ -170,3 +172,121 @@ def test_peripheral_layout_pads_to_bytes():
     assert (slots[-1].offset, slots[-1].gap_bytes) == (0x4, 0xC)
     # pad target at or below the natural end adds nothing.
     assert not peripheral_layout(peripheral, 8, pad_to_bytes=0x4)[-1].is_reserved
+
+
+# --- arrays and clusters ---
+
+
+def test_array_register_is_one_slot_spanning_every_element():
+    peripheral = Peripheral(
+        name="P",
+        base_address=0x0,
+        registers=[Register("CR", 0x0, size=32), Register("DATA", 0x10, size=32, dim=Dim(8, 4))],
+    )
+    data = peripheral_layout(peripheral, address_unit_bits=8)[-1]
+    assert (data.offset, data.element_bytes, data.size_bytes, data.count) == (0x10, 4, 32, 8)
+    assert data.register is not None and data.register.name == "DATA"
+
+
+def test_array_register_stride_must_equal_the_element_size():
+    for increment in (8, 2):  # a hole between elements, or overlapping elements
+        peripheral = Peripheral(
+            name="P",
+            base_address=0x0,
+            registers=[Register("DATA", 0x10, size=32, dim=Dim(4, increment))],
+        )
+        with pytest.raises(LayoutError, match=r"P\.DATA\[4\]: stride .* not a packed array"):
+            peripheral_layout(peripheral, address_unit_bits=8)
+
+
+def test_registers_end_reaches_the_last_array_element():
+    peripheral = Peripheral(
+        name="P", base_address=0x0, registers=[Register("DATA", 0x10, size=32, dim=Dim(8, 8))]
+    )
+    # Eight 4-byte elements 8 bytes apart: the last one ends at 0x10 + 7*8 + 4.
+    assert registers_end(peripheral, address_unit_bits=8) == 0x10 + 7 * 8 + 4
+
+
+def _dma(cluster: Cluster) -> Peripheral:
+    return Peripheral(
+        name="DMA", base_address=0x0, registers=[Register("CFG", 0x0, size=32)], clusters=[cluster]
+    )
+
+
+def _kinds(entries):
+    return [
+        (
+            m.offset,
+            m.gap_bytes,
+            m.register.name if m.register else m.cluster.name if m.cluster else None,
+        )
+        for m in entries
+    ]
+
+
+def test_cluster_is_one_slot_carrying_its_own_layout():
+    cluster = Cluster(
+        "CH", 0x10, registers=[Register("CTRL", 0x0, size=32), Register("SRC", 0x8, size=32)]
+    )
+    slots = peripheral_layout(_dma(cluster), address_unit_bits=8)
+    assert _kinds(slots) == [(0x0, 0, "CFG"), (0x4, 12, None), (0x10, 0, "CH")]
+    ch = slots[-1]
+    assert ch.cluster is cluster and not ch.is_reserved
+    assert (ch.element_bytes, ch.size_bytes, ch.count) == (0xC, 0xC, 1)  # SRC ends at 0xC
+    assert _kinds(ch.members) == [(0x0, 0, "CTRL"), (0x4, 4, None), (0x8, 0, "SRC")]
+
+
+def test_array_cluster_element_is_padded_to_the_stride():
+    cluster = Cluster(
+        "CH",
+        0x10,
+        dim=Dim(4, 0x10),
+        registers=[Register("CTRL", 0x0, size=32), Register("SRC", 0x4, size=32)],
+    )
+    ch = peripheral_layout(_dma(cluster), address_unit_bits=8)[-1]
+    assert (ch.element_bytes, ch.size_bytes, ch.count) == (0x10, 0x40, 4)
+    assert ch.members[-1].is_reserved
+    assert (ch.members[-1].offset, ch.members[-1].gap_bytes) == (0x8, 0x8)  # pad to the stride
+    assert cluster_element_bytes(cluster, 8) == 0x10
+
+
+def test_array_cluster_stride_smaller_than_its_contents_is_an_error():
+    cluster = Cluster(
+        "CH",
+        0x10,
+        dim=Dim(4, 0x4),
+        registers=[Register("CTRL", 0x0, size=32), Register("SRC", 0x4, size=32)],
+    )
+    with pytest.raises(LayoutError, match=r"DMA\.CH\[4\]: stride 0x4 is smaller"):
+        peripheral_layout(_dma(cluster), address_unit_bits=8)
+
+
+def test_empty_cluster_cannot_be_laid_out():
+    with pytest.raises(LayoutError, match="no registers"):
+        peripheral_layout(_dma(Cluster("CH", 0x10)), address_unit_bits=8)
+
+
+def test_nested_cluster_and_array_register_inside_a_cluster():
+    inner = Cluster("SUB", 0x8, registers=[Register("R", 0x0, size=16)])
+    cluster = Cluster(
+        "CH",
+        0x10,
+        dim=Dim(2, 0x10),
+        registers=[Register("D", 0x0, size=32, dim=Dim(2, 4))],
+        clusters=[inner],
+    )
+    ch = peripheral_layout(_dma(cluster), address_unit_bits=8)[-1]
+    # D[2] fills 0x0..0x8, SUB sits at 0x8..0xA, then padding to the 0x10 stride.
+    assert _kinds(ch.members) == [(0x0, 0, "D"), (0x8, 0, "SUB"), (0xA, 6, None)]
+    assert ch.members[1].members[0].register.name == "R"
+
+
+def test_cluster_overlapping_a_register_is_an_error():
+    cluster = Cluster("CH", 0x2, registers=[Register("CTRL", 0x0, size=32)])
+    with pytest.raises(LayoutError, match=r"DMA\.CH: cluster at offset 0x2 overlaps"):
+        peripheral_layout(_dma(cluster), address_unit_bits=8)
+
+
+def test_registers_end_covers_a_cluster_array():
+    cluster = Cluster("CH", 0x10, dim=Dim(4, 0x10), registers=[Register("CTRL", 0x0, size=32)])
+    assert registers_end(_dma(cluster), address_unit_bits=8) == 0x10 + 3 * 0x10 + 4

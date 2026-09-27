@@ -5,7 +5,13 @@ features the enriched fixture is there to demonstrate, so a regression points
 at the feature rather than "the golden changed".
 """
 
+import re
+
 from regforge.writers.c import CWriter
+
+
+def _squash(text: str) -> str:
+    return re.sub(r" +", " ", text)
 
 
 def test_fixture_honors_header_prefix(demo_device):
@@ -242,3 +248,62 @@ def test_fixture_honors_header_struct_name(demo_device):
     assert "typedef dc_adc_t dc_adc1_t;" in output
     assert "static dc_adc_t *const DC_ADC0" in output
     assert "static dc_adc_t *const DC_ADC1" in output
+
+
+def test_fixture_peripheral_array_is_one_family_with_labelled_instances(demo_device):
+    # PWM%s with dimIndex A,B: two instances 0x100 apart, one dc_pwm_t between them.
+    assert [p.name for p in demo_device.peripherals[-3:]] == ["PWMA", "PWMB", "DMA"]
+    output = CWriter().render(demo_device)
+    assert output.count("} dc_pwm_t;") == 1
+    assert "(family: PWMA, PWMB)" in output
+    assert "#define DC_PWMA_BASE (0x40015000UL)" in output
+    assert "#define DC_PWMB_BASE (0x40015100UL)" in output
+    assert "typedef dc_pwm_t dc_pwma_t;" in output and "typedef dc_pwm_t dc_pwmb_t;" in output
+
+
+def test_fixture_register_array_and_separate_copies(demo_device):
+    output = CWriter().render(demo_device)
+    squashed = _squash(output)
+    assert "volatile uint32_t CC[4];" in squashed  # CC[%s]: one packed array member
+    assert "#define DC_PWMA_CC_COUNT (4U)" in output
+    assert (
+        "#define DC_PWMA_CC(i) (*(volatile uint32_t *)"
+        "(DC_PWMA_BASE + 0x00000010UL + (i) * 0x00000004UL))" in output
+    )
+    assert output.count("DC_PWMA_CC_RESET_VALUE") == 1  # once per array
+    assert "volatile uint32_t DT0;" in squashed and "volatile uint32_t DT1;" in squashed  # DT%s
+    assert "#define DC_PWMB_DT1 (*(volatile uint32_t *)(DC_PWMB_BASE + 0x00000028UL))" in output
+
+
+def test_fixture_field_array_and_separate_copies(demo_device):
+    output = CWriter().render(demo_device)
+    # MODE%s expanded to MODE0/MODE1, each with the enumerated values.
+    assert "#define DC_GPIOA_MODER_MODE1_Pos (2U)" in output
+    assert "#define DC_GPIOA_MODER_MODE1_ANALOG (3U)" in output
+    # OD[%s] stays one field with indexed position/mask macros.
+    assert "#define DC_GPIOA_ODR_OD_COUNT (16U)" in output
+    assert "#define DC_GPIOA_ODR_OD_Pos(i) (0U + (i) * 1U)" in output
+    assert "#define DC_GPIOA_ODR_OD_Msk(i) (0x00000001UL << ((i) * 1U))" in output
+
+
+def test_fixture_cluster_array_and_single_cluster(demo_device):
+    output = CWriter().render(demo_device)
+    squashed = _squash(output)
+    # Nested types come before the struct that uses them.
+    assert output.index("} dc_dma_ch_t;") < output.index("} dc_dma_t;")
+    assert output.index("} dc_dma_stat_t;") < output.index("} dc_dma_t;")
+    assert (
+        "REGFORGE_STATIC_ASSERT(sizeof(dc_dma_ch_t) == 0x10, DC_DMA_CH_SIZE, "
+        '"DMA.CH element size vs dimIncrement");' in output
+    )
+    assert "DC_DMA_STAT_SIZE" not in output  # a single cluster has no stride to assert
+    assert "dc_dma_ch_t CH[4];" in squashed and "dc_dma_stat_t STAT;" in squashed
+    assert (
+        "#define DC_DMA_CH_DST(i) (*(volatile uint32_t *)"
+        "(DC_DMA_BASE + 0x00000018UL + (i) * 0x00000010UL))" in output
+    )
+    assert "#define DC_DMA_CH_CTRL_EN_Pos (0U)" in output
+    assert (
+        "#define DC_DMA_STAT_ERR (*(volatile const uint32_t *)(DC_DMA_BASE + 0x00000054UL))"
+        in output
+    )

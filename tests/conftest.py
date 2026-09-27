@@ -11,7 +11,7 @@ import pytest
 
 from regforge.ir import Device
 from regforge.readers.svd import SvdReader
-from regforge.resolve import resolve_defaults, resolve_derived
+from regforge.resolve import expand_dim, resolve_defaults, resolve_derived
 
 TESTS_DIR = Path(__file__).parent
 MINIMAL_SVD = TESTS_DIR / "fixtures" / "svd" / "minimal.svd"
@@ -34,10 +34,11 @@ def golden_header_path() -> Path:
 
 @pytest.fixture
 def demo_device() -> Device:
-    """The device parsed from the minimal SVD fixture, defaults resolved."""
+    """The device parsed from the minimal SVD fixture, expanded and resolved."""
     device = SvdReader().read(MINIMAL_SVD)
-    resolve_defaults(device)
+    expand_dim(device)
     resolve_derived(device)
+    resolve_defaults(device)
     return device
 
 
@@ -55,8 +56,9 @@ def lint_demo_golden_path() -> Path:
 
 @pytest.fixture
 def lint_demo_device() -> Device:
-    """The flawed lint-demo device, defaults resolved."""
+    """The flawed lint-demo device, expanded and resolved."""
     device = SvdReader().read(LINT_DEMO_SVD)
-    resolve_defaults(device)
+    expand_dim(device)
     resolve_derived(device)
+    resolve_defaults(device)
     return device

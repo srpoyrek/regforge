@@ -233,6 +233,23 @@ REGFORGE_INLINE uint8_t {{ ns|lower }}nvic_get_priority({{ prefix|lower }}irqn_e
 {% if family.note %}
 /* {{ family.note }} */
 {% endif %}
+{% for ct in cluster_types(family) %}
+{% set ctw = ct.members|map(attribute='type')|map('length')|max %}
+{% set cfw = ct.members|map(attribute='field')|map('length')|max %}
+
+/* {{ ct.label }}{% if ct.desc %} -- {{ ct.desc }}{% endif %}{% if ct.count %} ({{ ct.count }} elements, 0x{{ "%X"|format(ct.element_bytes) }} bytes apart){% endif %} */
+typedef struct {
+{% for m in ct.members %}
+    {{ "%-*s"|format(ctw, m.type) }} {{ "%-*s"|format(cfw, m.field) }}  /* 0x{{ "%02X"|format(m.offset) }}{% if m.desc %}  {{ m.desc }}{% endif %} */
+{% endfor %}
+} {{ ct.tname }};
+{% for m in ct.members if m.member %}
+REGFORGE_STATIC_ASSERT(offsetof({{ ct.tname }}, {{ m.member }}) == 0x{{ "%02X"|format(m.offset) }}, {{ ct.spf }}_{{ m.member|upper }}_offset, "{{ ct.label }}.{{ m.member }} offset");
+{% endfor %}
+{% if ct.count %}
+REGFORGE_STATIC_ASSERT(sizeof({{ ct.tname }}) == 0x{{ "%X"|format(ct.element_bytes) }}, {{ ct.spf }}_SIZE, "{{ ct.label }} element size vs dimIncrement");
+{% endif %}
+{% endfor %}
 
 typedef struct {
 {% for m in members %}
@@ -266,21 +283,33 @@ REGFORGE_MAYBE_UNUSED static {{ tname }} *const {{ pf }} = ({{ tname }} *){{ pf 
 {% set irq_shared = shared_vectors.get(irq.value) %}
 #define {{ prefix }}{{ irq.name }}_IRQ {{ prefix }}{{ irq.name }}_IRQn  /* {% if irq.description %}{{ irq.description }}, {% endif %}vector {{ irq.value }}{% if irq_shared %} -- shared with {% for other in irq_shared if other != periph.name %}{{ prefix }}{{ other|upper }}{% if not loop.last %}, {% endif %}{% endfor %}; demux in ISR{% endif %} */
 {% endfor %}
-{% for reg in periph.registers %}
+{% for acc in accessors(periph) %}
+{% set reg = acc.register %}
+{% set rn = pf ~ "_" ~ acc.name|upper %}
 
-/* {{ periph.name }}.{{ reg.name }}{% if reg.description %} - {{ reg.description }}{% endif %} */
-#define {{ pf }}_{{ reg.name|upper }} (*({{ member_type(reg) }} *)({{ pf }}_BASE + {{ to_bytes(reg.address_offset)|hex32 }}UL))
+/* {{ periph.name }}.{{ acc.label }}{% if reg.description %} - {{ reg.description }}{% endif %} */
+{% if acc.count %}
+#define {{ rn }}_COUNT ({{ acc.count }}U)
+{% endif %}
+#define {{ rn }}{{ acc.params }} (*({{ member_type(reg) }} *)({{ pf }}_BASE + {{ acc.address }}))
 {% if reg.reset_value is not none %}
-#define {{ pf }}_{{ reg.name|upper }}_RESET_VALUE ({{ reg.reset_value|hex32 }}UL)
+#define {{ rn }}_RESET_VALUE ({{ reg.reset_value|hex32 }}UL)
 {% endif %}
 {% if reg.reset_mask is not none and reg.reset_mask != full_mask(reg.size) %}
-#define {{ pf }}_{{ reg.name|upper }}_RESET_MASK ({{ reg.reset_mask|hex32 }}UL)
+#define {{ rn }}_RESET_MASK ({{ reg.reset_mask|hex32 }}UL)
 {% endif %}
 {% for field in reg.fields %}
-#define {{ pf }}_{{ reg.name|upper }}_{{ field.name|upper }}_Pos ({{ field.bit_offset }}U)
-#define {{ pf }}_{{ reg.name|upper }}_{{ field.name|upper }}_Msk ({{ field.mask|hex32 }}UL)
+{% set fn = rn ~ "_" ~ field.name|upper %}
+{% if field.dim %}
+#define {{ fn }}_COUNT ({{ field.dim.count }}U)
+#define {{ fn }}_Pos(i) ({{ field.bit_offset }}U + (i) * {{ field.dim.increment }}U)
+#define {{ fn }}_Msk(i) ({{ field.mask|hex32 }}UL << ((i) * {{ field.dim.increment }}U))
+{% else %}
+#define {{ fn }}_Pos ({{ field.bit_offset }}U)
+#define {{ fn }}_Msk ({{ field.mask|hex32 }}UL)
+{% endif %}
 {% for ev in field.enums %}
-#define {{ pf }}_{{ reg.name|upper }}_{{ field.name|upper }}_{{ ev.name|upper }} ({{ ev.value }}U)
+#define {{ fn }}_{{ ev.name|upper }} ({{ ev.value }}U)
 {% endfor %}
 {% endfor %}
 {% endfor %}

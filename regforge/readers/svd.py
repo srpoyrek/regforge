@@ -7,12 +7,14 @@ and accepts all three field bit-range encodings: ``bitOffset``/``bitWidth``,
 ``bitRange``, and ``lsb``/``msb``.
 
 Notes:
-    Peripheral and register inheritance (``derivedFrom``), register clusters,
-    and dimensioned arrays (``dim``) are not expanded by this reader.
+    Inheritance (``derivedFrom``) and arrays (``dim``) are parsed, not
+    expanded, by this reader: :mod:`regforge.resolve` does both. Clusters are
+    walked, registers and nested clusters alike.
 """
 
 from __future__ import annotations
 
+import re
 import xml.etree.ElementTree as ET
 from enum import IntEnum
 from typing import overload
@@ -22,8 +24,10 @@ from ..ir import (
     DEFAULT_BUS_WIDTH,
     Access,
     AddressBlock,
+    Cluster,
     Cpu,
     Device,
+    Dim,
     EnumeratedValue,
     Field,
     Interrupt,
@@ -115,6 +119,56 @@ def _access(element: ET.Element, tag: str = "access") -> Access | None:
         return None
 
 
+def parse_dim_index(text: str) -> list[str]:
+    """Parse an SVD ``<dimIndex>`` into the labels that replace ``%s``.
+
+    Three spellings exist: a comma-separated list (``A,B,C``), a numeric range
+    (``0-3``), or a single-letter range (``A-D``). Whitespace around each label
+    is dropped; both ranges include their ends. Anything else is one label.
+    """
+    token = text.strip()
+    if "," in token:
+        return [label.strip() for label in token.split(",")]
+    numeric = re.fullmatch(r"(\d+)-(\d+)", token)
+    if numeric:
+        first, last = int(numeric.group(1)), int(numeric.group(2))
+        return [str(i) for i in range(first, last + 1)]
+    letters = re.fullmatch(r"([A-Za-z])-([A-Za-z])", token)
+    if letters:
+        first, last = letters.group(1), letters.group(2)
+        return [chr(code) for code in range(ord(first), ord(last) + 1)]
+    return [token]
+
+
+def _dim(element: ET.Element, name: str) -> Dim | None:
+    """Return the ``<dim>`` group of ``element``, or ``None`` when it has none.
+
+    A ``<dim>`` needs a ``<dimIncrement>``, a ``%s`` placeholder in the name,
+    and a ``<dimIndex>`` (when given) with exactly ``dim`` labels. A file that
+    breaks any of these cannot be expanded, so it is refused here, like a field
+    with no bit range; so is the reverse slip, ``%s`` with no ``<dim>``. The
+    stride is not looked at: whether it fits the element needs the resolved
+    register size, which exists only after defaults resolution.
+    """
+    count = _int(element, "dim")
+    if count is None:
+        if "%s" in name:
+            raise ValueError(f"{name!r} has a %s placeholder but no <dim>")
+        return None
+    if count < 1:
+        raise ValueError(f"{name!r}: <dim> must be at least 1, got {count}")
+    increment = _int(element, "dimIncrement")
+    if increment is None:
+        raise ValueError(f"{name!r} has <dim> but no <dimIncrement>")
+    if "%s" not in name:
+        raise ValueError(f"{name!r} has <dim> but no %s placeholder in its name")
+    index_text = _text(element, "dimIndex")
+    index = parse_dim_index(index_text) if index_text is not None else None
+    if index is not None and len(index) != count:
+        raise ValueError(f"{name!r}: <dimIndex> gives {len(index)} label(s) for <dim> {count}")
+    return Dim(count=count, increment=increment, index=index)
+
+
 def _parse_bits(field_element: ET.Element) -> tuple[int, int]:
     """Return ``(bit_offset, bit_width)`` from any SVD bit-range encoding."""
     bit_range = _text(field_element, "bitRange")
@@ -138,6 +192,7 @@ def _parse_bits(field_element: ET.Element) -> tuple[int, int]:
 
 
 def _build_field(field_element: ET.Element) -> Field:
+    name = _text(field_element, "name") or ""
     offset, width = _parse_bits(field_element)
     enums = [
         EnumeratedValue(
@@ -149,20 +204,22 @@ def _build_field(field_element: ET.Element) -> Field:
         if _text(value_element, "value") is not None
     ]
     return Field(
-        name=_text(field_element, "name") or "",
+        name=name,
         bit_offset=offset,
         bit_width=width,
         description=_text(field_element, "description"),
         access=_access(field_element),
         enums=enums,
+        dim=_dim(field_element, name),
     )
 
 
 def _build_register(register_element: ET.Element) -> Register:
     # Register-property values are stored raw (None when silent); the defaults
     # resolution pass fills them from the inheritance chain.
+    name = _text(register_element, "name") or ""
     return Register(
-        name=_text(register_element, "name") or "",
+        name=name,
         address_offset=_int(register_element, "addressOffset", 0),
         size=_int(register_element, "size"),
         reset_value=_int(register_element, "resetValue"),
@@ -170,6 +227,27 @@ def _build_register(register_element: ET.Element) -> Register:
         description=_text(register_element, "description"),
         access=_access(register_element),
         fields=[_build_field(f) for f in register_element.findall("./fields/field")],
+        dim=_dim(register_element, name),
+    )
+
+
+def _build_cluster(cluster_element: ET.Element) -> Cluster:
+    # Inside a cluster, registers and nested clusters are direct children: the
+    # schema has no <registers> wrapper at this level.
+    name = _text(cluster_element, "name") or ""
+    return Cluster(
+        name=name,
+        address_offset=_int(cluster_element, "addressOffset", 0),
+        description=_text(cluster_element, "description"),
+        header_struct_name=_text(cluster_element, "headerStructName"),
+        derived_from=cluster_element.get("derivedFrom"),  # XML attribute, as on a peripheral
+        default_size=_int(cluster_element, "size"),
+        default_access=_access(cluster_element),
+        default_reset_value=_int(cluster_element, "resetValue"),
+        default_reset_mask=_int(cluster_element, "resetMask"),
+        registers=[_build_register(r) for r in cluster_element.findall("./register")],
+        clusters=[_build_cluster(c) for c in cluster_element.findall("./cluster")],
+        dim=_dim(cluster_element, name),
     )
 
 
@@ -204,8 +282,9 @@ def _build_address_block(block_element: ET.Element) -> AddressBlock:
 
 
 def _build_peripheral(peripheral_element: ET.Element) -> Peripheral:
+    name = _text(peripheral_element, "name") or ""
     return Peripheral(
-        name=_text(peripheral_element, "name") or "",
+        name=name,
         base_address=_int(peripheral_element, "baseAddress", 0),
         description=_text(peripheral_element, "description"),
         derived_from=peripheral_element.get("derivedFrom"),  # XML attribute, not a child
@@ -220,6 +299,8 @@ def _build_peripheral(peripheral_element: ET.Element) -> Peripheral:
         address_blocks=[
             _build_address_block(b) for b in peripheral_element.findall("./addressBlock")
         ],
+        clusters=[_build_cluster(c) for c in peripheral_element.findall("./registers/cluster")],
+        dim=_dim(peripheral_element, name),
     )
 
 

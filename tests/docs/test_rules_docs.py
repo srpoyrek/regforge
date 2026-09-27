@@ -103,7 +103,7 @@ def test_worked_examples_match_what_regforge_generates(tmp_path):
     # example -- so the docs cannot quietly describe an older regforge.
     pytest.importorskip("jinja2")
     from regforge.readers.svd import SvdReader
-    from regforge.resolve import resolve_defaults, resolve_derived
+    from regforge.resolve import expand_dim, resolve_defaults, resolve_derived
     from regforge.writers.c import CWriter
 
     svd = _worked_examples(RULES / "formats" / "svd.md", "xml")
@@ -113,6 +113,7 @@ def test_worked_examples_match_what_regforge_generates(tmp_path):
         path = tmp_path / "example.svd"
         path.write_text(source, encoding="utf-8")
         device = SvdReader().read(path)
+        expand_dim(device)
         resolve_derived(device)
         resolve_defaults(device)
         generated = CWriter().render(device)

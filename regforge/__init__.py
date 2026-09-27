@@ -16,7 +16,7 @@ Typical usage::
 from __future__ import annotations
 
 from .check import Finding, Severity, check_address_math
-from .ir import Access, Cpu, Device, EnumeratedValue, Field, Peripheral, Register
+from .ir import Access, Cluster, Cpu, Device, Dim, EnumeratedValue, Field, Peripheral, Register
 from .provenance import PatchRef, Provenance, build_provenance
 from .readers import available_readers, get_reader, reader_for_path
 from .resolve import resolve_defaults
@@ -28,10 +28,12 @@ __all__ = [
     "Device",
     "Cpu",
     "Peripheral",
+    "Cluster",
     "Register",
     "Field",
     "EnumeratedValue",
     "Access",
+    "Dim",
     "resolve_defaults",
     "Provenance",
     "PatchRef",

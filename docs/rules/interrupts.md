@@ -90,6 +90,11 @@ Emitted as [C](targets/c.md#instance-names):
 This is a shared vector: same number, different addresses. It is not
 `alternatePeripheral`, which is the same address.
 
+Copies expanded from a `<dim>` peripheral template share the template's vector
+too, because `dim` cannot shift a number. Expansion reports it, and the copies
+are listed at each instance like any other shared vector; see
+[arrays.md](arrays.md#rule-5-peripheral-copies-form-one-family).
+
 ## Rule 4: NVIC helpers are emitted only for Cortex-M
 
 The interrupt controller depends on the core, so `regforge/arch.py` reads

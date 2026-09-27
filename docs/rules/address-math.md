@@ -77,13 +77,19 @@ A 24-bit register stops generation by name instead of being rounded to 32.
 | Register size > bus width | `WARNING` |
 | Register size is not a whole number of address units | `WARNING` |
 | Register offset misaligned for its size | `WARNING` |
+| Register array stride smaller than the element | `ERROR` |
+| Cluster array stride smaller than the cluster's contents | `ERROR` |
+| Field array increment smaller than the field width | `ERROR` |
 
 The power-of-two test is used instead of a fixed list of valid widths, so wider
 buses stay correct without editing the check.
 
-The two `ERROR` rows describe hardware that cannot exist. The `WARNING` rows
+The `ERROR` rows describe hardware that cannot exist: a bus narrower than one
+address step, or array elements that overlap each other. The `WARNING` rows
 describe hardware that is unusual but possible, such as a register read in two
-bus accesses.
+bus accesses. The array rows are checked only after defaults resolution, once
+every register has a size to compare the stride against. A register inside a
+cluster is checked at its offset from the peripheral.
 
 ## Rule 5: registers are placed in offset order with explicit padding
 
@@ -105,5 +111,6 @@ REGFORGE_STATIC_ASSERT(offsetof(dc_gpioa_t, IDR) == 0x10, DC_GPIOA_IDR_offset, "
 | Case | Result |
 |---|---|
 | Two registers overlap | `LayoutError` naming the register. Union and `alternateRegister` layouts are not implemented. |
-| Register arrays (`dim`) | Stride is not checked. Arrays are not in the IR. |
-| Clusters | Not walked. |
+| Register array (`NAME[%s]`) | One member spanning every element. The stride must equal the element size; any other stride is a `LayoutError` (exit 4) naming the register, since a C array cannot hold space between elements. Elements that overlap are also an `ERROR` finding. |
+| Cluster | One member of its own struct type, laid out inside the same way. An array cluster's element is padded to the stride, so the array tiles exactly; a stride smaller than the contents is a `LayoutError` and an `ERROR` finding. |
+| Empty cluster | `LayoutError`. There is no element to lay out (a cluster `derivedFrom` is not resolved yet). |
