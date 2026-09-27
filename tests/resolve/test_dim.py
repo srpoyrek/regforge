@@ -96,7 +96,7 @@ def test_array_notation_on_a_peripheral_means_copies_and_warns():
     assert any("not an array" in f.message for f in findings)
 
 
-def test_interrupts_are_copied_with_the_label_and_reported():
+def test_labelled_interrupts_go_to_every_copy():
     device = _device(
         _uart_template(dim=Dim(2, 0x400), interrupts=[Interrupt("UART%s", 20, "UART %s interrupt")])
     )
@@ -106,7 +106,7 @@ def test_interrupts_are_copied_with_the_label_and_reported():
         ("UART1", 20),
     ]
     assert device.peripherals[0].interrupts[0].description == "UART %s interrupt"  # untouched
-    assert any("cannot shift a vector number" in f.message for f in findings)
+    assert findings == []  # a labelled interrupt is per copy; sharing is marked in the header
 
 
 def test_description_placeholder_is_left_alone():
@@ -534,4 +534,38 @@ def test_inheriting_dim_from_a_base_without_one_is_an_error():
     assert [p.name for p in device.peripherals] == ["UART0", "X"]
     assert _messages(findings, Severity.ERROR) == [
         "X%s: inherits <dim> from 'UART0', which declares none -- emitted as one instance"
+    ]
+
+
+# --- interrupts, field widths, label order ---
+
+
+def test_fixed_name_interrupt_stays_on_copy_zero_and_warns():
+    device = _device(_uart_template(dim=Dim(3, 0x400), interrupts=[Interrupt("UART_IRQ", 20)]))
+    findings = expand_dim(device)
+    assert [[i.name for i in p.interrupts] for p in device.peripherals] == [["UART_IRQ"], [], []]
+    assert _messages(findings, Severity.WARNING) == [
+        "UART%s: interrupt 'UART_IRQ' (vector 20) has no %s -- attached to UART0 only; "
+        "UART1, UART2 have no vector of their own"
+    ]
+
+
+def test_field_copies_that_overlap_are_an_error():
+    device = _with_registers(Register("MODER", 0x0, fields=[Field("MODE%s", 0, 4, dim=Dim(4, 2))]))
+    findings = expand_dim(device)
+    fields = device.peripherals[0].registers[0].fields
+    assert [f.bit_offset for f in fields] == [0, 2, 4, 6]  # still expanded, as written
+    assert _messages(findings, Severity.ERROR) == [
+        "P.MODER.MODE%s: increment 2 bit(s) is smaller than the 4-bit field -- the copies overlap"
+    ]
+
+
+def test_copies_follow_the_label_order_as_written():
+    # dimIndex order is the copy order: sorting it would move addresses.
+    device = _device(Peripheral("GPIO%s", 0x0, dim=Dim(3, 0x100, index=["C", "A", "B"])))
+    expand_dim(device)
+    assert [(p.name, p.base_address) for p in device.peripherals] == [
+        ("GPIOC", 0x0),
+        ("GPIOA", 0x100),
+        ("GPIOB", 0x200),
     ]

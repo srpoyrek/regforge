@@ -107,6 +107,8 @@ and [the whole header](targets/c.md#a-peripheral-array-with-a-register-array).
 | register, cluster or field, either spelling | smaller than one element | `ERROR` finding: the elements overlap; the layout refuses it too (`LayoutError`, exit 4) |
 | cluster `[%s]` | larger than its contents | the element struct is padded to the stride and its size asserted |
 | cluster `[%s]` | smaller than its contents | refused: `LayoutError`, and an `ERROR` finding |
+| field `%s` copies | increment smaller than the width | `ERROR` at expansion (widths are known there); the copies are still made as written |
+| field, either spelling | reaching past the register width (9 x 4 bits in a 32-bit register) | `ERROR` after defaults, copies collapsed into one line; the C writer refuses it rather than wrap the mask |
 
 Both the finding and the refusal fire on the overlap case: the check runs first
 and names it, the writer refuses second. The comparison happens after defaults
@@ -147,10 +149,13 @@ the template declares none, so [families.md](families.md) merges them into one
 type with four instances instead of emitting four identical structs. A declared
 `groupName` or `headerStructName` still wins, as in [naming.md](naming.md).
 
-Interrupts are copied to every instance, `%s` substituted in their names. `dim`
-cannot shift a vector number, so the copies share it; expansion reports that,
-and the shared vector shows at each instance as in
-[interrupts.md](interrupts.md#rule-3-one-vector-used-by-several-peripherals-appears-once).
+Interrupts follow the placeholder:
+
+| Written | Result |
+|---|---|
+| `<interrupt><name>UART%s_IRQ</name><value>20</value>` | one interrupt per copy, `UART0_IRQ`..`UART3_IRQ`, all on vector 20. The vector is shared, and each instance says so, as in [interrupts.md](interrupts.md#rule-3-one-vector-used-by-several-peripherals-appears-once); no finding |
+| `<interrupt><name>UART_IRQ</name><value>20</value>` | copy 0 keeps it; the others have no vector of their own; `WARNING`, the same finding `derivedFrom` gets for an inherited vector |
+| a vector that should step per copy | there is no increment for vector values in the spec, and none is invented. List the copies by hand |
 
 ## Rule 6: `dimName` names the type, `dimArrayIndex` names the indices
 

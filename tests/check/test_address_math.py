@@ -139,3 +139,22 @@ def test_address_past_32_bits_is_an_error_naming_the_template():
     (message,) = _errors(check_address_math(device))
     assert "HI3: reaches 0x100000004, past the 32-bit address space" in message
     assert "(a copy expanded from HI%s)" in message
+
+
+def test_fields_past_the_register_width_are_errors_collapsed_per_template():
+    register = Register(
+        "R",
+        0,
+        size=32,
+        fields=[
+            Field("F", 30, 4),  # a plain field: bits 30..33
+            Field("A", 0, 4, dim=Dim(9, 4, array=True)),  # an array: 9 x 4 bits reach 36
+            *[Field(f"M{i}", 4 * i, 4, expanded_from="M%s") for i in range(9)],  # M8 at 32..35
+        ],
+    )
+    device = _device(peripherals=[Peripheral(name="P", base_address=0, registers=[register])])
+    assert _errors(check_address_math(device)) == [
+        "P.R.F: bits 30..33 run past the 32-bit register",
+        "P.R.A[9]: bits 0..35 run past the 32-bit register",
+        "P.R.M%s: M8..M8 (1 of its 9 copies) run past the 32-bit register",
+    ]

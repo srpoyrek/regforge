@@ -91,8 +91,10 @@ This is a shared vector: same number, different addresses. It is not
 `alternatePeripheral`, which is the same address.
 
 Copies expanded from a `<dim>` peripheral template share the template's vector
-too, because `dim` cannot shift a number. Expansion reports it, and the copies
-are listed at each instance like any other shared vector; see
+when the interrupt is named per copy (`UART%s_IRQ`), because `dim` cannot shift
+a number; the copies are listed at each instance like any other shared vector.
+An interrupt named without `%s` stays on the first copy alone, and the others
+are reported as having no vector of their own; see
 [arrays.md](arrays.md#rule-5-peripheral-copies-form-one-family).
 
 ## Rule 4: NVIC helpers are emitted only for Cortex-M

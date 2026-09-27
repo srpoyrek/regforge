@@ -84,6 +84,10 @@ def test_array_cluster_is_padded_asserted_and_indexed():
         '"DMA.CH element size vs dimIncrement");' in output
     )
     assert "dc_dma_ch_t CH[4];" in squashed
+    assert (
+        "REGFORGE_STATIC_ASSERT(sizeof(((dc_dma_t *)0)->CH) == 0x40, DC_DMA_CH_size, "
+        '"DMA.CH array size");' in output
+    )
     assert "/* DMA.CH[4].CTRL */" in output
     assert (
         "#define DC_DMA_CH_CTRL(i) (*(volatile uint32_t *)"

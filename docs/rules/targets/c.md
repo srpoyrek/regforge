@@ -213,13 +213,22 @@ one member sized for every element:
 volatile uint32_t CC[4];   /* 0x10  Capture/compare channel */
 ```
 
-Its stride must equal the element size, or the writer refuses the device by
-name (see [ir/address-math.md](../address-math.md)). The flat macro takes the
-index, and a count is emitted for loop bounds:
+This form needs the stride to equal the element size (see
+[ir/address-math.md](../address-math.md)); a larger stride gives flat members
+instead, below. The flat macro takes the index, and a count is emitted for
+loop bounds:
 
 ```c
 #define DC_PWMA_CC_COUNT (4U)
 #define DC_PWMA_CC(i) (*(volatile uint32_t *)(DC_PWMA_BASE + 0x00000010UL + (i) * 0x00000004UL))
+```
+
+One `offsetof` assert covers the whole array, and a `sizeof` assert on the
+member checks it holds exactly its elements (`sizeof` is unevaluated, so the
+null pointer is never dereferenced):
+
+```c
+REGFORGE_STATIC_ASSERT(sizeof(((dc_pwm_t *)0)->CC) == 0x10, DC_PWM_CC_size, "PWM.CC array size");
 ```
 
 When the stride is larger than the element (`CH[%s]` 8 bytes apart for 32-bit
@@ -581,6 +590,7 @@ REGFORGE_STATIC_ASSERT(offsetof(pwm_t, CTRL) == 0x00, PWM_CTRL_offset, "PWM.CTRL
 REGFORGE_STATIC_ASSERT(offsetof(pwm_t, CC) == 0x10, PWM_CC_offset, "PWM.CC offset");
 REGFORGE_STATIC_ASSERT(offsetof(pwm_t, DT0) == 0x20, PWM_DT0_offset, "PWM.DT0 offset");
 REGFORGE_STATIC_ASSERT(offsetof(pwm_t, DT1) == 0x28, PWM_DT1_offset, "PWM.DT1 offset");
+REGFORGE_STATIC_ASSERT(sizeof(((pwm_t *)0)->CC) == 0x10, PWM_CC_size, "PWM.CC array size");
 REGFORGE_STATIC_ASSERT(sizeof(pwm_t) == 0x30, PWM_SIZE, "PWM struct size vs addressBlock");
 
 /* Per-instance names for the shared type, so a signature never has to know
@@ -653,6 +663,7 @@ typedef struct {
 } dma_t;
 REGFORGE_STATIC_ASSERT(offsetof(dma_t, CFG) == 0x00, DMA_CFG_offset, "DMA.CFG offset");
 REGFORGE_STATIC_ASSERT(offsetof(dma_t, CH) == 0x10, DMA_CH_offset, "DMA.CH offset");
+REGFORGE_STATIC_ASSERT(sizeof(((dma_t *)0)->CH) == 0x40, DMA_CH_size, "DMA.CH array size");
 REGFORGE_STATIC_ASSERT(sizeof(dma_t) == 0x50, DMA_SIZE, "DMA struct size vs addressBlock");
 
 /* DMA @ 0x40016000 */

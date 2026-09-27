@@ -185,6 +185,8 @@ def _c_layout(
                     "field": f"{name}[{slot.gap_bytes // (bits // BITS_PER_BYTE)}];",
                     "desc": "(buffer)",
                     "member": name,
+                    "elements": 1,
+                    "bytes": slot.size_bytes,
                 }
             )
             buffer_index += 1
@@ -196,6 +198,8 @@ def _c_layout(
                     "field": f"RESERVED{pad_index}[{slot.gap_bytes}];",
                     "desc": "(reserved)",
                     "member": None,
+                    "elements": 1,
+                    "bytes": slot.size_bytes,
                 }
             )
             pad_index += 1
@@ -208,6 +212,8 @@ def _c_layout(
                     "field": f"{cluster.name}{_count_suffix(slot.count)};",
                     "desc": _short_desc(cluster.description),
                     "member": cluster.name,
+                    "elements": slot.count,
+                    "bytes": slot.size_bytes,
                 }
             )
         else:
@@ -221,6 +227,8 @@ def _c_layout(
                     "field": f"{name}{_count_suffix(slot.count)};",
                     "desc": _short_desc(register.description),
                     "member": name,
+                    "elements": slot.count,
+                    "bytes": slot.size_bytes,
                 }
             )
     return entries_out
@@ -443,12 +451,23 @@ class CWriter(Writer):
                     "expand_dim before rendering"
                 )
             for register in _all_registers(peripheral):
-                if register.size not in _C_TYPE:
+                if register.size is None or register.size not in _C_TYPE:
                     raise EmitError(
                         f"{peripheral.name}.{register.name}: register size "
                         f"{register.size} bits has no C type mapping "
                         f"(supported: {sorted(_C_TYPE)})"
                     )
+                for field_ in register.fields:
+                    end = field_.bit_offset + field_.bit_width
+                    if field_.dim is not None:
+                        end += (field_.dim.length - 1) * field_.dim.stride
+                    if end > register.size:
+                        # hex32 would wrap the mask; refuse by name instead.
+                        raise EmitError(
+                            f"{peripheral.name}.{register.name}.{field_.name}: bits "
+                            f"{field_.bit_offset}..{end - 1} run past the {register.size}-bit "
+                            "register -- its mask cannot be emitted"
+                        )
             base = units_to_bytes(peripheral.base_address, unit_bits)
             end = base + registers_end(peripheral, unit_bits)
             for block in peripheral.address_blocks:

@@ -526,6 +526,7 @@ REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, CTRL) == 0x00, DC_PWM_CTRL_offset, "PW
 REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, CC) == 0x10, DC_PWM_CC_offset, "PWM.CC offset");
 REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, DT0) == 0x20, DC_PWM_DT0_offset, "PWM.DT0 offset");
 REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, DT1) == 0x28, DC_PWM_DT1_offset, "PWM.DT1 offset");
+REGFORGE_STATIC_ASSERT(sizeof(((dc_pwm_t *)0)->CC) == 0x10, DC_PWM_CC_size, "PWM.CC array size");
 REGFORGE_STATIC_ASSERT(sizeof(dc_pwm_t) == 0x100, DC_PWM_SIZE, "PWM struct size vs addressBlock");
 
 /* Per-instance names for the shared type, so a signature never has to know
@@ -604,6 +605,7 @@ typedef struct {
 REGFORGE_STATIC_ASSERT(offsetof(dc_dma_t, CFG) == 0x00, DC_DMA_CFG_offset, "DMA.CFG offset");
 REGFORGE_STATIC_ASSERT(offsetof(dc_dma_t, CH) == 0x10, DC_DMA_CH_offset, "DMA.CH offset");
 REGFORGE_STATIC_ASSERT(offsetof(dc_dma_t, STAT) == 0x50, DC_DMA_STAT_offset, "DMA.STAT offset");
+REGFORGE_STATIC_ASSERT(sizeof(((dc_dma_t *)0)->CH) == 0x40, DC_DMA_CH_size, "DMA.CH array size");
 REGFORGE_STATIC_ASSERT(sizeof(dc_dma_t) == 0x100, DC_DMA_SIZE, "DMA struct size vs addressBlock");
 
 /* DMA @ 0x40016000 */

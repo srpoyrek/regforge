@@ -132,10 +132,9 @@
       <name>ADCB</name>
       <baseAddress>0x40055000</baseAddress>
     </peripheral>
-    <!-- Dimmed peripheral with an interrupt (WARNING from the expand pass):
-         <dim> cannot shift a vector number, so both copies of TMRX%s land on
-         vector 41; the template declares it for each, but it is reported and
-         the header notes the shared vector at both instances. -->
+    <!-- Dimmed peripheral with a per-copy interrupt name: both copies of TMRX%s
+         land on vector 41 (dim cannot shift a number), which the header notes
+         as a shared vector at both instances; no finding. -->
     <peripheral>
       <dim>2</dim>
       <dimIncrement>0x100</dimIncrement>
@@ -303,6 +302,19 @@
       <dimIncrement>0x200</dimIncrement>
       <name>SERX%s</name>
       <baseAddress>0x40063000</baseAddress>
+    </peripheral>
+    <!-- An interrupt with no %s on a dimmed peripheral (WARNING): two copies on
+         vector 43 under one name would be the derivedFrom slip, so only TMRU0
+         keeps it and TMRU1 has no vector of its own. -->
+    <peripheral>
+      <dim>2</dim>
+      <dimIncrement>0x100</dimIncrement>
+      <name>TMRU%s</name>
+      <baseAddress>0x40064000</baseAddress>
+      <interrupt><name>TMRU_IRQ</name><value>43</value></interrupt>
+      <registers>
+        <register><name>CR</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
     </peripheral>
   </peripherals>
 </device>

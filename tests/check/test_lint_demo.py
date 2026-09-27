@@ -61,7 +61,11 @@ def test_expand_warnings_are_locked(lint_demo_svd_path):
     device = SvdReader().read(lint_demo_svd_path)
     findings = expand_dim(device)
     messages = [f.message for f in findings]
-    assert any("TMRX%s" in m and "cannot shift a vector number" in m for m in messages)
+    assert (
+        "TMRU%s: interrupt 'TMRU_IRQ' (vector 43) has no %s -- attached to TMRU0 only; "
+        "TMRU1 have no vector of their own"
+    ) in messages
+    assert not any(m.startswith("TMRX%s") for m in messages)  # per-copy names: no finding
     assert any("DMAX.CH[%s]: dimIndex ignored" in m for m in messages)
     assert any("TMRY: <dim> on a name without a %s" in m and "TMRY0..TMRY1" in m for m in messages)
     assert any("GHOST%s: <dim> 0 declares nothing -- dropped" in m for m in messages)
@@ -108,6 +112,7 @@ def test_derived_from_a_template_is_resolved_to_its_first_copy(lint_demo_svd_pat
 
 def test_dimmed_instances_share_the_vector_in_the_header(lint_demo_device):
     output = CWriter().render(lint_demo_device)
+    assert output.count("#define LD_TMRU_IRQ_IRQ ") == 1  # copy 0 only
     assert "#define LD_TMRY1_BASE (0x40058100UL)" in output  # index appended, header compiles
     assert (
         "#define LD_TMRX0_IRQ LD_TMRX0_IRQn  "

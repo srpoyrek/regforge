@@ -225,6 +225,16 @@ def _expand_fields(register: Register, where: str, findings: list[Finding]) -> N
             expanded.append(field_)
         else:
             pattern = _pattern(field_.name, plan, path, findings)
+            if field_.dim.stride < field_.bit_width:
+                # Widths are known here, unlike register sizes, so the field
+                # overlap can be named at once; the copies are still made.
+                findings.append(
+                    Finding(
+                        Severity.ERROR,
+                        f"{path}: increment {field_.dim.stride} bit(s) is smaller than the "
+                        f"{field_.bit_width}-bit field -- the copies overlap",
+                    )
+                )
             for index, label in enumerate(plan):
                 clone = copy.deepcopy(field_)
                 clone.dim = None
@@ -368,10 +378,11 @@ def expand_dim(device: Device) -> list[Finding]:
     Peripheral copies form one family: the pattern's stem (``UART`` from
     ``UART%s``) stands in for a missing ``groupName``, and ``dimName`` names
     the type when no ``headerStructName`` does, so one type is emitted with
-    ``count`` instances. Interrupts are copied to every instance -- the
-    template declares them for each -- with ``%s`` substituted in their names;
-    ``<dim>`` cannot shift a vector number, so the copies share it, and that is
-    reported.
+    ``count`` instances. An interrupt whose name carries ``%s`` goes to every
+    copy with the label substituted (the vector is shared, which the writers
+    mark at each instance); one without ``%s`` stays on the first copy alone,
+    and the others are reported as having no vector of their own. Nothing
+    invents a vector increment: the spec has none.
 
     A derived peripheral may leave ``<dim>`` to its base: :func:`_inherit_dims`
     fills its partial ``Dim`` from the base template first, the derived one's
@@ -410,16 +421,23 @@ def expand_dim(device: Device) -> list[Finding]:
         if not plan:
             continue
         pattern = _pattern(pattern, plan, peripheral.name, findings)
-        if peripheral.interrupts:
-            vectors = ", ".join(str(interrupt.value) for interrupt in peripheral.interrupts)
-            findings.append(
-                Finding(
-                    Severity.WARNING,
-                    f"{pattern}: its interrupt(s) (vector {vectors}) are copied to all "
-                    f"{peripheral.dim.length} instances -- <dim> cannot shift a vector number, "
-                    "so they share it; declare the instances separately if each has its own",
+        # An interrupt named with %s is per copy: the label goes in and the
+        # vector is shared, which shared_vectors() marks at each instance. One
+        # without %s stays on copy 0 alone -- several copies on one vector under
+        # one name is the slip check_derived_interrupts flags for derivedFrom,
+        # and it is reported the same way.
+        fixed = [irq for irq in peripheral.interrupts if _COPY not in irq.name]
+        if fixed and len(plan) > 1:
+            first = pattern.replace(_COPY, plan[0])
+            others = ", ".join(pattern.replace(_COPY, label) for label in plan[1:])
+            for irq in fixed:
+                findings.append(
+                    Finding(
+                        Severity.WARNING,
+                        f"{pattern}: interrupt '{irq.name}' (vector {irq.value}) has no %s -- "
+                        f"attached to {first} only; {others} have no vector of their own",
+                    )
                 )
-            )
         stem = _stem(pattern)
         for index, label in enumerate(plan):
             clone = copy.deepcopy(peripheral)
@@ -433,6 +451,11 @@ def expand_dim(device: Device) -> list[Finding]:
                 clone.header_struct_name = peripheral.dim.name
             if not clone.group_name:
                 clone.group_name = stem
+            clone.interrupts = [
+                copy.deepcopy(interrupt)
+                for interrupt in peripheral.interrupts
+                if index == 0 or _COPY in interrupt.name
+            ]
             for interrupt in clone.interrupts:
                 interrupt.name = interrupt.name.replace(_COPY, label)
             expanded.append(clone)

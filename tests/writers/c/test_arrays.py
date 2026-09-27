@@ -62,6 +62,10 @@ def test_array_register_is_one_member_with_count_and_indexed_macro():
     )
     assert "/* PWM.CC[4] - Capture/compare */" in output
     assert "#define DC_PWM_CC_COUNT (4U)" in output
+    assert (  # the member holds exactly its elements
+        "REGFORGE_STATIC_ASSERT(sizeof(((dc_pwm_t *)0)->CC) == 0x10, DC_PWM_CC_size, "
+        '"PWM.CC array size");' in output
+    )
     assert (
         "#define DC_PWM_CC(i) (*(volatile uint32_t *)"
         "(DC_PWM_BASE + 0x00000010UL + (i) * 0x00000004UL))" in output
@@ -111,6 +115,15 @@ def test_unpacked_array_is_flat_members_with_an_indexed_macro():
         "#define DC_PWMX_CH(i) (*(volatile uint32_t *)"
         "(DC_PWMX_BASE + 0x00000000UL + (i) * 0x00000008UL))" in output
     )
+
+
+def test_field_past_the_register_width_is_refused():
+    with pytest.raises(EmitError, match=r"P\.R\.F: bits 30\.\.33 run past the 32-bit"):
+        _render(
+            Peripheral(
+                "P", 0x0, registers=[Register("R", 0x0, size=32, fields=[Field("F", 30, 4)])]
+            )
+        )
 
 
 def test_address_past_32_bits_is_refused():

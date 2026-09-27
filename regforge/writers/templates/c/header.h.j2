@@ -246,6 +246,9 @@ typedef struct {
 {% for m in ct.members if m.member %}
 REGFORGE_STATIC_ASSERT(offsetof({{ ct.tname }}, {{ m.member }}) == 0x{{ "%02X"|format(m.offset) }}, {{ ct.spf }}_{{ m.member|upper }}_offset, "{{ ct.label }}.{{ m.member }} offset");
 {% endfor %}
+{% for m in ct.members if m.member and m.elements > 1 %}
+REGFORGE_STATIC_ASSERT(sizeof((({{ ct.tname }} *)0)->{{ m.member }}) == 0x{{ "%X"|format(m.bytes) }}, {{ ct.spf }}_{{ m.member|upper }}_size, "{{ ct.label }}.{{ m.member }} array size");
+{% endfor %}
 {% if ct.count %}
 REGFORGE_STATIC_ASSERT(sizeof({{ ct.tname }}) == 0x{{ "%X"|format(ct.element_bytes) }}, {{ ct.spf }}_SIZE, "{{ ct.label }} element size vs dimIncrement");
 {% endif %}
@@ -258,6 +261,9 @@ typedef struct {
 } {{ tname }};
 {% for m in members if m.member %}
 REGFORGE_STATIC_ASSERT(offsetof({{ tname }}, {{ m.member }}) == 0x{{ "%02X"|format(m.offset) }}, {{ spf }}_{{ m.member|upper }}_offset, "{{ family.name }}.{{ m.member }} offset");
+{% endfor %}
+{% for m in members if m.member and m.elements > 1 %}
+REGFORGE_STATIC_ASSERT(sizeof((({{ tname }} *)0)->{{ m.member }}) == 0x{{ "%X"|format(m.bytes) }}, {{ spf }}_{{ m.member|upper }}_size, "{{ family.name }}.{{ m.member }} array size");
 {% endfor %}
 {% set ssize = struct_size(src) %}
 {% if ssize is not none %}

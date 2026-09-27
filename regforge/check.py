@@ -87,8 +87,9 @@ def check_address_math(device: Device) -> list[Finding]:
     math; every register's size and offset must be consistent with it, and an
     array's stride must at least cover one element -- a register, cluster or
     field array whose elements overlap is a contradiction no hardware can
-    satisfy (``ERROR``). Registers inside clusters are checked at their offset
-    from the peripheral. Strides are compared only once sizes are resolved.
+    satisfy (``ERROR``), as is a field reaching past its register's width.
+    Registers inside clusters are checked at their offset from the
+    peripheral. Strides and widths are compared only once sizes are resolved.
     """
     findings: list[Finding] = []
     unit_bits = device.address_unit_bits
@@ -194,6 +195,7 @@ def check_address_math(device: Device) -> list[Finding]:
                             "by the stride",
                         )
                     )
+        findings += _fields_past_width(peripheral)
         # regforge assumes 32-bit addresses: a peripheral reaching past them is a
         # contradiction for every writer that emits 32-bit literals.
         base = units_to_bytes(peripheral.base_address, unit_bits)
@@ -206,6 +208,48 @@ def check_address_math(device: Device) -> list[Finding]:
                     Severity.ERROR,
                     f"{peripheral.name}: reaches {end:#x}, past the 32-bit address space"
                     f"{_origin(peripheral)}",
+                )
+            )
+    return findings
+
+
+def _fields_past_width(peripheral: Peripheral) -> list[Finding]:
+    """Fields that reach past their register's resolved width -- an ``ERROR``.
+
+    A bit beyond the width has no storage. Copies of one ``<dim>`` template are
+    reported together, since the template is what needs fixing.
+    """
+    findings: list[Finding] = []
+    for name, _, register in _registers_with_offsets(peripheral):
+        if register.size is None:
+            continue
+        by_template: dict[str, list[str]] = {}
+        total: dict[str, int] = {}
+        for field_ in register.fields:
+            if field_.expanded_from is not None:
+                total[field_.expanded_from] = total.get(field_.expanded_from, 0) + 1
+            end = field_.bit_offset + field_.bit_width
+            if field_.dim is not None:
+                end += (field_.dim.length - 1) * field_.dim.stride
+            if end <= register.size:
+                continue
+            if field_.expanded_from is not None:
+                by_template.setdefault(field_.expanded_from, []).append(field_.name)
+                continue
+            label = f"{field_.name}[{field_.dim.length}]" if field_.dim else field_.name
+            findings.append(
+                Finding(
+                    Severity.ERROR,
+                    f"{name}.{label}: bits {field_.bit_offset}..{end - 1} run past the "
+                    f"{register.size}-bit register",
+                )
+            )
+        for template, copies in by_template.items():
+            findings.append(
+                Finding(
+                    Severity.ERROR,
+                    f"{name}.{template}: {copies[0]}..{copies[-1]} ({len(copies)} of its "
+                    f"{total[template]} copies) run past the {register.size}-bit register",
                 )
             )
     return findings

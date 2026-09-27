@@ -80,6 +80,7 @@ A 24-bit register stops generation by name instead of being rounded to 32.
 | Register array stride smaller than the element | `ERROR` |
 | Cluster array stride smaller than the cluster's contents | `ERROR` |
 | Field array increment smaller than the field width | `ERROR` |
+| Field reaching past the register width | `ERROR` |
 | Register array (`NAME[%s]`) stride larger than the element | `WARNING` |
 | A peripheral reaching past the 32-bit address space | `ERROR` |
 
