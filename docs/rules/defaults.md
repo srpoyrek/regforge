@@ -12,7 +12,7 @@ writers read finished values.
 
 Code: `regforge/resolve.py`. Tests: `tests/resolve/test_defaults.py`.
 
-## Rule 1 — the inheritance chain
+## Rule 1: the inheritance chain
 
 Each property is taken from the first level that declares it:
 
@@ -48,12 +48,12 @@ volatile uint32_t       DR;   /* size from <width>, access from <device> */
 volatile const uint32_t SR;   /* its own access is used */
 ```
 
-## Rule 2 — fields inherit from their register
+## Rule 2: fields inherit from their register
 
 A field with no `access` takes the register's resolved access. This runs after
 the register is resolved, so the field never copies an unresolved value.
 
-## Rule 3 — access missing at every level is reported
+## Rule 3: access missing at every level is reported
 
 If no level declares `access`, regforge uses read-write and reports it:
 
@@ -64,7 +64,7 @@ warn: MISC.REG: access unspecified at every level -- defaulting to read-write (u
 Access decides whether the member is `const`. A read-only register is emitted as
 `volatile const`, so writing it is a compile error.
 
-## Rule 4 — [`resetMask`](formats/svd.md#register) is emitted only when partial
+## Rule 4: [`resetMask`](formats/svd.md#register) is emitted only when partial
 
 A mask covering the register's full width adds nothing to the width already
 declared.

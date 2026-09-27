@@ -71,12 +71,20 @@ code/data size per compiler and optimization level, and a
 [zero-cost test](tests/writers/c/test_sizes.py) asserts an included-but-unused
 header adds no bytes at `-Os`.
 
-## Rules
+## Documentation
 
-What regforge does with each part of an SVD file is documented in
-[docs/rules/](docs/rules/): naming, families, address blocks, interrupts,
-defaults, and address math. Each rule states what it does, shows input and
-output, and lists the corner cases.
+**https://srpoyrek.github.io/regforge/** — built from [docs/](docs/) and
+published on every push to `main`.
+
+What regforge does with each part of an SVD file is in
+[docs/rules/](docs/rules/): each rule states what it does, shows input and
+output, lists the corner cases, and links to the input format it reads and the
+output target it emits. To view it locally:
+
+```bash
+mkdocs serve        # live at http://127.0.0.1:8000, reloads on save
+nox -s docs         # strict build to site/
+```
 
 ## Extending
 

@@ -14,7 +14,7 @@ Code: `regforge/layout.py`, `regforge/check.py` (`check_address_math`).
 Tests: `tests/core/test_layout.py`, `tests/check/test_address_math.py`,
 `tests/readers/svd/test_address_units.py`.
 
-## Rule 1 — offsets are stored in address units and converted at the end
+## Rule 1: offsets are stored in address units and converted at the end
 
 `<addressUnitBits>` gives the number of bits one address step covers. It is 8 on
 byte-addressable parts and 16 on word-addressable ones such as TI C2000. The IR
@@ -34,7 +34,7 @@ because other writers convert differently.
 addressUnitBits = 16, register at unit offset 0x2  ->  byte offset 0x4
 ```
 
-## Rule 2 — the C writer rejects word-addressable devices
+## Rule 2: the C writer rejects word-addressable devices
 
 Rather than emit byte offsets that would be wrong, the C writer stops:
 
@@ -55,7 +55,7 @@ REGFORGE_STATIC_ASSERT(CHAR_BIT == DEMOMCU_ADDRESS_UNIT_BITS, DEMOMCU_address_un
 This catches a byte-addressed header built by a toolchain where `CHAR_BIT` is
 16, which the generator cannot detect.
 
-## Rule 3 — the register type comes from its resolved size
+## Rule 3: the register type comes from its resolved size
 
 | Size in bits | Type |
 |---|---|
@@ -67,7 +67,7 @@ This catches a byte-addressed header built by a toolchain where `CHAR_BIT` is
 
 A 24-bit register stops generation by name instead of being rounded to 32.
 
-## Rule 4 — [`addressUnitBits`](formats/svd.md#device) and [`width`](formats/svd.md#device) must agree
+## Rule 4: [`addressUnitBits`](formats/svd.md#device) and [`width`](formats/svd.md#device) must agree
 
 | Condition | Severity |
 |---|---|
@@ -85,7 +85,7 @@ The two `ERROR` rows describe hardware that cannot exist. The `WARNING` rows
 describe hardware that is unusual but possible, such as a register read in two
 bus accesses.
 
-## Rule 5 — registers are placed in offset order with explicit padding
+## Rule 5: registers are placed in offset order with explicit padding
 
 Registers are sorted by offset, and the space between them becomes `RESERVED`
 padding so each member lands at its declared offset. Each member's position is

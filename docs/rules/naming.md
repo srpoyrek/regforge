@@ -16,7 +16,7 @@ Code: `regforge/families.py` (`family_name`, `group_families`, `_uniquify`),
 Tests: `tests/core/test_header_struct_name.py`,
 `tests/core/test_type_name_collisions.py`.
 
-## Rule 1 — type name precedence
+## Rule 1: type name precedence
 
 The type name is taken from the first of these that is present:
 
@@ -174,7 +174,7 @@ typedef shared_t x_t;
 
 The first one gets the requested name; the second falls back under Rule 3.
 
-## Rule 2 — naming the types when one group becomes several
+## Rule 2: naming the types when one group becomes several
 
 A `groupName` says several peripherals belong together. regforge checks whether
 they actually have the same registers, and when they do not it emits a separate
@@ -291,7 +291,7 @@ Reordering the peripherals in the source therefore changes which type is called
 `grp_t`. Every other case is decided by the peripheral names, so this is the
 only one where declaration order is used.
 
-## Rule 3 — every emitted type name is unique
+## Rule 3: every emitted type name is unique
 
 Each family becomes one typedef. Two typedefs with the same name is a
 redefinition error. Names are compared without case, because the writer

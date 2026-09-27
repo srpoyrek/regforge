@@ -36,6 +36,13 @@ def lint(session: nox.Session) -> None:
 
 
 @nox.session
+def docs(session: nox.Session) -> None:
+    """Build the documentation site; a broken link or missing nav entry fails."""
+    session.install("mkdocs>=1.6", "mkdocs-material>=9")
+    session.run("mkdocs", "build", "--strict")
+
+
+@nox.session
 def types(session: nox.Session) -> None:
     """Static type-check the sources with pyright."""
     session.install("-e", ".[dev]")
@@ -52,9 +59,14 @@ def format(session: nox.Session) -> None:
 
 @nox.session
 def build(session: nox.Session) -> None:
-    """Build the distribution artifacts."""
-    session.install("build")
+    """Build the distribution artifacts and the documentation site.
+
+    The site goes to ``site/`` and is built strictly, so a release build fails
+    on a broken documentation link rather than shipping one.
+    """
+    session.install("build", "mkdocs>=1.6", "mkdocs-material>=9")
     session.run("python", "-m", "build")
+    session.run("mkdocs", "build", "--strict")
 
 
 @nox.session

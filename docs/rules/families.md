@@ -12,7 +12,7 @@ same grouping would decide a Rust or C++ struct.
 Code: `regforge/families.py`.
 Tests: `tests/core/test_families.py`, `tests/check/test_group_divergence.py`.
 
-## Rule 1 — grouping follows [`derivedFrom`](formats/svd.md#peripheral) and [`groupName`](formats/svd.md#peripheral)
+## Rule 1: grouping follows [`derivedFrom`](formats/svd.md#peripheral) and [`groupName`](formats/svd.md#peripheral)
 
 A peripheral belongs to the family named by its `derivedFrom` chain root's
 `groupName`, or by that root's name if it has no `groupName`. Peripherals linked
@@ -63,7 +63,7 @@ and [the whole header](targets/c.md#two-peripherals-sharing-one-type).
 | `derivedFrom` names a peripheral that does not exist | Warning; the peripheral is left empty. |
 | Derived peripheral declares a different `groupName` | Ignored for grouping. The chain root's label is used. |
 
-## Rule 2 — members are compared before they are merged
+## Rule 2: members are compared before they are merged
 
 `groupName` is a label, not a statement about layout. Vendors use one label for
 peripherals with different registers: STM32's `TIM1` has `RCR` and `BDTR` that
@@ -102,7 +102,7 @@ instead, each sized from its own block.
 | A `buffer` window on one instance only | Two types. The other instance must not get a member it did not declare. |
 | `derivedFrom` override adds a register | Two types. No warning, because no `groupName` claimed they matched. |
 
-## Rule 3 — a split under a `groupName` is reported
+## Rule 3: a split under a `groupName` is reported
 
 When a `groupName` covers different layouts, a warning is emitted and the kept
 family carries a note that appears in the header.
@@ -129,7 +129,7 @@ The reported difference is the first of:
 A split caused by a `derivedFrom` override is not reported, because no
 `groupName` claimed the peripherals were one type.
 
-## Rule 4 — which peripheral defines the type
+## Rule 4: which peripheral defines the type
 
 The type is built from the first member that has no `derivedFrom`. Its registers
 and blocks define the struct; the other members are emitted as instances of it.

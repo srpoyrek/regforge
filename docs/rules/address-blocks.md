@@ -18,7 +18,7 @@ Code: `regforge/layout.py`.
 Tests: `tests/core/test_layout.py`, `tests/check/test_address_blocks.py`,
 `tests/check/test_unowned_gaps.py`.
 
-## Rule 1 — `usage` decides what is emitted
+## Rule 1: `usage` decides what is emitted
 
 SVD defines three values. A block with no `usage` is treated as `registers`.
 
@@ -60,7 +60,7 @@ REGFORGE_STATIC_ASSERT(sizeof(dc_uart_t) == 0x28, DC_UART_SIZE, "UART struct siz
 | `usage` value outside the three | Not a register window, so the peripheral gets no size assert. TI ships `FLASH Memory`, `SRAM`, `ROM Boot Loader` on 99 blocks; Espressif ships `TX FIFO`. Not yet reported as a finding. |
 | `usage="buffer"` in vendor files | Does not occur. 0 of about 51,000 blocks tested. The rule is only exercised by a written fixture. |
 
-## Rule 2 — the `sizeof` assert
+## Rule 2: the `sizeof` assert
 
 A peripheral gets a `sizeof` assert when exactly one block with `registers`
 usage starts at offset 0 and has a non-zero size. `buffer` and `reserved` blocks
@@ -92,7 +92,7 @@ lands on the right addresses. The assert checks this at compile time.
 | A `registers` block at a non-zero offset | No assert. |
 | No block at all | No assert. This is 1,424 of 4,125 peripherals tested. |
 
-## Rule 3 — padding over space no block claims is reported
+## Rule 3: padding over space no block claims is reported
 
 A struct cannot have holes, so space between registers becomes `RESERVED`
 padding. When a block covers that space, the padding matches what the vendor
@@ -120,13 +120,13 @@ The peripheral is not split into separate structs. Of the peripherals with the
 largest spans, all but two declare a block covering the span, so splitting them
 would contradict the source.
 
-## Rule 4 — blocks are inherited through [`derivedFrom`](formats/svd.md#peripheral)
+## Rule 4: blocks are inherited through [`derivedFrom`](formats/svd.md#peripheral)
 
 The footprint belongs to the type, so a derived peripheral with no block of its
 own copies its base's. Interrupts are not inherited; see
 [interrupts.md](interrupts.md).
 
-## Rule 5 — two peripherals cannot occupy the same addresses
+## Rule 5: two peripherals cannot occupy the same addresses
 
 Overlapping extents are reported as an error. A peripheral's extent is its
 blocks' ranges `[base+offset, base+offset+size)`, or the span of its registers

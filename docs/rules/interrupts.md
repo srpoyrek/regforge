@@ -13,7 +13,7 @@ Code: `regforge/interrupts.py`, `regforge/arch.py`, `regforge/resolve.py`.
 Tests: `tests/core/test_interrupts.py`,
 `tests/check/test_derived_interrupts.py`, `tests/writers/c/test_interrupts.py`.
 
-## Rule 1 — interrupts are not inherited through [`derivedFrom`](formats/svd.md#peripheral)
+## Rule 1: interrupts are not inherited through [`derivedFrom`](formats/svd.md#peripheral)
 
 A derived peripheral copies its base's registers and address blocks, but not its
 interrupts. Each instance has its own vector.
@@ -50,7 +50,7 @@ warn: ADCB: derivedFrom 'ADCA' but declares no interrupt of its own; per SVD
 | Base has no interrupt either | No finding. Nothing was lost. |
 | Base has several vectors | All are listed in the warning. |
 
-## Rule 2 — one device-wide enum, sorted by vector number
+## Rule 2: one device-wide enum, sorted by vector number
 
 Every distinct interrupt becomes one enumerator, named after the interrupt, not
 the peripheral.
@@ -75,7 +75,7 @@ typedef enum {
 | Last enumerator | No trailing comma. C89 with `-pedantic-errors` rejects it. |
 | Enum type name | Ends in `_e`, not `_t`. |
 
-## Rule 3 — one vector used by several peripherals appears once
+## Rule 3: one vector used by several peripherals appears once
 
 Some packages combine interrupts, so two peripherals declare different interrupt
 names with the same value. The enum lists the vector once. Each peripheral's
@@ -90,7 +90,7 @@ Emitted as [C](targets/c.md#instance-names):
 This is a shared vector: same number, different addresses. It is not
 `alternatePeripheral`, which is the same address.
 
-## Rule 4 — NVIC helpers are emitted only for Cortex-M
+## Rule 4: NVIC helpers are emitted only for Cortex-M
 
 The interrupt controller depends on the core, so `regforge/arch.py` reads
 `<cpu><name>`. Cortex-M cores get the NVIC register banks at the addresses ARM

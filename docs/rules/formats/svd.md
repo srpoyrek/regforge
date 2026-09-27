@@ -153,7 +153,7 @@ is linked from its heading.
 
 ### Naming precedence
 
-Demonstrates [naming.md](../naming.md#rule-1--type-name-precedence). A peripheral declaring `headerStructName`, so the type is named `can_node_t` rather than `can_t` from its `groupName`.
+Demonstrates [naming.md](../naming.md#rule-1-type-name-precedence). A peripheral declaring `headerStructName`, so the type is named `can_node_t` rather than `can_t` from its `groupName`.
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -182,7 +182,7 @@ Produces [this C](../targets/c.md#naming-precedence).
 
 ### One group becoming two types
 
-Demonstrates [naming.md](../naming.md#rule-2--naming-the-types-when-one-group-becomes-several). `FPU` and `FPU_CPACR` share `groupName=FPU` but have different registers, so two types are emitted and the peripheral called `FPU` takes the plain name.
+Demonstrates [naming.md](../naming.md#rule-2-naming-the-types-when-one-group-becomes-several). `FPU` and `FPU_CPACR` share `groupName=FPU` but have different registers, so two types are emitted and the peripheral called `FPU` takes the plain name.
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -212,7 +212,7 @@ Produces [this C](../targets/c.md#one-group-becoming-two-types).
 
 ### Two peripherals sharing one type
 
-Demonstrates [families.md](../families.md#rule-1--grouping-follows-derivedfrom-and-groupname). `UART1` derives from `UART0`, so one struct is emitted with two instance pointers.
+Demonstrates [families.md](../families.md#rule-1-grouping-follows-derivedfrom-and-groupname). `UART1` derives from `UART0`, so one struct is emitted with two instance pointers.
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -241,7 +241,7 @@ Produces [this C](../targets/c.md#two-peripherals-sharing-one-type).
 
 ### A registers block and a buffer block
 
-Demonstrates [address-blocks.md](../address-blocks.md#rule-1--usage-decides-what-is-emitted). The buffer window becomes one array member, and the size assert covers both blocks.
+Demonstrates [address-blocks.md](../address-blocks.md#rule-1-usage-decides-what-is-emitted). The buffer window becomes one array member, and the size assert covers both blocks.
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -269,7 +269,7 @@ Produces [this C](../targets/c.md#a-registers-block-and-a-buffer-block).
 
 ### Inherited register properties
 
-Demonstrates [defaults.md](../defaults.md#rule-1--the-inheritance-chain). Neither register declares a size; both take it from the device `<width>`, and `SR` overrides access.
+Demonstrates [defaults.md](../defaults.md#rule-1-the-inheritance-chain). Neither register declares a size; both take it from the device `<width>`, and `SR` overrides access.
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>

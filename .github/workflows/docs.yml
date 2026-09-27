@@ -1,0 +1,69 @@
+# Documentation site: built on every change, published to GitHub Pages from
+# main. Kept separate from ci.yml so a docs edit does not rerun the compiler
+# matrix, and a test failure does not block the site.
+#
+# One-time setup on GitHub: Settings -> Pages -> Source: "GitHub Actions".
+# Until that is set, the deploy job fails with a permissions error.
+
+name: Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/**
+      - mkdocs.yml
+      - .github/workflows/docs.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - docs/**
+      - mkdocs.yml
+      - .github/workflows/docs.yml
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; a newer push cancels an older in-flight one.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install mkdocs
+        run: pip install "mkdocs>=1.6" "mkdocs-material>=9"
+
+      # --strict fails on a broken link or a page missing from the nav,
+      # matching tests/docs/test_rules_docs.py and `nox -s docs`.
+      - name: Build
+        run: mkdocs build --strict
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  # Publishes only from main. Pull requests stop after the build above, so a
+  # broken link fails the check before it can be merged.
+  deploy:
+    name: publish to GitHub Pages
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

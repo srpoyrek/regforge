@@ -275,7 +275,7 @@ These are emitted with no `headerDefinitionsPrefix`, so identifiers carry no pre
 
 ### Naming precedence
 
-Demonstrates [naming.md](../naming.md#rule-1--type-name-precedence). A peripheral declaring `headerStructName`, so the type is named `can_node_t` rather than `can_t` from its `groupName`.
+Demonstrates [naming.md](../naming.md#rule-1-type-name-precedence). A peripheral declaring `headerStructName`, so the type is named `can_node_t` rather than `can_t` from its `groupName`.
 
 From [this SVD](../formats/svd.md#naming-precedence):
 
@@ -310,7 +310,7 @@ REGFORGE_MAYBE_UNUSED static can_node_t *const CAN_NODE0 = (can_node_t *)CAN_NOD
 
 ### One group becoming two types
 
-Demonstrates [naming.md](../naming.md#rule-2--naming-the-types-when-one-group-becomes-several). `FPU` and `FPU_CPACR` share `groupName=FPU` but have different registers, so two types are emitted and the peripheral called `FPU` takes the plain name.
+Demonstrates [naming.md](../naming.md#rule-2-naming-the-types-when-one-group-becomes-several). `FPU` and `FPU_CPACR` share `groupName=FPU` but have different registers, so two types are emitted and the peripheral called `FPU` takes the plain name.
 
 From [this SVD](../formats/svd.md#one-group-becoming-two-types):
 
@@ -357,7 +357,7 @@ REGFORGE_MAYBE_UNUSED static fpu_t *const FPU = (fpu_t *)FPU_BASE;
 
 ### Two peripherals sharing one type
 
-Demonstrates [families.md](../families.md#rule-1--grouping-follows-derivedfrom-and-groupname). `UART1` derives from `UART0`, so one struct is emitted with two instance pointers.
+Demonstrates [families.md](../families.md#rule-1-grouping-follows-derivedfrom-and-groupname). `UART1` derives from `UART0`, so one struct is emitted with two instance pointers.
 
 From [this SVD](../formats/svd.md#two-peripherals-sharing-one-type):
 
@@ -403,7 +403,7 @@ REGFORGE_MAYBE_UNUSED static uart_t *const UART1 = (uart_t *)UART1_BASE;
 
 ### A registers block and a buffer block
 
-Demonstrates [address-blocks.md](../address-blocks.md#rule-1--usage-decides-what-is-emitted). The buffer window becomes one array member, and the size assert covers both blocks.
+Demonstrates [address-blocks.md](../address-blocks.md#rule-1-usage-decides-what-is-emitted). The buffer window becomes one array member, and the size assert covers both blocks.
 
 From [this SVD](../formats/svd.md#a-registers-block-and-a-buffer-block):
 
@@ -436,7 +436,7 @@ REGFORGE_MAYBE_UNUSED static uart0_t *const UART0 = (uart0_t *)UART0_BASE;
 
 ### Inherited register properties
 
-Demonstrates [defaults.md](../defaults.md#rule-1--the-inheritance-chain). Neither register declares a size; both take it from the device `<width>`, and `SR` overrides access.
+Demonstrates [defaults.md](../defaults.md#rule-1-the-inheritance-chain). Neither register declares a size; both take it from the device `<width>`, and `SR` overrides access.
 
 From [this SVD](../formats/svd.md#inherited-register-properties):
 
