@@ -42,8 +42,10 @@ jobs:
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
+      # uv makes each nox session's environment several times faster to build;
+      # the noxfile falls back to virtualenv if it is ever missing.
       - name: Install nox
-        run: pip install nox
+        run: pip install nox uv
 
       - name: Tests + lint + types
         run: nox -s tests lint types

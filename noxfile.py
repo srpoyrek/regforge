@@ -16,9 +16,10 @@ lint) with a bare ``nox``. Sessions:
 import nox
 
 nox.options.sessions = ["tests", "lint", "types"]
-# uv builds each session's environment far faster than virtualenv; it is a
-# dev dependency (pyproject.toml), so `pip install -e ".[dev]"` provides it.
-nox.options.default_venv_backend = "uv"
+# uv builds each session's environment far faster than virtualenv, so use it
+# where it is installed (it is a dev dependency) and fall back to virtualenv
+# where it is not, rather than failing outright.
+nox.options.default_venv_backend = "uv|virtualenv"
 
 PYTHON_PATHS = ["regforge", "tests", "tools", "noxfile.py"]
 
