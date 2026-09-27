@@ -83,6 +83,29 @@ def test_cluster_derived_from_is_reported(lint_demo_svd_path):
     assert any("DMAX.EXTRA: derivedFrom 'CH' on a cluster" in w for w in warnings)
 
 
+def test_derived_from_a_template_is_resolved_to_its_first_copy(lint_demo_svd_path):
+    device = SvdReader().read(lint_demo_svd_path)
+    expand_dim(device)
+    warnings = resolve_derived(device)
+    template = [w for w in warnings if "names the template" in w]
+    assert (
+        "TMRV: derivedFrom names the template 'TMRX%s' -- resolved to its first copy, TMRX0"
+        in template
+    )
+    # SERX%s inherited <dim> 4 from SER%s (own stride 0x200), so four copies each resolve.
+    assert [w.split(":")[0] for w in template if w.startswith("SERX")] == [
+        "SERX0",
+        "SERX1",
+        "SERX2",
+        "SERX3",
+    ]
+    by_name = {p.name: p for p in device.peripherals}
+    assert [by_name[f"SERX{i}"].base_address for i in range(4)] == [
+        0x40063000 + 0x200 * i for i in range(4)
+    ]
+    assert [r.name for r in by_name["SERX3"].registers] == ["CR"]
+
+
 def test_dimmed_instances_share_the_vector_in_the_header(lint_demo_device):
     output = CWriter().render(lint_demo_device)
     assert "#define LD_TMRY1_BASE (0x40058100UL)" in output  # index appended, header compiles

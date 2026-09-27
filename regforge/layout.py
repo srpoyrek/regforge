@@ -134,7 +134,7 @@ def register_span_units(register: Register, address_unit_bits: int) -> int:
     """Address units from a register's offset to the end of its last element."""
     units = (register.size or 0) // address_unit_bits
     if register.dim is not None:
-        units += _stride_units(register.dim.count, register.dim.stride)
+        units += _stride_units(register.dim.length, register.dim.stride)
     return units
 
 
@@ -142,7 +142,7 @@ def register_span_bytes(register: Register, address_unit_bits: int) -> int:
     """Bytes from a register's offset to the end of its last element."""
     span = _element_bytes(register)
     if register.dim is not None:
-        stride = _stride_units(register.dim.count, register.dim.stride)
+        stride = _stride_units(register.dim.length, register.dim.stride)
         span += units_to_bytes(stride, address_unit_bits)
     return span
 
@@ -161,7 +161,7 @@ def cluster_span_units(cluster: Cluster, address_unit_bits: int) -> int:
     """Address units from a cluster's offset to the end of its last element."""
     span = cluster_element_units(cluster, address_unit_bits)
     if cluster.dim is not None:
-        span += _stride_units(cluster.dim.count, cluster.dim.stride)
+        span += _stride_units(cluster.dim.length, cluster.dim.stride)
     return span
 
 
@@ -175,7 +175,7 @@ def cluster_span_bytes(cluster: Cluster, address_unit_bits: int) -> int:
         offset = units_to_bytes(inner.address_offset, address_unit_bits)
         end = max(end, offset + cluster_span_bytes(inner, address_unit_bits))
     if cluster.dim is not None:
-        stride = _stride_units(cluster.dim.count, cluster.dim.stride)
+        stride = _stride_units(cluster.dim.length, cluster.dim.stride)
         end += units_to_bytes(stride, address_unit_bits)
     return end
 
@@ -242,7 +242,7 @@ def _register_slots(where: str, register: Register, address_unit_bits: int) -> l
         return [
             LayoutEntry(offset=offset, register=register, element_bytes=element, size_bytes=element)
         ]
-    count = register.dim.count
+    count = register.dim.length
     stride = units_to_bytes(register.dim.stride, address_unit_bits)
     if stride < element:
         raise LayoutError(
@@ -274,7 +274,7 @@ def _register_slots(where: str, register: Register, address_unit_bits: int) -> l
 def _cluster_slot(where: str, cluster: Cluster, address_unit_bits: int) -> LayoutEntry:
     members = cluster_layout(cluster, address_unit_bits, where)
     element = _end(members)
-    count = cluster.dim.count if cluster.dim is not None else 1
+    count = cluster.dim.length if cluster.dim is not None else 1
     return LayoutEntry(
         offset=units_to_bytes(cluster.address_offset, address_unit_bits),
         register=None,
@@ -358,7 +358,7 @@ def cluster_layout(cluster: Cluster, address_unit_bits: int, where: str = "") ->
         stride = units_to_bytes(cluster.dim.stride, address_unit_bits)
         if stride < natural:
             raise LayoutError(
-                f"{path}[{cluster.dim.count}]: stride 0x{stride:X} is smaller than the "
+                f"{path}[{cluster.dim.length}]: stride 0x{stride:X} is smaller than the "
                 f"cluster's contents (0x{natural:X}) -- the elements overlap"
             )
         if stride > natural:

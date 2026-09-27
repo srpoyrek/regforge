@@ -43,7 +43,7 @@ another architecture leaves them absent rather than guessing.
 | `<name>` | peripheral name | |
 | `<baseAddress>` | absolute base | defaults to `0` |
 | `<description>` | comment text | |
-| `derivedFrom` | the base it copies from | an **XML attribute**, not a child element |
+| `derivedFrom` | the base it copies from | an **XML attribute**, not a child element; may name a `<dim>` copy, or the template itself (then its first copy) |
 | `<groupName>` | family label | see [ir/families.md](../families.md) |
 | `<headerStructName>` | requested struct name | see [ir/naming.md](../naming.md) |
 | `<size>`, `<access>`, `<resetValue>`, `<resetMask>` | peripheral-level defaults | see [ir/defaults.md](../defaults.md) |

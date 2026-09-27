@@ -208,6 +208,17 @@ def test_increment_without_dim_is_noted_and_ignored(tmp_path):
     assert reader.warnings == ["P: <dimIncrement> without <dim> -- ignored"]
 
 
+def test_partial_dim_is_kept_for_a_derived_peripheral(tmp_path):
+    # No <dim> of its own, but derivedFrom: the count comes from the base later.
+    device = _read(
+        tmp_path,
+        '<peripheral derivedFrom="SER%s"><dimIncrement>0x200</dimIncrement><name>SERX%s</name>'
+        "<baseAddress>0x40063000</baseAddress></peripheral>",
+    )
+    dim = device.peripherals[0].dim
+    assert (dim.count, dim.increment, dim.index) == (None, 0x200, None)
+
+
 def test_dim_without_placeholder_is_read_as_is(tmp_path):
     # Not refused: expansion appends the index and reports it (see tests/resolve).
     device = _read(

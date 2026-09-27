@@ -154,26 +154,35 @@ def parse_dim_index(text: str, warnings: list[str] | None = None) -> list[str]:
     return labels
 
 
-def _dim(element: ET.Element, name: str, warnings: list[str]) -> Dim | None:
+def _dim(element: ET.Element, name: str, warnings: list[str], derived: bool = False) -> Dim | None:
     """Return the ``<dim>`` group of ``element``, or ``None`` when it has none.
 
     Only ``%s`` with no ``<dim>``, and a negative ``<dim>``, are refused here,
     like a field with no bit range. A ``<dim>`` of 0, or one with no
     ``<dimIncrement>``, is stored as read: expansion reports it and drops the
     element or keeps one instance. A ``<dimIncrement>`` with no ``<dim>`` is
-    noted and ignored. Labels are only parsed here; how
+    noted and ignored -- unless the element carries ``derivedFrom``, in which
+    case a ``%s`` name, ``<dimIncrement>``, ``<dimIndex>`` or ``<dimName>`` with no
+    ``<dim>`` is a partial ``Dim`` that expansion completes from the base
+    template (``derived``). Labels are only parsed here; how
     many there are and whether they are usable names is judged by expansion,
     which can report at the element's path. The stride is not looked at: it
     needs the resolved register size, which exists only after defaults.
     """
     count = _int(element, "dim")
     if count is None:
-        if _text(element, "dimIncrement") is not None:
-            warnings.append(f"{name}: <dimIncrement> without <dim> -- ignored")
-        if "%s" in name:
-            raise ValueError(f"{name!r} has a %s placeholder but no <dim>")
-        return None
-    if count < 0:
+        written = ("dimIncrement", "dimIndex", "dimName")
+        if "%s" not in name and all(_text(element, tag) is None for tag in written):
+            return None
+        if not derived:
+            if _text(element, "dimIncrement") is not None:
+                warnings.append(f"{name}: <dimIncrement> without <dim> -- ignored")
+            if "%s" in name:
+                raise ValueError(f"{name!r} has a %s placeholder but no <dim>")
+            return None
+        # A derived element inherits what it leaves unsaid; the count comes
+        # from the base template, in expansion's pre-pass.
+    if count is not None and count < 0:
         raise ValueError(f"{name!r}: <dim> cannot be negative, got {count}")
     # A missing <dimIncrement> stays None: expansion reports it and keeps one
     # instance, since the copies' addresses are unknown.
@@ -280,7 +289,7 @@ def _build_cluster(cluster_element: ET.Element, warnings: list[str]) -> Cluster:
         default_reset_mask=_int(cluster_element, "resetMask"),
         registers=[_build_register(r, warnings) for r in cluster_element.findall("./register")],
         clusters=[_build_cluster(c, warnings) for c in cluster_element.findall("./cluster")],
-        dim=_dim(cluster_element, name, warnings),
+        dim=_dim(cluster_element, name, warnings, cluster_element.get("derivedFrom") is not None),
     )
 
 
@@ -337,7 +346,9 @@ def _build_peripheral(peripheral_element: ET.Element, warnings: list[str]) -> Pe
         clusters=[
             _build_cluster(c, warnings) for c in peripheral_element.findall("./registers/cluster")
         ],
-        dim=_dim(peripheral_element, name, warnings),
+        dim=_dim(
+            peripheral_element, name, warnings, peripheral_element.get("derivedFrom") is not None
+        ),
     )
 
 

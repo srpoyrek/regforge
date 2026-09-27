@@ -153,7 +153,7 @@ def _unexpanded_name(peripheral: Peripheral) -> str | None:
 
 def _array_suffix(dim: Dim | None) -> str:
     """``[N]`` for an array of N elements, nothing for a single one."""
-    return f"[{dim.count}]" if dim is not None else ""
+    return f"[{dim.length}]" if dim is not None else ""
 
 
 def _count_suffix(count: int) -> str:
@@ -299,7 +299,7 @@ def _cluster_types(
                 "desc": cluster.description,
                 "members": _c_layout(slot.members, cluster_names, bus_width),
                 "element_bytes": slot.element_bytes,
-                "count": cluster.dim.count if cluster.dim is not None else None,
+                "count": cluster.dim.length if cluster.dim is not None else None,
             }
         )
     return types
@@ -341,7 +341,7 @@ def _accessors(peripheral: Peripheral, address_unit_bits: int) -> list[dict]:
                 "params": f"({', '.join(params)})" if params else "",
                 "address": " + ".join([f"{_hex32(constant)}UL", *terms]),
                 "register": register,
-                "count": register.dim.count if register.dim is not None else None,
+                "count": register.dim.length if register.dim is not None else None,
             }
         )
 

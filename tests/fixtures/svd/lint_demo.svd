@@ -288,5 +288,21 @@
         <register><name>CR</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
       </registers>
     </peripheral>
+    <!-- derivedFrom naming a template (WARNING): TMRX%s no longer exists once
+         expanded, so TMRV resolves to its first copy, TMRX0. -->
+    <peripheral derivedFrom="TMRX%s">
+      <name>TMRV</name>
+      <baseAddress>0x40062000</baseAddress>
+      <interrupt><name>TMRV</name><value>42</value></interrupt>
+    </peripheral>
+    <!-- A derived template overriding only the stride: SERX%s inherits <dim> 4
+         and the labels from SER%s, sits 0x200 apart, and each copy derives
+         its registers and block from SER0 (the template name again, so one
+         warning per copy). -->
+    <peripheral derivedFrom="SER%s">
+      <dimIncrement>0x200</dimIncrement>
+      <name>SERX%s</name>
+      <baseAddress>0x40063000</baseAddress>
+    </peripheral>
   </peripherals>
 </device>

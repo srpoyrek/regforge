@@ -62,7 +62,8 @@ class Dim:
     element with ``dim`` still set so a writer can emit it as an array.
 
     Attributes:
-        count: Number of copies (``<dim>``).
+        count: Number of copies (``<dim>``); ``None`` for a derived element that
+            leaves it to its base template, filled in before expansion.
         increment: Distance between the starts of two neighbouring copies
             (``<dimIncrement>``): address units for a peripheral, cluster or
             register, like every other offset in the IR; bits for a field.
@@ -81,7 +82,7 @@ class Dim:
             emit them as index constants beside the array.
     """
 
-    count: int
+    count: int | None
     increment: int | None
     index: list[str] | None = None
     array: bool = False
@@ -93,7 +94,7 @@ class Dim:
         """One label per copy: ``index`` as given, else ``"0"``, ``"1"``, ..."""
         if self.index is not None:
             return list(self.index)
-        return [str(i) for i in range(self.count)]
+        return [str(i) for i in range(self.length)]
 
     @property
     def stride(self) -> int:
@@ -104,6 +105,16 @@ class Dim:
         """
         assert self.increment is not None
         return self.increment
+
+    @property
+    def length(self) -> int:
+        """``count`` once it is known.
+
+        A partial ``Dim`` (count left to a ``derivedFrom`` base) is filled in
+        before expansion, so nothing after that sees ``None``.
+        """
+        assert self.count is not None
+        return self.count
 
 
 @dataclass

@@ -190,6 +190,21 @@ so every check in [address-blocks.md](address-blocks.md) and
 device an increment of 2 is 4 bytes. It is converted where offsets are, never
 assumed to be bytes.
 
+## Rule 8: `derivedFrom` and `dim` together
+
+Expansion runs before `derivedFrom`, so a derived peripheral can name a copy,
+and a derived peripheral that is itself a template is split into shells
+before its base's registers are copied into each. The remaining cases:
+
+| Case | Result |
+|---|---|
+| `derivedFrom="UART1"` where `UART1` is a copy of `UART%s` | resolves; no finding |
+| `derivedFrom="UART%s"`, the template itself | the template is gone once expanded, so the reference means its copies: resolved to the first copy, `UART0`, and re-pointed at it; `WARNING` |
+| `dim` on the derived peripheral | three shells, each then inheriting the base's registers |
+| base has `dim`, derived declares its own | the derived's own `dim` is used; no finding |
+| derived declares only `dimIncrement` (or `dimIndex`, `dimName`) | a partial `dim`: `dim` and whatever else is unsaid come from the base template, the derived stride wins; no finding. A base with no `dim` to give is an `ERROR`, and the derived peripheral stays one instance |
+| `derivedFrom` on a register | not parsed today; the same ordering rule will apply inside a peripheral when it is |
+
 ## Corner cases
 
 | Case | Result |

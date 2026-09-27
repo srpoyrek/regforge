@@ -61,6 +61,7 @@ and [the whole header](targets/c.md#two-peripherals-sharing-one-type).
 | `derivedFrom` chain more than one level deep | Works; the chain root decides the family. `check_derived_chains` warns, because other SVD tools handle chains inconsistently. |
 | `derivedFrom` cycle | The walk stops instead of looping, and a warning is reported. |
 | `derivedFrom` names a peripheral that does not exist | Warning; the peripheral is left empty. |
+| `derivedFrom` names a `<dim>` template (`UART%s`) | Warning; resolved to the template's first copy. See [arrays.md](arrays.md#rule-8-derivedfrom-and-dim-together). |
 | Derived peripheral declares a different `groupName` | Ignored for grouping. The chain root's label is used. |
 
 ## Rule 2: members are compared before they are merged

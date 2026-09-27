@@ -473,3 +473,65 @@ def test_copies_remember_their_template():
     expand_dim(device)
     assert [p.expanded_from for p in device.peripherals] == ["UART%s", "UART%s", None]
     assert [r.expanded_from for r in device.peripherals[2].registers] == ["D%s", "D%s", None]
+
+
+# --- derivedFrom meets dim ---
+
+
+def test_derived_from_the_template_resolves_to_copy_zero_with_a_warning():
+    device = _device(
+        _uart_template(dim=Dim(2, 0x400)),
+        Peripheral("UART5", 0x9000, derived_from="UART%s"),
+    )
+    expand_dim(device)
+    warnings = resolve_derived(device)
+    uart5 = device.peripherals[2]
+    assert [r.name for r in uart5.registers] == ["DR", "SR"]
+    assert uart5.derived_from == "UART0"  # re-pointed, so the family sees a real base
+    assert warnings == [
+        "UART5: derivedFrom names the template 'UART%s' -- resolved to its first copy, UART0"
+    ]
+
+
+def test_derived_own_dim_wins_over_the_base_template():
+    device = _device(
+        _uart_template(dim=Dim(4, 0x400)),
+        Peripheral("X%s", 0x8000, dim=Dim(2, 0x800), derived_from="UART%s"),
+    )
+    assert expand_dim(device) == []
+    assert [(p.name, p.base_address) for p in device.peripherals[4:]] == [
+        ("X0", 0x8000),
+        ("X1", 0x8800),
+    ]
+    resolve_derived(device)
+    assert [r.name for r in device.peripherals[5].registers] == ["DR", "SR"]
+
+
+def test_derived_inherits_dim_and_labels_but_keeps_its_own_stride():
+    device = _device(
+        Peripheral(
+            "SER%s", 0x0, dim=Dim(3, 0x100, index=["A", "B", "C"]), registers=[Register("CR", 0)]
+        ),
+        Peripheral("SERX%s", 0x8000, dim=Dim(None, 0x200), derived_from="SER%s"),
+    )
+    assert expand_dim(device) == []
+    assert [(p.name, p.base_address) for p in device.peripherals[3:]] == [
+        ("SERXA", 0x8000),
+        ("SERXB", 0x8200),
+        ("SERXC", 0x8400),
+    ]
+    warnings = resolve_derived(device)
+    assert all([r.name for r in p.registers] == ["CR"] for p in device.peripherals[3:])
+    assert len(warnings) == 3  # each copy named the template and was pointed at SERA
+
+
+def test_inheriting_dim_from_a_base_without_one_is_an_error():
+    device = _device(
+        Peripheral("UART0", 0x0, registers=[Register("DR", 0)]),
+        Peripheral("X%s", 0x8000, dim=Dim(None, 0x200), derived_from="UART0"),
+    )
+    findings = expand_dim(device)
+    assert [p.name for p in device.peripherals] == ["UART0", "X"]
+    assert _messages(findings, Severity.ERROR) == [
+        "X%s: inherits <dim> from 'UART0', which declares none -- emitted as one instance"
+    ]

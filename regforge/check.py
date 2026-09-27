@@ -128,7 +128,7 @@ def check_address_math(device: Device) -> list[Finding]:
                 findings.append(
                     Finding(
                         Severity.ERROR,
-                        f"{path}[{cluster.dim.count}]: stride {cluster.dim.stride} address "
+                        f"{path}[{cluster.dim.length}]: stride {cluster.dim.stride} address "
                         f"unit(s) is smaller than the cluster's contents ({contents}) -- "
                         "the array's elements overlap",
                     )
@@ -139,7 +139,7 @@ def check_address_math(device: Device) -> list[Finding]:
                     findings.append(
                         Finding(
                             Severity.ERROR,
-                            f"{name}.{field_.name}[{field_.dim.count}]: increment "
+                            f"{name}.{field_.name}[{field_.dim.length}]: increment "
                             f"{field_.dim.stride} bit(s) is smaller than the "
                             f"{field_.bit_width}-bit field -- the array's elements overlap",
                         )
@@ -173,7 +173,7 @@ def check_address_math(device: Device) -> list[Finding]:
                 )
             if register.dim is not None:
                 stride = register.dim.stride
-                count = register.dim.count
+                count = register.dim.length
                 if stride < units_per_register:
                     findings.append(
                         Finding(

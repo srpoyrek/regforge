@@ -82,7 +82,7 @@ def _keep_as_array(
             Finding(
                 Severity.WARNING,
                 f"{where}.{element.name}[%s]: dimIndex ignored -- array elements are "
-                f"indexed 0..{element.dim.count - 1} by the language, not by labels",
+                f"indexed 0..{element.dim.length - 1} by the language, not by labels",
             )
         )
         element.dim.index = None
@@ -106,23 +106,23 @@ def _plan(dim: Dim, name: str, where: str, findings: list[Finding]) -> list[str]
     of 0 stacks every copy on one address (error); the copies are still made so
     the overlap is reported where it lands.
     """
-    if dim.count == 0:
+    if dim.length == 0:
         findings.append(Finding(Severity.WARNING, f"{where}: <dim> 0 declares nothing -- dropped"))
         return []
     if dim.increment is None:
         findings.append(
             Finding(
                 Severity.ERROR,
-                f"{where}: <dim> {dim.count} without <dimIncrement> -- the copies' addresses "
+                f"{where}: <dim> {dim.length} without <dimIncrement> -- the copies' addresses "
                 f"are unknown; emitted as one instance, {_strip(name)}",
             )
         )
         return None
-    if dim.increment == 0 and dim.count > 1:
+    if dim.increment == 0 and dim.length > 1:
         findings.append(
             Finding(
                 Severity.ERROR,
-                f"{where}: <dimIncrement> 0 puts all {dim.count} copies at one address",
+                f"{where}: <dimIncrement> 0 puts all {dim.length} copies at one address",
             )
         )
     return _labels(dim, where, findings)
@@ -138,20 +138,22 @@ def _labels(dim: Dim, where: str, findings: list[Finding]) -> list[str]:
     list falls back to ``0..count-1``; that one is an error, the rest warnings.
     """
     if dim.index is None:
-        return [str(i) for i in range(dim.count)]
+        return [str(i) for i in range(dim.length)]
     labels = list(dim.index)
-    if len(labels) != dim.count:
+    if len(labels) != dim.length:
         fix = (
-            "missing labels take their index" if len(labels) < dim.count else "extra labels dropped"
+            "missing labels take their index"
+            if len(labels) < dim.length
+            else "extra labels dropped"
         )
         findings.append(
             Finding(
                 Severity.WARNING,
-                f"{where}: dimIndex gives {len(labels)} label(s) for <dim> {dim.count} "
+                f"{where}: dimIndex gives {len(labels)} label(s) for <dim> {dim.length} "
                 f"-- trusting <dim>: {fix}",
             )
         )
-        labels = labels[: dim.count] + [str(i) for i in range(len(labels), dim.count)]
+        labels = labels[: dim.length] + [str(i) for i in range(len(labels), dim.length)]
     for position, label in enumerate(labels):
         if not _IDENTIFIER_TAIL.fullmatch(label):
             cleaned = re.sub(r"[^A-Za-z0-9_]", "_", label).strip("_") or str(position)
@@ -167,10 +169,10 @@ def _labels(dim: Dim, where: str, findings: list[Finding]) -> list[str]:
             Finding(
                 Severity.ERROR,
                 f"{where}: dimIndex labels repeat ({','.join(labels)}) -- two copies cannot "
-                f"share a name; falling back to 0..{dim.count - 1}",
+                f"share a name; falling back to 0..{dim.length - 1}",
             )
         )
-        labels = [str(i) for i in range(dim.count)]
+        labels = [str(i) for i in range(dim.length)]
     return labels
 
 
@@ -301,6 +303,40 @@ def _expand_clusters(clusters: list[Cluster], where: str, findings: list[Finding
     return expanded
 
 
+def _inherit_dims(device: Device, findings: list[Finding]) -> None:
+    """Fill a derived peripheral's partial ``dim`` from its base template.
+
+    Runs before anything expands, while the base template is still there. The
+    derived peripheral's own values win; what it left unsaid comes from the
+    base. A base with no ``dim`` to give leaves the derived one a single
+    instance, and that is an error, since ``%s`` promised copies.
+    """
+    by_name = {peripheral.name: peripheral for peripheral in device.peripherals}
+    for peripheral in device.peripherals:
+        dim = peripheral.dim
+        if dim is None or dim.count is not None or peripheral.derived_from is None:
+            continue
+        base = by_name.get(peripheral.derived_from)
+        source = base.dim if base is not None else None
+        if source is None or source.count is None:
+            findings.append(
+                Finding(
+                    Severity.ERROR,
+                    f"{peripheral.name}: inherits <dim> from '{peripheral.derived_from}', "
+                    "which declares none -- emitted as one instance",
+                )
+            )
+            _keep_one(peripheral, peripheral.name)
+            continue
+        peripheral.dim = Dim(
+            count=source.count,
+            increment=dim.increment if dim.increment is not None else source.increment,
+            index=dim.index if dim.index is not None else source.index,
+            name=dim.name or source.name,
+            array_index=dim.array_index or source.array_index,
+        )
+
+
 def expand_dim(device: Device) -> list[Finding]:
     """Expand every ``<dim>`` template into its copies, in place.
 
@@ -337,12 +373,18 @@ def expand_dim(device: Device) -> list[Finding]:
     ``<dim>`` cannot shift a vector number, so the copies share it, and that is
     reported.
 
+    A derived peripheral may leave ``<dim>`` to its base: :func:`_inherit_dims`
+    fills its partial ``Dim`` from the base template first, the derived one's
+    own values winning, so ``<dimIncrement>`` alone gives copies at the base's
+    count and labels but the derived stride.
+
     Nothing here looks at sizes or strides: a register may still lack its
     ``size`` (it comes from the device ``<width>`` in defaults resolution), so
     whether a stride fits is left to the checks and the layout, which run later.
     Mutates ``device`` in place and returns findings, warnings and errors.
     """
     findings: list[Finding] = []
+    _inherit_dims(device, findings)
     expanded: list[Peripheral] = []
     for peripheral in device.peripherals:
         peripheral.registers = _expand_registers(peripheral.registers, peripheral.name, findings)
@@ -356,7 +398,7 @@ def expand_dim(device: Device) -> list[Finding]:
                 Finding(
                     Severity.WARNING,
                     f"{pattern}: a peripheral is an instance, not an array -- emitted as "
-                    f"{peripheral.dim.count} separately named instances",
+                    f"{peripheral.dim.length} separately named instances",
                 )
             )
             pattern = pattern.replace(_ARRAY, _COPY)
@@ -374,7 +416,7 @@ def expand_dim(device: Device) -> list[Finding]:
                 Finding(
                     Severity.WARNING,
                     f"{pattern}: its interrupt(s) (vector {vectors}) are copied to all "
-                    f"{peripheral.dim.count} instances -- <dim> cannot shift a vector number, "
+                    f"{peripheral.dim.length} instances -- <dim> cannot shift a vector number, "
                     "so they share it; declare the instances separately if each has its own",
                 )
             )
@@ -410,8 +452,10 @@ def resolve_derived(device: Device) -> list[str]:
     declares none of its own -- so its copies resolve exactly as the base's
     registers would, unless it overrides a default, in which case the override
     wins. The base is resolved first so ``derivedFrom`` chains inherit a
-    complete set. Mutates ``device`` in place and returns warnings: an unknown
-    base, a cycle, or a cluster ``derivedFrom``, which is not resolved yet.
+    complete set. A ``derivedFrom`` naming a ``<dim>`` template (``UART%s``),
+    which no longer exists once expanded, resolves to the template's first
+    copy. Mutates ``device`` in place and returns warnings: that template case,
+    an unknown base, a cycle, or a cluster ``derivedFrom``, not resolved yet.
     """
     warnings: list[str] = []
     by_name = {peripheral.name: peripheral for peripheral in device.peripherals}
@@ -421,6 +465,19 @@ def resolve_derived(device: Device) -> list[str]:
         if peripheral.derived_from is None or peripheral.registers or peripheral.clusters:
             return
         base = by_name.get(peripheral.derived_from)
+        if base is None and _COPY in peripheral.derived_from:
+            # The template is gone once expanded; a file naming it means its
+            # copies, and the first copy is the one that carries the base's
+            # address, so that is the base. Re-pointed so the family and the
+            # checks see a real peripheral.
+            copies = [p for p in device.peripherals if p.expanded_from == peripheral.derived_from]
+            if copies:
+                base = copies[0]
+                warnings.append(
+                    f"{peripheral.name}: derivedFrom names the template "
+                    f"'{peripheral.derived_from}' -- resolved to its first copy, {base.name}"
+                )
+                peripheral.derived_from = base.name
         if base is None:
             warnings.append(
                 f"{peripheral.name}: derivedFrom '{peripheral.derived_from}' -- "
