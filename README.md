@@ -71,6 +71,13 @@ code/data size per compiler and optimization level, and a
 [zero-cost test](tests/writers/c/test_sizes.py) asserts an included-but-unused
 header adds no bytes at `-Os`.
 
+## Rules
+
+What regforge does with each part of an SVD file is documented in
+[docs/rules/](docs/rules/): naming, families, address blocks, interrupts,
+defaults, and address math. Each rule states what it does, shows input and
+output, and lists the corner cases.
+
 ## Extending
 
 **Add an input format:** subclass `Reader` in a new module under

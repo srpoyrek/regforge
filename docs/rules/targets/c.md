@@ -1,0 +1,465 @@
+# C
+
+How the decisions in the rule pages are spelled as C. A second target would
+replace this page and reuse the rules unchanged.
+
+Code: `regforge/writers/c.py`, `regforge/writers/templates/c/`.
+
+How a name chosen in [ir/naming.md](../naming.md) becomes an identifier in
+the header, and what other identifiers point at it.
+
+Code: `regforge/writers/c.py`, `regforge/writers/templates/c/header.h.j2`.
+
+## Type names
+
+The model supplies a name string. The C writer lowercases it, prefixes the
+device's `headerDefinitionsPrefix`, and appends `_t`:
+
+```
+name from the model:  GPIO
+headerDefinitionsPrefix absent:  gpio_t
+headerDefinitionsPrefix = DC_:   dc_gpio_t
+```
+
+So the vendor's casing never reaches the output. `GPIO`, `Gpio`, and `gpio` all
+produce the same identifier, and the header reads consistently whatever the
+source looked like.
+
+Enum types end in `_e`, not `_t`:
+
+```c
+typedef enum { ... } dc_irqn_e;
+```
+
+## Instance names
+
+A peripheral produces three things, all upper-case with the same prefix:
+
+```c
+#define DC_UART0_BASE (0x40004000UL)
+REGFORGE_MAYBE_UNUSED static dc_uart_t *const DC_UART0 = (dc_uart_t *)DC_UART0_BASE;
+#define DC_UART0_DR (*(volatile uint32_t *)(DC_UART0_BASE + 0x00000000UL))
+```
+
+`REGFORGE_MAYBE_UNUSED` keeps the pointer from warning when a translation unit
+includes the header but does not use that peripheral.
+
+## Aliases
+
+A peripheral that shares a type gets a second name for it:
+
+```c
+typedef dc_tim_t dc_tim2_t;
+typedef dc_tim_t dc_tim3_t;
+```
+
+Same type, different spelling. A function taking `dc_tim_t *` accepts a pointer
+to either instance. This lets a signature be written `dc_tim2_t *` without the
+author knowing that TIM2 shares its layout with TIM3.
+
+### When no alias is emitted
+
+**The peripheral's name already spells the type name.**
+
+```
+WDT   groupName=WDT   registers: CR
+```
+```c
+} wdt_t;
+static wdt_t *const WDT = (wdt_t *)WDT_BASE;
+```
+
+The alias would read `typedef wdt_t wdt_t;`, declaring the same typedef name
+twice. C11 permits this when the target type is identical; C89 and C99 do not,
+and these headers are compiled as C89:
+
+```
+$ gcc -std=c89 -pedantic-errors -c t.c
+t.c: error: redefinition of typedef 'wdt_t'
+$ gcc -std=c99 -pedantic-errors -c t.c
+t.c: error: redefinition of typedef 'wdt_t'
+$ gcc -std=c11 -pedantic-errors -c t.c
+$
+```
+
+Nothing is lost: `wdt_t` is already spelled after this peripheral.
+
+**Another type already uses that name.**
+
+```
+GP0    groupName=GPIO       registers: PMD
+GP1    groupName=GPIO       registers: PMD
+GPIO   groupName=GPIO_GCR   registers: DBNCECON, OTHER
+```
+```c
+} gpio_t;              /* GP0 and GP1 */
+typedef gpio_t gp0_t;
+typedef gpio_t gp1_t;
+
+} gpio_gcr_t;          /* GPIO -- no gpio_t alias */
+static gpio_gcr_t *const GPIO = (gpio_gcr_t *)GPIO_BASE;
+```
+
+The alias would be `typedef gpio_gcr_t gpio_t;`, declaring `gpio_t` a second
+time as a different type. The alias is dropped, not the peripheral: `GPIO` keeps
+its base macro, its pointer, and its register macros. This shape is in Nuvoton's
+M051 file.
+
+**Two peripherals in different types have the same name.** The first processed
+takes the alias; the second is skipped for the same reason.
+
+How the member list decided in [ir/address-blocks.md](../address-blocks.md)
+and [ir/address-math.md](../address-math.md) is written as C.
+
+Code: `regforge/writers/c.py` (`_c_layout`), the header template.
+
+## Register members
+
+Each register becomes one member at its own offset, with the offset in a
+trailing comment:
+
+```c
+typedef struct {
+    volatile uint32_t       MODER;           /* 0x00  Mode register */
+    uint8_t                 RESERVED0[12];   /* 0x04  (reserved) */
+    volatile const uint32_t IDR;             /* 0x10  Input data register */
+} dc_gpioa_t;
+```
+
+## Type and qualifiers
+
+The base type comes from the register's resolved size:
+
+| Size in bits | Type |
+|---|---|
+| 8 | `uint8_t` |
+| 16 | `uint16_t` |
+| 32 | `uint32_t` |
+| 64 | `uint64_t` |
+| anything else | refused, CLI exit 4 |
+
+Every register member is `volatile`. A read-only register is additionally
+`const`, so writing it is a compile error:
+
+| Resolved access | Emitted |
+|---|---|
+| `read-only` | `volatile const uint32_t` |
+| `read-write`, `write-only`, `writeOnce`, `read-writeOnce` | `volatile uint32_t` |
+
+C has no qualifier for "write-only" or "write-once", so those are plain
+`volatile`. CMSIS spells the read-only case `__IM`; this is the same thing
+without the macro.
+
+## Padding members
+
+Space between registers becomes a byte array named `RESERVED<n>`, numbered from
+zero within each struct:
+
+```c
+uint8_t RESERVED0[12];   /* 0x04  (reserved) */
+```
+
+Padding is `uint8_t` because it exists to occupy bytes, not to be accessed, and
+a byte array divides any gap. It is not `volatile`: nothing should read or write
+it.
+
+## Buffer windows
+
+A block with `usage="buffer"` becomes one array member named `BUFFER<n>`:
+
+```c
+volatile uint32_t BUFFER0[8];   /* 0x08  (buffer) */
+```
+
+The element type is the device's `<width>`, because that is the natural access
+size. When the window is not a whole number of bus words the writer falls back
+to `uint8_t`, so no bytes are dropped.
+
+The name is generated. `<addressBlock>` has no `<name>` element in the schema,
+so there is no vendor name to use, and `BUFFER0` follows the same numbering as
+`RESERVED0` to make clear it was not taken from the source.
+
+## Flat macros
+
+Alongside the struct, each register also gets a direct macro, so the header is
+usable without the struct:
+
+```c
+#define DC_GPIOA_IDR (*(volatile const uint32_t *)(DC_GPIOA_BASE + 0x00000010UL))
+```
+
+The qualifiers match the struct member, so a read-only register cannot be
+written through either route.
+
+## Field macros
+
+Each field emits a position and a mask, and each enumerated value a constant:
+
+```c
+#define DC_GPIOA_MODER_MODE0_Pos (0U)
+#define DC_GPIOA_MODER_MODE0_Msk (0x00000003UL)
+#define DC_GPIOA_MODER_MODE0_INPUT (0U)
+```
+
+The `_Pos` / `_Msk` suffixes follow CMSIS, so existing field-manipulation code
+reads the same.
+
+The generated header checks its own assumptions when it is compiled. Each assert
+guards something the generator cannot verify on its own.
+
+Code: `regforge/writers/templates/c/header.h.j2`, `compat.h.j2`.
+
+## The macro
+
+`REGFORGE_STATIC_ASSERT` resolves to `static_assert` in C++, `_Static_assert` in
+C11 and later, and a negative-array-size trick otherwise, so the asserts work
+back to C89.
+
+## Byte width
+
+```c
+#define DEMOMCU_ADDRESS_UNIT_BITS 8
+REGFORGE_STATIC_ASSERT(CHAR_BIT == DEMOMCU_ADDRESS_UNIT_BITS, ...);
+```
+
+Guards a byte-addressed header being compiled by a toolchain whose `CHAR_BIT` is
+not 8. The generator cannot see the compiler, so the header checks it.
+
+## Member offsets
+
+```c
+REGFORGE_STATIC_ASSERT(offsetof(dc_gpioa_t, IDR) == 0x10, DC_GPIOA_IDR_offset, "GPIOA.IDR offset");
+```
+
+One per named member. Guards the struct layout against packing options, ABI
+differences, and hand edits. If padding is ever computed wrongly, this fails at
+compile time rather than reading the wrong register at run time.
+
+Buffer windows get one too, so the window's position is checked as tightly as a
+register's.
+
+## Struct size
+
+```c
+REGFORGE_STATIC_ASSERT(sizeof(dc_uart_t) == 0x28, DC_UART_SIZE, "UART struct size vs addressBlock");
+```
+
+Guards the struct against the footprint the vendor declared. This is what makes
+an array over instances correct: when the size matches the spacing between
+instances, `((dc_uart_t *)DC_UART0_BASE)[1]` is `DC_UART1`.
+
+Emitted only when the source supports it; see
+[ir/address-blocks.md](../address-blocks.md) for when it is skipped.
+
+## Endianness and FPU
+
+```c
+#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__)
+#error "DemoMCU is little-endian, but the compiler targets a different byte order."
+#endif
+
+#if defined(__ARM_FP) && !DEMOMCU_HAS_FPU
+#error "Building with FPU codegen for DemoMCU, which has no FPU (check -mfloat-abi / -mfpu)."
+#endif
+```
+
+These are `#error` rather than static asserts, because they test preprocessor
+state, and they are guarded by `defined(...)` so a compiler that does not define
+those macros is not affected.
+
+## Worked examples
+
+The complete output for each rule example, generated by regforge. The SVD that
+produced each one is on the [SVD format page](../formats/svd.md#worked-examples).
+These are emitted with no `headerDefinitionsPrefix`, so identifiers carry no prefix.
+
+### Naming precedence
+
+Demonstrates [naming.md](../naming.md#rule-1--type-name-precedence). A peripheral declaring `headerStructName`, so the type is named `can_node_t` rather than `can_t` from its `groupName`.
+
+From [this SVD](../formats/svd.md#naming-precedence):
+
+```c
+/* Peripherals */
+
+/* -------------------------------------------------------------------------- */
+/* CAN_NODE */
+
+typedef struct {
+    volatile uint32_t NCR;  /* 0x00 */
+    volatile uint32_t NSR;  /* 0x04 */
+} can_node_t;
+REGFORGE_STATIC_ASSERT(offsetof(can_node_t, NCR) == 0x00, CAN_NODE_NCR_offset, "CAN_NODE.NCR offset");
+REGFORGE_STATIC_ASSERT(offsetof(can_node_t, NSR) == 0x04, CAN_NODE_NSR_offset, "CAN_NODE.NSR offset");
+
+/* Per-instance names for the shared type, so a signature never has to know
+ * which instances share a layout. Aliases, not distinct types: a function
+ * taking can_node_t * accepts any of them. */
+typedef can_node_t can_node0_t;
+
+/* CAN_NODE0 @ 0x48014000 */
+#define CAN_NODE0_BASE (0x48014000UL)
+REGFORGE_MAYBE_UNUSED static can_node_t *const CAN_NODE0 = (can_node_t *)CAN_NODE0_BASE;
+
+/* CAN_NODE0.NCR */
+#define CAN_NODE0_NCR (*(volatile uint32_t *)(CAN_NODE0_BASE + 0x00000000UL))
+
+/* CAN_NODE0.NSR */
+#define CAN_NODE0_NSR (*(volatile uint32_t *)(CAN_NODE0_BASE + 0x00000004UL))
+```
+
+### One group becoming two types
+
+Demonstrates [naming.md](../naming.md#rule-2--naming-the-types-when-one-group-becomes-several). `FPU` and `FPU_CPACR` share `groupName=FPU` but have different registers, so two types are emitted and the peripheral called `FPU` takes the plain name.
+
+From [this SVD](../formats/svd.md#one-group-becoming-two-types):
+
+```c
+/* Peripherals */
+
+/* -------------------------------------------------------------------------- */
+/* FPU_CPACR */
+
+typedef struct {
+    volatile uint32_t CPACR;  /* 0x00 */
+} fpu_cpacr_t;
+REGFORGE_STATIC_ASSERT(offsetof(fpu_cpacr_t, CPACR) == 0x00, FPU_CPACR_CPACR_offset, "FPU_CPACR.CPACR offset");
+
+/* FPU_CPACR @ 0xE000ED88 */
+#define FPU_CPACR_BASE (0xE000ED88UL)
+REGFORGE_MAYBE_UNUSED static fpu_cpacr_t *const FPU_CPACR = (fpu_cpacr_t *)FPU_CPACR_BASE;
+
+/* FPU_CPACR.CPACR */
+#define FPU_CPACR_CPACR (*(volatile uint32_t *)(FPU_CPACR_BASE + 0x00000000UL))
+
+
+/* -------------------------------------------------------------------------- */
+/* FPU */
+/* family FPU: split 2 ways by layout (FPU_CPACR | FPU); first differs at CPACR */
+
+typedef struct {
+    volatile uint32_t FPCCR;  /* 0x00 */
+    volatile uint32_t FPCAR;  /* 0x04 */
+} fpu_t;
+REGFORGE_STATIC_ASSERT(offsetof(fpu_t, FPCCR) == 0x00, FPU_FPCCR_offset, "FPU.FPCCR offset");
+REGFORGE_STATIC_ASSERT(offsetof(fpu_t, FPCAR) == 0x04, FPU_FPCAR_offset, "FPU.FPCAR offset");
+
+/* FPU @ 0xE000EF34 */
+#define FPU_BASE (0xE000EF34UL)
+REGFORGE_MAYBE_UNUSED static fpu_t *const FPU = (fpu_t *)FPU_BASE;
+
+/* FPU.FPCCR */
+#define FPU_FPCCR (*(volatile uint32_t *)(FPU_BASE + 0x00000000UL))
+
+/* FPU.FPCAR */
+#define FPU_FPCAR (*(volatile uint32_t *)(FPU_BASE + 0x00000004UL))
+```
+
+### Two peripherals sharing one type
+
+Demonstrates [families.md](../families.md#rule-1--grouping-follows-derivedfrom-and-groupname). `UART1` derives from `UART0`, so one struct is emitted with two instance pointers.
+
+From [this SVD](../formats/svd.md#two-peripherals-sharing-one-type):
+
+```c
+/* Peripherals */
+
+/* -------------------------------------------------------------------------- */
+/* UART (family: UART0, UART1) */
+
+typedef struct {
+    volatile uint32_t       DR;  /* 0x00 */
+    volatile const uint32_t SR;  /* 0x04 */
+} uart_t;
+REGFORGE_STATIC_ASSERT(offsetof(uart_t, DR) == 0x00, UART_DR_offset, "UART.DR offset");
+REGFORGE_STATIC_ASSERT(offsetof(uart_t, SR) == 0x04, UART_SR_offset, "UART.SR offset");
+
+/* Per-instance names for the shared type, so a signature never has to know
+ * which instances share a layout. Aliases, not distinct types: a function
+ * taking uart_t * accepts any of them. */
+typedef uart_t uart0_t;
+typedef uart_t uart1_t;
+
+/* UART0 @ 0x40004000 */
+#define UART0_BASE (0x40004000UL)
+REGFORGE_MAYBE_UNUSED static uart_t *const UART0 = (uart_t *)UART0_BASE;
+
+/* UART0.DR */
+#define UART0_DR (*(volatile uint32_t *)(UART0_BASE + 0x00000000UL))
+
+/* UART0.SR */
+#define UART0_SR (*(volatile const uint32_t *)(UART0_BASE + 0x00000004UL))
+
+/* UART1 @ 0x40004400 */
+#define UART1_BASE (0x40004400UL)
+REGFORGE_MAYBE_UNUSED static uart_t *const UART1 = (uart_t *)UART1_BASE;
+
+/* UART1.DR */
+#define UART1_DR (*(volatile uint32_t *)(UART1_BASE + 0x00000000UL))
+
+/* UART1.SR */
+#define UART1_SR (*(volatile const uint32_t *)(UART1_BASE + 0x00000004UL))
+```
+
+### A registers block and a buffer block
+
+Demonstrates [address-blocks.md](../address-blocks.md#rule-1--usage-decides-what-is-emitted). The buffer window becomes one array member, and the size assert covers both blocks.
+
+From [this SVD](../formats/svd.md#a-registers-block-and-a-buffer-block):
+
+```c
+/* Peripherals */
+
+/* -------------------------------------------------------------------------- */
+/* UART0 */
+
+typedef struct {
+    volatile uint32_t       DR;          /* 0x00 */
+    volatile const uint32_t SR;          /* 0x04 */
+    volatile uint32_t       BUFFER0[8];  /* 0x08  (buffer) */
+} uart0_t;
+REGFORGE_STATIC_ASSERT(offsetof(uart0_t, DR) == 0x00, UART0_DR_offset, "UART0.DR offset");
+REGFORGE_STATIC_ASSERT(offsetof(uart0_t, SR) == 0x04, UART0_SR_offset, "UART0.SR offset");
+REGFORGE_STATIC_ASSERT(offsetof(uart0_t, BUFFER0) == 0x08, UART0_BUFFER0_offset, "UART0.BUFFER0 offset");
+REGFORGE_STATIC_ASSERT(sizeof(uart0_t) == 0x28, UART0_SIZE, "UART0 struct size vs addressBlock");
+
+/* UART0 @ 0x40004000 */
+#define UART0_BASE (0x40004000UL)
+REGFORGE_MAYBE_UNUSED static uart0_t *const UART0 = (uart0_t *)UART0_BASE;
+
+/* UART0.DR */
+#define UART0_DR (*(volatile uint32_t *)(UART0_BASE + 0x00000000UL))
+
+/* UART0.SR */
+#define UART0_SR (*(volatile const uint32_t *)(UART0_BASE + 0x00000004UL))
+```
+
+### Inherited register properties
+
+Demonstrates [defaults.md](../defaults.md#rule-1--the-inheritance-chain). Neither register declares a size; both take it from the device `<width>`, and `SR` overrides access.
+
+From [this SVD](../formats/svd.md#inherited-register-properties):
+
+```c
+/* Peripherals */
+
+/* -------------------------------------------------------------------------- */
+/* MISC */
+
+typedef struct {
+    volatile uint32_t       DR;  /* 0x00 */
+    volatile const uint32_t SR;  /* 0x04 */
+} misc_t;
+REGFORGE_STATIC_ASSERT(offsetof(misc_t, DR) == 0x00, MISC_DR_offset, "MISC.DR offset");
+REGFORGE_STATIC_ASSERT(offsetof(misc_t, SR) == 0x04, MISC_SR_offset, "MISC.SR offset");
+
+/* MISC @ 0x40030000 */
+#define MISC_BASE (0x40030000UL)
+REGFORGE_MAYBE_UNUSED static misc_t *const MISC = (misc_t *)MISC_BASE;
+
+/* MISC.DR */
+#define MISC_DR (*(volatile uint32_t *)(MISC_BASE + 0x00000000UL))
+
+/* MISC.SR */
+#define MISC_SR (*(volatile const uint32_t *)(MISC_BASE + 0x00000004UL))
+```

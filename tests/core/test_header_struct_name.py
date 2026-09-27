@@ -1,8 +1,9 @@
 """headerStructName: the vendor's preferred name for the generated struct.
 
 Precedence, one rule: headerStructName -> the derivedFrom/groupName family label
--> the root instance's own name. It names the type only; grouping is still
-decided by layout, so a vendor name never merges or splits anything.
+-> the defining peripheral's own name. A peripheral that declares its own
+headerStructName has asked for its own struct, so it is emitted as a separate
+type even where its registers match a sibling's.
 """
 
 from regforge.families import group_families
@@ -91,16 +92,27 @@ def test_vendor_name_does_not_merge_unrelated_peripherals():
     assert len({f.name.lower() for f in families}) == 2  # and they must not collide
 
 
-def test_vendor_name_does_not_split_a_matching_family():
-    # Same layout, same group, different vendor names on each member: grouping
-    # ignores the name, so they remain one type (named from the root).
+def test_differing_vendor_names_split_a_matching_layout():
+    # Same registers, same group, but each member names its own struct. A
+    # peripheral that declares headerStructName has asked for its own type, so
+    # they are not merged even though the layouts match.
     device = _resolved(
         _p("T0", 0x0, group="T", hsn="TEE", regs=("R",)),
         _p("T1", 0x100, group="T", hsn="OTHER", regs=("R",)),
     )
+    assert sorted(_names(device)) == ["OTHER", "TEE"]
+
+
+def test_matching_vendor_names_stay_one_type():
+    # The same name on both: one struct, two instances. This is the nRF shape
+    # once derivedFrom has propagated the base's name to the siblings.
+    device = _resolved(
+        _p("T0", 0x0, group="T", hsn="TEE", regs=("R",)),
+        _p("T1", 0x100, group="T", hsn="TEE", regs=("R",)),
+    )
     families = group_families(device)
-    assert len(families) == 1
-    assert families[0].name == "TEE"  # the root's vendor name wins
+    assert [f.name for f in families] == ["TEE"]
+    assert [i.name for i in families[0].instances] == ["T0", "T1"]
 
 
 def test_split_family_gives_each_subgroup_its_own_vendor_name():
@@ -185,17 +197,29 @@ def test_instance_name_only_on_a_multi_instance_family():
     assert _names(device) == ["ADC0"]
 
 
-def test_vendor_name_on_the_derived_instance_only():
-    # The base is silent and the derived declares the name. Grouping follows the
-    # chain root, so the root's (absent) name still decides the family name --
-    # the derived instance's own string does not rename the shared type.
+def test_derived_declaring_its_own_name_gets_its_own_type():
+    # A1 derives A0's registers but names its own struct, so two types are
+    # emitted: A0 keeps its own name and A1 takes the one it asked for.
     device = _resolved(
         _p("A0", 0x0, regs=("R",)),
         Peripheral(name="A1", base_address=0x100, derived_from="A0", header_struct_name="LATE"),
     )
     families = group_families(device)
-    assert [f.name for f in families] == ["A0"]
-    assert [i.name for i in families[0].instances] == ["A0", "A1"]
+    assert sorted(f.name for f in families) == ["A0", "LATE"]
+    for family in families:
+        assert len(family.instances) == 1  # neither is folded into the other
+
+
+def test_derived_inheriting_the_name_stays_one_type():
+    # A1 declares nothing, so resolve_derived gives it the base's name and both
+    # land in one type. This is what nRF relies on.
+    device = _resolved(
+        _p("B0", 0x0, hsn="ROOT", regs=("R",)),
+        Peripheral(name="B1", base_address=0x100, derived_from="B0"),
+    )
+    families = group_families(device)
+    assert [f.name for f in families] == ["ROOT"]
+    assert [i.name for i in families[0].instances] == ["B0", "B1"]
 
 
 def test_group_name_on_derived_differing_from_the_base():

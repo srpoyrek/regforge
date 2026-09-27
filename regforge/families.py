@@ -6,7 +6,8 @@ so peripherals linked by ``derivedFrom`` and peripherals merely sharing a
 match: ``groupName`` is a label, not a claim -- vendors apply it to genuinely
 different silicon (STM32's advanced TIM1 has ``RCR``/``BDTR`` that general-purpose
 TIM2..5 lack, all ``groupName=TIM``). So we structurally compare register layouts
-and split divergent members into their own types.
+and split divergent members into their own types. A member that declares its own
+``headerStructName`` is likewise its own type: the vendor named a struct for it.
 
 When a group splits, the **largest** structurally-identical subgroup keeps the
 plain family name; outliers get their own name -- matching how engineers already
@@ -60,17 +61,14 @@ def _family_key(peripheral: Peripheral, by_name: dict[str, Peripheral]) -> str:
 
 
 def family_name(source: Peripheral, fallback: str) -> str:
-    """The emitted type name for a family: what the vendor asked for, else ``fallback``.
+    """The emitted type name for a type: what the vendor asked for, else ``fallback``.
 
     One precedence, written once: ``headerStructName`` (the vendor named the
     struct) -> the family label from the ``derivedFrom``/``groupName`` machinery
-    -> the root instance's own name. Infineon needs the first rung -- ``CAN_NODE0``
-    carries ``groupName=CAN`` because it is a CAN thing, but its struct is a CAN
-    *node*, and naming it ``can_t`` is simply wrong. Cypress needs it too, where
-    ``DW0`` alone would name the type after instance zero.
-
-    Naming only: which peripherals share a type is still decided by layout, so a
-    vendor name never merges or splits anything.
+    -> the defining peripheral's own name. Infineon needs the first rung --
+    ``CAN_NODE0`` carries ``groupName=CAN`` because it is a CAN thing, but its
+    struct is a CAN *node*, and naming it ``can_t`` is wrong. Cypress needs it
+    too, where ``DW0`` alone would name the type after instance zero.
     """
     return source.header_struct_name or fallback
 
@@ -130,9 +128,14 @@ def group_families(device: Device) -> list[Family]:
 
     families: list[Family] = []
     for key, members in groups.items():
+        # Keyed on layout *and* the requested struct name: a peripheral that
+        # declares its own headerStructName has asked for its own struct, even
+        # where its registers match a sibling's.
         buckets: dict[tuple, list[Peripheral]] = {}
         for member in members:
-            buckets.setdefault(layout_signature(member), []).append(member)
+            buckets.setdefault((layout_signature(member), member.header_struct_name), []).append(
+                member
+            )
 
         if len(buckets) == 1:
             (bucket,) = buckets.values()
