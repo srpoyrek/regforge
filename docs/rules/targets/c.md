@@ -232,6 +232,15 @@ values once:
 #define DC_GPIOA_ODR_OD_Msk(i) (0x00000001UL << ((i) * 1U))
 ```
 
+An array whose source names its indices (`dimArrayIndex`) gets one constant per
+name, so a caller can write `DC_DMA_CH(DC_DMA_CH_RX)`:
+
+```c
+/* DMA.CH[2] index names (dimArrayIndex) */
+#define DC_DMA_CH_RX (0U)  /* receive channel */
+#define DC_DMA_CH_TX (1U)
+```
+
 Copies expanded from a `NAME%s` template are ordinary registers, fields or
 peripherals and are spelled exactly as if the vendor had written each out.
 

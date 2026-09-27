@@ -39,10 +39,17 @@ def test_resolve_warns_on_unspecified_access(lint_demo_svd_path):
 
 def test_expand_warnings_are_locked(lint_demo_svd_path):
     device = SvdReader().read(lint_demo_svd_path)
-    warnings = expand_dim(device)
-    assert any("TMRX%s" in w and "cannot shift a vector number" in w for w in warnings)
-    assert any("DMAX.CH[%s]: dimIndex ignored" in w for w in warnings)
-    assert len(warnings) == 2
+    findings = expand_dim(device)
+    messages = [f.message for f in findings]
+    assert any("TMRX%s" in m and "cannot shift a vector number" in m for m in messages)
+    assert any("DMAX.CH[%s]: dimIndex ignored" in m for m in messages)
+    assert any("TMRY: <dim> on a name without a %s" in m and "TMRY0..TMRY1" in m for m in messages)
+    errors = [f.message for f in findings if f.severity is Severity.ERROR]
+    assert errors == [
+        "TMRZ%s: dimIndex labels repeat (0,0,1) -- two copies cannot share a name; "
+        "falling back to 0..2"
+    ]
+    assert len(findings) == 4
 
 
 def test_cluster_derived_from_is_reported(lint_demo_svd_path):
@@ -54,6 +61,7 @@ def test_cluster_derived_from_is_reported(lint_demo_svd_path):
 
 def test_dimmed_instances_share_the_vector_in_the_header(lint_demo_device):
     output = CWriter().render(lint_demo_device)
+    assert "#define LD_TMRY1_BASE (0x40058100UL)" in output  # index appended, header compiles
     assert (
         "#define LD_TMRX0_IRQ LD_TMRX0_IRQn  "
         "/* vector 41 -- shared with LD_TMRX1; demux in ISR */" in output

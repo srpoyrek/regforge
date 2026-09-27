@@ -28,9 +28,11 @@ default) but *warns*, so the fallback is visible and auditable.
 from __future__ import annotations
 
 import copy
+import re
 from typing import NamedTuple, TypeVar
 
-from .ir import Access, Cluster, Device, Field, Peripheral, Register, walk_clusters
+from .check import Finding, Severity
+from .ir import Access, Cluster, Device, Dim, Field, Peripheral, Register, walk_clusters
 
 _T = TypeVar("_T")
 
@@ -38,6 +40,8 @@ _T = TypeVar("_T")
 #: separately named copies, ``[%s]`` for an array kept as one element.
 _COPY = "%s"
 _ARRAY = "[%s]"
+#: What a ``dimIndex`` label must look like to end up inside an identifier.
+_IDENTIFIER_TAIL = re.compile(r"[A-Za-z0-9_]+")
 
 
 def _first(*values: _T | None) -> _T | None:
@@ -56,90 +60,184 @@ def _stem(pattern: str) -> str:
     return pattern.replace(_ARRAY, "").replace(_COPY, "").strip("_")
 
 
-def _keep_as_array(element: Register | Cluster | Field, where: str, warnings: list[str]) -> None:
+def _keep_as_array(
+    element: Register | Cluster | Field, where: str, findings: list[Finding]
+) -> None:
     """Drop ``[%s]`` from an element's name and keep its ``dim`` as the array shape.
 
     Array elements are indexed ``0..count-1`` by the language, not by labels, so
     a ``dimIndex`` on an array has nothing to name; it is reported and cleared.
+    A cluster array's type takes ``dimName`` when it has no ``headerStructName``.
     """
     assert element.dim is not None
     element.name = element.name.replace(_ARRAY, "")
+    element.dim.array = True
     if element.dim.index is not None:
-        warnings.append(
-            f"{where}.{element.name}[%s]: dimIndex ignored -- array elements are "
-            f"indexed 0..{element.dim.count - 1} by the language, not by labels"
+        findings.append(
+            Finding(
+                Severity.WARNING,
+                f"{where}.{element.name}[%s]: dimIndex ignored -- array elements are "
+                f"indexed 0..{element.dim.count - 1} by the language, not by labels",
+            )
         )
         element.dim.index = None
+    if isinstance(element, Cluster) and not element.header_struct_name:
+        element.header_struct_name = element.dim.name
 
 
-def _expand_fields(register: Register, where: str, warnings: list[str]) -> None:
+def _labels(dim: Dim, where: str, findings: list[Finding]) -> list[str]:
+    """The label for each copy, made usable: counted by ``dim``, identifier-clean, distinct.
+
+    ``dim`` is trusted for the count: missing labels take their index, extra
+    ones are dropped. A label that is not an identifier tail is rewritten with
+    underscores, or falls back to its index when nothing is left. Labels that
+    repeat would name two copies alike, which no header can hold, so the whole
+    list falls back to ``0..count-1``; that one is an error, the rest warnings.
+    """
+    if dim.index is None:
+        return [str(i) for i in range(dim.count)]
+    labels = list(dim.index)
+    if len(labels) != dim.count:
+        fix = (
+            "missing labels take their index" if len(labels) < dim.count else "extra labels dropped"
+        )
+        findings.append(
+            Finding(
+                Severity.WARNING,
+                f"{where}: dimIndex gives {len(labels)} label(s) for <dim> {dim.count} "
+                f"-- trusting <dim>: {fix}",
+            )
+        )
+        labels = labels[: dim.count] + [str(i) for i in range(len(labels), dim.count)]
+    for position, label in enumerate(labels):
+        if not _IDENTIFIER_TAIL.fullmatch(label):
+            cleaned = re.sub(r"[^A-Za-z0-9_]", "_", label).strip("_") or str(position)
+            findings.append(
+                Finding(
+                    Severity.WARNING,
+                    f"{where}: dimIndex label '{label}' is not an identifier -- using '{cleaned}'",
+                )
+            )
+            labels[position] = cleaned
+    if len(set(labels)) != len(labels):
+        findings.append(
+            Finding(
+                Severity.ERROR,
+                f"{where}: dimIndex labels repeat ({','.join(labels)}) -- two copies cannot "
+                f"share a name; falling back to 0..{dim.count - 1}",
+            )
+        )
+        labels = [str(i) for i in range(dim.count)]
+    return labels
+
+
+def _pattern(name: str, labels: list[str], where: str, findings: list[Finding]) -> str:
+    """The name with its placeholder: appended when missing, reported when repeated.
+
+    ``<dim>`` on a plain name would make every copy the same identifier, a C
+    redefinition, so the index (or label) goes on the end and the file is told
+    where it can say otherwise. The spec allows one ``%s``; a name with several
+    gets the same label in every one, which is what a reader would expect, and
+    is reported so the author can check that is what was meant.
+    """
+    if _COPY not in name:
+        findings.append(
+            Finding(
+                Severity.WARNING,
+                f"{where}: <dim> on a name without a %s placeholder -- copies are named "
+                f"{name}{labels[0]}..{name}{labels[-1]} (index appended) so the header "
+                "compiles; put %s in the name to choose where it goes",
+            )
+        )
+        return name + _COPY
+    if name.count(_COPY) > 1:
+        findings.append(
+            Finding(
+                Severity.WARNING,
+                f"{where}: name has {name.count(_COPY)} %s placeholders (the spec allows one) "
+                f"-- every occurrence takes the same label ({name.replace(_COPY, labels[0])})",
+            )
+        )
+    return name
+
+
+def _expand_fields(register: Register, where: str, findings: list[Finding]) -> None:
     """Expand the ``%s`` fields of ``register`` in place; the increment is in bits."""
     expanded: list[Field] = []
     for field_ in register.fields:
-        if field_.dim is None or _COPY not in field_.name:
+        if field_.dim is None or field_.dim.array:
             expanded.append(field_)
         elif _ARRAY in field_.name:
-            _keep_as_array(field_, where, warnings)
+            _keep_as_array(field_, where, findings)
             expanded.append(field_)
         else:
-            for index, label in enumerate(field_.dim.labels):
+            path = f"{where}.{field_.name}"
+            labels = _labels(field_.dim, path, findings)
+            pattern = _pattern(field_.name, labels, path, findings)
+            for index, label in enumerate(labels):
                 clone = copy.deepcopy(field_)
                 clone.dim = None
-                clone.name = field_.name.replace(_COPY, label)
+                clone.name = pattern.replace(_COPY, label)
                 clone.bit_offset = field_.bit_offset + index * field_.dim.increment
                 expanded.append(clone)
     register.fields = expanded
 
 
-def _expand_registers(registers: list[Register], where: str, warnings: list[str]) -> list[Register]:
+def _expand_registers(
+    registers: list[Register], where: str, findings: list[Finding]
+) -> list[Register]:
     """The register list with every ``%s`` template replaced by its copies, in place."""
     expanded: list[Register] = []
     for register in registers:
         # Fields first, on the template, so every copy carries the expanded set.
-        _expand_fields(register, f"{where}.{register.name}", warnings)
-        if register.dim is None or _COPY not in register.name:
+        _expand_fields(register, f"{where}.{register.name}", findings)
+        if register.dim is None or register.dim.array:
             expanded.append(register)
         elif _ARRAY in register.name:
-            _keep_as_array(register, where, warnings)
+            _keep_as_array(register, where, findings)
             expanded.append(register)
         else:
-            for index, label in enumerate(register.dim.labels):
+            path = f"{where}.{register.name}"
+            labels = _labels(register.dim, path, findings)
+            pattern = _pattern(register.name, labels, path, findings)
+            for index, label in enumerate(labels):
                 clone = copy.deepcopy(register)
                 clone.dim = None
-                clone.name = register.name.replace(_COPY, label)
+                clone.name = pattern.replace(_COPY, label)
                 clone.address_offset = register.address_offset + index * register.dim.increment
                 expanded.append(clone)
     return expanded
 
 
-def _expand_clusters(clusters: list[Cluster], where: str, warnings: list[str]) -> list[Cluster]:
+def _expand_clusters(clusters: list[Cluster], where: str, findings: list[Finding]) -> list[Cluster]:
     """The cluster list with every ``%s`` template replaced by its copies, recursively."""
     expanded: list[Cluster] = []
     for cluster in clusters:
         path = f"{where}.{cluster.name}"
-        cluster.registers = _expand_registers(cluster.registers, path, warnings)
-        cluster.clusters = _expand_clusters(cluster.clusters, path, warnings)
-        if cluster.dim is None or _COPY not in cluster.name:
+        cluster.registers = _expand_registers(cluster.registers, path, findings)
+        cluster.clusters = _expand_clusters(cluster.clusters, path, findings)
+        if cluster.dim is None or cluster.dim.array:
             expanded.append(cluster)
         elif _ARRAY in cluster.name:
-            _keep_as_array(cluster, where, warnings)
+            _keep_as_array(cluster, where, findings)
             expanded.append(cluster)
         else:
-            stem = _stem(cluster.name)
-            for index, label in enumerate(cluster.dim.labels):
+            labels = _labels(cluster.dim, path, findings)
+            pattern = _pattern(cluster.name, labels, path, findings)
+            # The copies share one struct type: the vendor's headerStructName,
+            # else its dimName, else the pattern's stem.
+            type_name = cluster.header_struct_name or cluster.dim.name or _stem(pattern)
+            for index, label in enumerate(labels):
                 clone = copy.deepcopy(cluster)
                 clone.dim = None
-                clone.name = cluster.name.replace(_COPY, label)
+                clone.name = pattern.replace(_COPY, label)
                 clone.address_offset = cluster.address_offset + index * cluster.dim.increment
-                # The copies share one struct type, spelled after the pattern's
-                # stem unless the vendor named it.
-                if not clone.header_struct_name:
-                    clone.header_struct_name = stem
+                clone.header_struct_name = type_name
                 expanded.append(clone)
     return expanded
 
 
-def expand_dim(device: Device) -> list[str]:
+def expand_dim(device: Device) -> list[Finding]:
     """Expand every ``<dim>`` template into its copies, in place.
 
     Runs first, straight after parsing, so a later ``derivedFrom`` can name a
@@ -152,11 +250,18 @@ def expand_dim(device: Device) -> list[str]:
     ``NAME[%s]`` register, cluster or field is an array: it stays one element,
     with the brackets dropped from its name and ``dim`` kept for the layout and
     the writers. A peripheral is an instance, not an array (``UART[0]`` is not
-    an identifier), so ``[%s]`` on one is treated as ``%s`` and reported.
+    an identifier), so ``[%s]`` on one is treated as ``%s`` and reported. A
+    template whose name has no ``%s`` at all gets the index appended (``UART``
+    becomes ``UART0``..) and is reported too: identical copies would collide.
+
+    Labels come from ``dimIndex``, made usable first (see :func:`_labels`):
+    counted by ``dim``, cleaned to identifier tails, and distinct -- repeated
+    labels are the one error here, since two copies cannot share a name.
 
     Peripheral copies form one family: the pattern's stem (``UART`` from
-    ``UART%s``) stands in for a missing ``groupName``, so one type is emitted
-    with ``count`` instances. Interrupts are copied to every instance -- the
+    ``UART%s``) stands in for a missing ``groupName``, and ``dimName`` names
+    the type when no ``headerStructName`` does, so one type is emitted with
+    ``count`` instances. Interrupts are copied to every instance -- the
     template declares them for each -- with ``%s`` substituted in their names;
     ``<dim>`` cannot shift a vector number, so the copies share it, and that is
     reported.
@@ -164,43 +269,55 @@ def expand_dim(device: Device) -> list[str]:
     Nothing here looks at sizes or strides: a register may still lack its
     ``size`` (it comes from the device ``<width>`` in defaults resolution), so
     whether a stride fits is left to the checks and the layout, which run later.
-    Mutates ``device`` in place and returns human-readable warnings.
+    Mutates ``device`` in place and returns findings, warnings and errors.
     """
-    warnings: list[str] = []
+    findings: list[Finding] = []
     expanded: list[Peripheral] = []
     for peripheral in device.peripherals:
-        peripheral.registers = _expand_registers(peripheral.registers, peripheral.name, warnings)
-        peripheral.clusters = _expand_clusters(peripheral.clusters, peripheral.name, warnings)
-        if peripheral.dim is None or _COPY not in peripheral.name:
+        peripheral.registers = _expand_registers(peripheral.registers, peripheral.name, findings)
+        peripheral.clusters = _expand_clusters(peripheral.clusters, peripheral.name, findings)
+        if peripheral.dim is None or peripheral.dim.array:
             expanded.append(peripheral)
             continue
         pattern = peripheral.name
         if _ARRAY in pattern:
-            warnings.append(
-                f"{pattern}: a peripheral is an instance, not an array -- emitted as "
-                f"{peripheral.dim.count} separately named instances"
+            findings.append(
+                Finding(
+                    Severity.WARNING,
+                    f"{pattern}: a peripheral is an instance, not an array -- emitted as "
+                    f"{peripheral.dim.count} separately named instances",
+                )
             )
             pattern = pattern.replace(_ARRAY, _COPY)
+        labels = _labels(peripheral.dim, peripheral.name, findings)
+        pattern = _pattern(pattern, labels, peripheral.name, findings)
         if peripheral.interrupts:
             vectors = ", ".join(str(interrupt.value) for interrupt in peripheral.interrupts)
-            warnings.append(
-                f"{pattern}: its interrupt(s) (vector {vectors}) are copied to all "
-                f"{peripheral.dim.count} instances -- <dim> cannot shift a vector number, "
-                "so they share it; declare the instances separately if each has its own"
+            findings.append(
+                Finding(
+                    Severity.WARNING,
+                    f"{pattern}: its interrupt(s) (vector {vectors}) are copied to all "
+                    f"{peripheral.dim.count} instances -- <dim> cannot shift a vector number, "
+                    "so they share it; declare the instances separately if each has its own",
+                )
             )
         stem = _stem(pattern)
-        for index, label in enumerate(peripheral.dim.labels):
+        for index, label in enumerate(labels):
             clone = copy.deepcopy(peripheral)
             clone.dim = None
             clone.name = pattern.replace(_COPY, label)
             clone.base_address = peripheral.base_address + index * peripheral.dim.increment
+            # dimName names the type below headerStructName and above groupName;
+            # giving it the headerStructName slot is exactly that precedence.
+            if not clone.header_struct_name:
+                clone.header_struct_name = peripheral.dim.name
             if not clone.group_name:
                 clone.group_name = stem
             for interrupt in clone.interrupts:
                 interrupt.name = interrupt.name.replace(_COPY, label)
             expanded.append(clone)
     device.peripherals = expanded
-    return warnings
+    return findings
 
 
 # --- derivedFrom resolution ---

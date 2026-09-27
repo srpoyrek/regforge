@@ -21,8 +21,9 @@ Tests: `tests/core/test_header_struct_name.py`,
 The type name is taken from the first of these that is present:
 
 1. [`headerStructName`](formats/svd.md#peripheral) on the chain root
-2. [`groupName`](formats/svd.md#peripheral) on the chain root
-3. the chain root's own name
+2. [`dimName`](formats/svd.md#arrays) on the template the chain root was expanded from
+3. [`groupName`](formats/svd.md#peripheral) on the chain root
+4. the chain root's own name
 
 `headerStructName` sets the type name only. Which peripherals share a type is decided
 by layout (see [families.md](families.md)).

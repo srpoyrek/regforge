@@ -361,6 +361,39 @@ def _accessors(peripheral: Peripheral, address_unit_bits: int) -> list[dict]:
     return result
 
 
+def _array_indices(peripheral: Peripheral) -> list[dict]:
+    """Every kept array of ``peripheral`` that names its indices (``dimArrayIndex``).
+
+    Registers and clusters at any depth, each as the macro stem the accessors
+    use (``CH`` or ``CH_BUF``), a label for the comment, and the named values.
+    """
+    result: list[dict] = []
+
+    def note(dim: Dim | None, names: list[str], labels: list[str]) -> None:
+        if dim is not None and dim.array and dim.array_index:
+            result.append(
+                {"name": "_".join(names), "label": ".".join(labels), "names": dim.array_index}
+            )
+
+    def walk(clusters: list[Cluster], names: list[str], labels: list[str]) -> None:
+        for cluster in clusters:
+            inner_names = [*names, cluster.name]
+            inner_labels = [*labels, cluster.name + _array_suffix(cluster.dim)]
+            note(cluster.dim, inner_names, inner_labels)
+            for register in cluster.registers:
+                note(
+                    register.dim,
+                    [*inner_names, register.name],
+                    [*inner_labels, register.name + _array_suffix(register.dim)],
+                )
+            walk(cluster.clusters, inner_names, inner_labels)
+
+    for register in peripheral.registers:
+        note(register.dim, [register.name], [register.name + _array_suffix(register.dim)])
+    walk(peripheral.clusters, [], [])
+    return result
+
+
 class CWriter(Writer):
     """Writer that emits a C register header."""
 
@@ -440,6 +473,7 @@ class CWriter(Writer):
             )
             layouts[id(source)] = _c_layout(entries, cluster_names, device.bus_width)
         accessors = {id(p): _accessors(p, unit_bits) for p in device.peripherals}
+        array_indices = {id(p): _array_indices(p) for p in device.peripherals}
 
         template = self._env.get_template("header.h.j2")
         return template.render(
@@ -452,6 +486,7 @@ class CWriter(Writer):
             layout=lambda peripheral: layouts[id(peripheral)],
             cluster_types=lambda family: cluster_types[id(family)],
             accessors=lambda peripheral: accessors[id(peripheral)],
+            array_indices=lambda peripheral: array_indices[id(peripheral)],
             struct_size=lambda peripheral: asserted_struct_size(peripheral, unit_bits),
             families=families,
             type_aliases=lambda family: aliases[id(family)],

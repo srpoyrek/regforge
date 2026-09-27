@@ -170,5 +170,29 @@
         </cluster>
       </registers>
     </peripheral>
+    <!-- <dim> on a name without %s (WARNING): two identical names would be a
+         C redefinition, so the index is appended (TMRY0, TMRY1) and the file is
+         told to put %s where it wants the index. -->
+    <peripheral>
+      <dim>2</dim>
+      <dimIncrement>0x100</dimIncrement>
+      <name>TMRY</name>
+      <baseAddress>0x40058000</baseAddress>
+      <registers>
+        <register><name>CR</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
+    <!-- Repeated dimIndex labels (ERROR from the expand pass): two copies
+         cannot both be TMRZ0, so the labels are dropped for the index. -->
+    <peripheral>
+      <dim>3</dim>
+      <dimIncrement>0x100</dimIncrement>
+      <dimIndex>0,0,1</dimIndex>
+      <name>TMRZ%s</name>
+      <baseAddress>0x40059000</baseAddress>
+      <registers>
+        <register><name>CR</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
   </peripherals>
 </device>

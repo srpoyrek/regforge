@@ -103,10 +103,23 @@ resolution, once every register has a size; see
 
 ## Rule 4: labels come from `dimIndex`, else from 0
 
-`dimIndex` supplies the labels that replace `%s`, in the three spellings the
+`dimIndex` supplies the labels that replace `%s`, in the spellings the
 [format page](formats/svd.md#arrays) lists. Absent, the copies are numbered
 from 0. An array (`[%s]`) is indexed by the language, so a `dimIndex` on one
 names nothing: it is ignored and reported.
+
+A label ends an identifier in the output, and every copy must get a name of
+its own, so the list is made usable before it is applied. `dim` is the
+authority on the count:
+
+| Case | Result |
+|---|---|
+| two `%s` in the name (`PORT%s_PIN%s`) | every occurrence takes the same label (`PORT0_PIN0`); `WARNING` |
+| fewer labels than `dim` (`0,1,2` for 4) | missing labels take their index: `0,1,2,3`; `WARNING` |
+| more labels than `dim` | the extra labels are dropped; `WARNING` |
+| a reversed range (`3-0`) | read as `0-3`; `WARNING` from the reader |
+| a label that is not an identifier tail (`1.5`, `a b`) | rewritten with underscores (`1_5`, `a_b`), or its index when nothing is left; `WARNING` |
+| repeated labels (`0,0,1`) | two copies cannot share a name: `ERROR`, and the whole list falls back to `0..N-1` |
 
 ```xml
 <dim>3</dim><dimIncrement>0x1000</dimIncrement><dimIndex>A,B,C</dimIndex>
@@ -127,13 +140,34 @@ cannot shift a vector number, so the copies share it; expansion reports that,
 and the shared vector shows at each instance as in
 [interrupts.md](interrupts.md#rule-3-one-vector-used-by-several-peripherals-appears-once).
 
+## Rule 6: `dimName` names the type, `dimArrayIndex` names the indices
+
+`dimName` is a name for the type the copies share. It ranks below
+`headerStructName` and above `groupName` in [naming.md](naming.md), for a
+peripheral template and for a cluster, whether the cluster is copies (`CH%s`)
+or kept as an array (`CH[%s]`). On a register or field it names nothing, since
+neither has a type of its own.
+
+`dimArrayIndex` gives each index of an array a name. A kept array (register or
+cluster) emits them as constants beside its accessor -- see
+[targets/c.md](targets/c.md#array-members):
+
+```c
+/* DMA.CH[2] index names (dimArrayIndex) */
+#define DC_DMA_CH_RX (0U)  /* receive channel */
+#define DC_DMA_CH_TX (1U)
+```
+
+On a `%s` template the names have nothing to attach to, since each copy already
+carries its label, and they are ignored without a finding.
+
 ## Corner cases
 
 | Case | Result |
 |---|---|
 | `%s` in the description | Left as written. The spec substitutes in `name` (and `displayName`) only. |
-| `dim` without `dimIncrement`, `dim` without `%s`, `%s` without `dim`, wrong label count, `dim` of 0 | Refused when the file is read; see [formats/svd.md](formats/svd.md#arrays). |
+| `dim` without `dimIncrement`, `%s` without `dim`, `dim` of 0 | Refused when the file is read; see [formats/svd.md](formats/svd.md#arrays). |
+| `dim` on a name without `%s` | Accepted with a warning. Every copy would be one identifier, so the index (or `dimIndex` label) is appended: `UART` with `dim` 4 becomes `UART0`..`UART3`. Put `%s` in the name to choose where it goes. |
 | `derivedFrom` naming the template (`UART%s`) | Not found: the template is gone once expanded. Name a copy instead. |
-| Running expansion twice | No change. Copies carry no `dim`, and an array's bare name has no `%s`. |
+| Running expansion twice | No change. Copies carry no `dim`, and a kept array's `dim` is flagged as one, so neither is a template any more. |
 | A stem with a dangling underscore (`PORT_%s`) | `PORT`. |
-| `dimName`, `dimArrayIndex` | Not read. |

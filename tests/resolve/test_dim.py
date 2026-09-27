@@ -4,6 +4,7 @@ Runs first, before derivedFrom and defaults. Only copies and renames; the
 stride is never compared here, because a register may still lack its size.
 """
 
+from regforge.check import Severity
 from regforge.ir import (
     AddressBlock,
     Cluster,
@@ -90,22 +91,22 @@ def test_dim_index_labels_name_the_copies():
 
 def test_array_notation_on_a_peripheral_means_copies_and_warns():
     device = _device(_uart_template(name="UART[%s]", dim=Dim(2, 0x400)))
-    warnings = expand_dim(device)
+    findings = expand_dim(device)
     assert [p.name for p in device.peripherals] == ["UART0", "UART1"]
-    assert any("not an array" in w for w in warnings)
+    assert any("not an array" in f.message for f in findings)
 
 
 def test_interrupts_are_copied_with_the_label_and_reported():
     device = _device(
         _uart_template(dim=Dim(2, 0x400), interrupts=[Interrupt("UART%s", 20, "UART %s interrupt")])
     )
-    warnings = expand_dim(device)
+    findings = expand_dim(device)
     assert [(i.name, i.value) for p in device.peripherals for i in p.interrupts] == [
         ("UART0", 20),
         ("UART1", 20),
     ]
     assert device.peripherals[0].interrupts[0].description == "UART %s interrupt"  # untouched
-    assert any("cannot shift a vector number" in w for w in warnings)
+    assert any("cannot shift a vector number" in f.message for f in findings)
 
 
 def test_description_placeholder_is_left_alone():
@@ -151,9 +152,9 @@ def test_array_register_stays_one_element_with_a_bare_name():
 
 def test_dim_index_on_an_array_is_ignored_and_reported():
     device = _with_registers(Register("DATA[%s]", 0x10, dim=Dim(2, 4, index=["A", "B"])))
-    warnings = expand_dim(device)
+    findings = expand_dim(device)
     assert device.peripherals[0].registers[0].dim.index is None
-    assert any("DATA[%s]: dimIndex ignored" in w for w in warnings)
+    assert any("DATA[%s]: dimIndex ignored" in f.message for f in findings)
 
 
 def test_register_size_is_not_needed_to_expand():
@@ -281,3 +282,112 @@ def test_plain_device_is_untouched():
     device = _device(Peripheral("P", 0x0, registers=[Register("R", 0x0)]))
     assert expand_dim(device) == []
     assert [r.name for r in device.peripherals[0].registers] == ["R"]
+
+
+def test_missing_placeholder_appends_the_index_and_warns():
+    device = _device(
+        _uart_template(name="UART", dim=Dim(4, 0x400)),
+        Peripheral("P", 0x0, registers=[Register("DATA", 0x10, dim=Dim(2, 4))]),
+        Peripheral("G", 0x1000, registers=[Register("R", 0x0, dim=Dim(2, 4, index=["A", "B"]))]),
+    )
+    findings = expand_dim(device)
+    assert [p.name for p in device.peripherals[:4]] == ["UART0", "UART1", "UART2", "UART3"]
+    assert {p.group_name for p in device.peripherals[:4]} == {"UART"}  # still one family
+    assert [r.name for r in device.peripherals[4].registers] == ["DATA0", "DATA1"]
+    assert [r.name for r in device.peripherals[5].registers] == ["RA", "RB"]  # labels appended
+    assert any(
+        "UART: <dim> on a name without a %s" in f.message and "UART0..UART3" in f.message
+        for f in findings
+    )
+    assert any("P.DATA: <dim> on a name without a %s" in f.message for f in findings)
+
+
+def test_array_flag_marks_kept_elements():
+    device = _with_registers(
+        Register("DATA[%s]", 0x10, dim=Dim(8, 4)), Register("D%s", 0x40, dim=Dim(2, 4))
+    )
+    expand_dim(device)
+    array, *copies = device.peripherals[0].registers
+    assert array.dim.array is True  # what tells a second expansion to leave it alone
+    assert all(c.dim is None for c in copies)
+
+
+# --- the placeholder and label edge cases ---
+
+
+def _messages(findings, severity=None):
+    return [f.message for f in findings if severity is None or f.severity is severity]
+
+
+def test_two_placeholders_take_the_same_label_and_warn():
+    device = _with_registers(Register("PORT%s_PIN%s", 0x0, dim=Dim(2, 4)))
+    findings = expand_dim(device)
+    assert [r.name for r in device.peripherals[0].registers] == ["PORT0_PIN0", "PORT1_PIN1"]
+    assert any("2 %s placeholders" in m and "PORT0_PIN0" in m for m in _messages(findings))
+
+
+def test_label_count_mismatch_trusts_dim():
+    device = _with_registers(
+        Register("A%s", 0x0, dim=Dim(4, 4, index=["0", "1", "2"])),  # one short
+        Register("B%s", 0x20, dim=Dim(2, 4, index=["X", "Y", "Z"])),  # one over
+    )
+    findings = expand_dim(device)
+    names = [r.name for r in device.peripherals[0].registers]
+    assert names == ["A0", "A1", "A2", "A3", "BX", "BY"]  # padded with the index; extra dropped
+    warnings = _messages(findings, Severity.WARNING)
+    assert any(
+        "P.A%s: dimIndex gives 3 label(s) for <dim> 4" in m and "missing" in m for m in warnings
+    )
+    assert any(
+        "P.B%s: dimIndex gives 3 label(s) for <dim> 2" in m and "dropped" in m for m in warnings
+    )
+
+
+def test_labels_that_are_not_identifier_tails_are_cleaned():
+    device = _with_registers(
+        Register("V%s", 0x0, dim=Dim(3, 4, index=["1.5", "a b", "$"])),
+    )
+    findings = expand_dim(device)
+    assert [r.name for r in device.peripherals[0].registers] == ["V1_5", "Va_b", "V2"]
+    warnings = _messages(findings, Severity.WARNING)
+    assert any("'1.5' is not an identifier -- using '1_5'" in m for m in warnings)
+    assert any(
+        "'$' is not an identifier -- using '2'" in m for m in warnings
+    )  # nothing left: the index
+
+
+def test_repeated_labels_are_an_error_and_fall_back_to_the_index():
+    device = _device(Peripheral("UART%s", 0x0, dim=Dim(3, 0x400, index=["0", "0", "1"])))
+    findings = expand_dim(device)
+    assert [p.name for p in device.peripherals] == ["UART0", "UART1", "UART2"]
+    errors = _messages(findings, Severity.ERROR)
+    assert errors == [
+        "UART%s: dimIndex labels repeat (0,0,1) -- two copies cannot share a name; "
+        "falling back to 0..2"
+    ]
+
+
+def test_dim_name_names_the_type_below_header_struct_name_above_group_name():
+    device = _device(
+        Peripheral("UART%s", 0x0, dim=Dim(2, 0x400, name="Uart"), group_name="SERIAL"),
+        Peripheral("SPI%s", 0x2000, dim=Dim(2, 0x400, name="Spi"), header_struct_name="SPIM"),
+        Peripheral(
+            "DMA",
+            0x4000,
+            clusters=[
+                Cluster(
+                    "CH[%s]", 0x10, dim=Dim(2, 0x10, name="Channel"), registers=[Register("R", 0)]
+                ),
+                Cluster("Q%s", 0x40, dim=Dim(2, 0x10, name="Queue"), registers=[Register("R", 0)]),
+            ],
+        ),
+    )
+    assert expand_dim(device) == []
+    uart, spi, dma = device.peripherals[0], device.peripherals[2], device.peripherals[4]
+    assert (uart.header_struct_name, uart.group_name) == (
+        "Uart",
+        "SERIAL",
+    )  # dimName outranks group
+    assert spi.header_struct_name == "SPIM"  # an explicit headerStructName still wins
+    assert dma.clusters[0].header_struct_name == "Channel"  # a kept array takes it too
+    assert {c.header_struct_name for c in dma.clusters[1:]} == {"Queue"}  # copies share it

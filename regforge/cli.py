@@ -228,11 +228,14 @@ def main(argv: list[str] | None = None) -> int:
     device = reader.read(args.input)
     log(
         logging.INFO,
-        "parsed %s via '%s': %d peripheral(s)",
+        "parsed %s via '%s': %d peripheral(s), %d warning(s)",
         args.input,
         reader.format_name,
         len(device.peripherals),
+        len(reader.warnings),
     )
+    for warning in reader.warnings:
+        log(logging.WARNING, "%s", warning)
     log(
         logging.DEBUG,
         "%d register(s), %d field(s)",
@@ -243,15 +246,18 @@ def main(argv: list[str] | None = None) -> int:
     # The passes run in a fixed order: dim expansion first, so derivedFrom
     # can name a copy; derivedFrom before defaults, so copied registers
     # resolve under the derived peripheral's own chain.
-    dim_warnings = expand_dim(device)
+    dim_findings = expand_dim(device)
+    dim_errors = sum(1 for finding in dim_findings if finding.severity is Severity.ERROR)
     log(
         logging.INFO,
-        "expanded dim templates: %d peripheral(s), %d warning(s)",
+        "expanded dim templates: %d peripheral(s), %d warning(s), %d error(s)",
         len(device.peripherals),
-        len(dim_warnings),
+        len(dim_findings) - dim_errors,
+        dim_errors,
     )
-    for warning in dim_warnings:
-        log(logging.WARNING, "%s", warning)
+    for finding in dim_findings:
+        level = logging.ERROR if finding.severity is Severity.ERROR else logging.WARNING
+        log(level, "%s", finding.message)
 
     derived_count = sum(1 for p in device.peripherals if p.derived_from is not None)
     derived_warnings = resolve_derived(device)

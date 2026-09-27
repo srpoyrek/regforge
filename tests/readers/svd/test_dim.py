@@ -43,7 +43,9 @@ def _register(body):
         ("10-12", ["10", "11", "12"]),
         ("A-D", ["A", "B", "C", "D"]),
         ("X", ["X"]),  # one label, for a dim of 1
-        ("3-0", []),  # a reversed range names nothing; the count check refuses it
+        ("0-3,7", ["0", "1", "2", "3", "7"]),  # a range inside a list
+        ("3-0", ["0", "1", "2", "3"]),  # reversed: read ascending, and reported
+        ("D-A", ["A", "B", "C", "D"]),
     ],
 )
 def test_parse_dim_index(text, expected):
@@ -122,19 +124,72 @@ def test_no_dim_reads_as_none(tmp_path):
     ("body", "message"),
     [
         ("<dim>4</dim><name>UART%s</name>", "no <dimIncrement>"),
-        ("<dim>4</dim><dimIncrement>0x400</dimIncrement><name>UART</name>", "no %s placeholder"),
         ("<name>UART%s</name>", "no <dim>"),
-        (
-            "<dim>4</dim><dimIncrement>0x400</dimIncrement><dimIndex>A,B</dimIndex>"
-            "<name>UART%s</name>",
-            r"2 label\(s\) for <dim> 4",
-        ),
         ("<dim>0</dim><dimIncrement>0x400</dimIncrement><name>UART%s</name>", "at least 1"),
     ],
 )
 def test_unexpandable_dim_is_refused_at_read(tmp_path, body, message):
     with pytest.raises(ValueError, match=message):
         _read(tmp_path, _peripheral(body))
+
+
+def test_reversed_range_is_reported_by_the_reader(tmp_path):
+    reader = SvdReader()
+    path = tmp_path / "d.svd"
+    path.write_text(
+        _TEMPLATE.format(
+            peripherals=_peripheral(
+                "<dim>4</dim><dimIncrement>0x400</dimIncrement><dimIndex>3-0</dimIndex>"
+                "<name>UART%s</name>"
+            )
+        ),
+        encoding="utf-8",
+    )
+    device = reader.read(path)
+    assert device.peripherals[0].dim.index == ["0", "1", "2", "3"]
+    assert reader.warnings == ["UART%s: dimIndex range 3-0 is reversed -- read as 0-3"]
+    reader.read(path)
+    assert len(reader.warnings) == 1  # cleared per read, not accumulated
+
+
+def test_label_count_mismatch_is_read_as_is(tmp_path):
+    # Not refused: expansion trusts <dim> and reports it (see tests/resolve).
+    device = _read(
+        tmp_path,
+        _peripheral(
+            "<dim>4</dim><dimIncrement>0x400</dimIncrement><dimIndex>A,B</dimIndex>"
+            "<name>UART%s</name>"
+        ),
+    )
+    assert device.peripherals[0].dim.index == ["A", "B"]
+
+
+def test_dim_name_and_array_index_are_captured(tmp_path):
+    device = _read(
+        tmp_path,
+        _register(
+            "<dim>2</dim><dimIncrement>4</dimIncrement><name>BUF[%s]</name>"
+            "<dimName>Buffer</dimName><dimArrayIndex>"
+            "<enumeratedValue><name>RX</name><description>receive</description><value>0</value></enumeratedValue>"
+            "<enumeratedValue><name>TX</name><value>1</value></enumeratedValue>"
+            "</dimArrayIndex><addressOffset>0x0</addressOffset>"
+        ),
+    )
+    dim = device.peripherals[0].registers[0].dim
+    assert dim.name == "Buffer"
+    assert [(v.name, v.value, v.description) for v in dim.array_index] == [
+        ("RX", 0, "receive"),
+        ("TX", 1, None),
+    ]
+
+
+def test_dim_without_placeholder_is_read_as_is(tmp_path):
+    # Not refused: expansion appends the index and reports it (see tests/resolve).
+    device = _read(
+        tmp_path, _peripheral("<dim>4</dim><dimIncrement>0x400</dimIncrement><name>UART</name>")
+    )
+    assert device.peripherals[0].name == "UART"
+    assert device.peripherals[0].dim.count == 4
 
 
 def test_register_and_field_get_the_same_checks(tmp_path):

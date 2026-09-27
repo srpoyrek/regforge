@@ -283,6 +283,13 @@ REGFORGE_MAYBE_UNUSED static {{ tname }} *const {{ pf }} = ({{ tname }} *){{ pf 
 {% set irq_shared = shared_vectors.get(irq.value) %}
 #define {{ prefix }}{{ irq.name }}_IRQ {{ prefix }}{{ irq.name }}_IRQn  /* {% if irq.description %}{{ irq.description }}, {% endif %}vector {{ irq.value }}{% if irq_shared %} -- shared with {% for other in irq_shared if other != periph.name %}{{ prefix }}{{ other|upper }}{% if not loop.last %}, {% endif %}{% endfor %}; demux in ISR{% endif %} */
 {% endfor %}
+{% for ai in array_indices(periph) %}
+
+/* {{ periph.name }}.{{ ai.label }} index names (dimArrayIndex) */
+{% for ev in ai.names %}
+#define {{ pf }}_{{ ai.name|upper }}_{{ ev.name|upper }} ({{ ev.value }}U){% if ev.description %}  /* {{ ev.description }} */{% endif +%}
+{% endfor %}
+{% endfor %}
 {% for acc in accessors(periph) %}
 {% set reg = acc.register %}
 {% set rn = pf ~ "_" ~ acc.name|upper %}

@@ -119,36 +119,50 @@ def _access(element: ET.Element, tag: str = "access") -> Access | None:
         return None
 
 
-def parse_dim_index(text: str) -> list[str]:
+_RANGE = re.compile(r"(\d+)-(\d+)|([A-Za-z])-([A-Za-z])")
+
+
+def parse_dim_index(text: str, warnings: list[str] | None = None) -> list[str]:
     """Parse an SVD ``<dimIndex>`` into the labels that replace ``%s``.
 
-    Three spellings exist: a comma-separated list (``A,B,C``), a numeric range
-    (``0-3``), or a single-letter range (``A-D``). Whitespace around each label
-    is dropped; both ranges include their ends. Anything else is one label.
+    A comma-separated list of labels, any of which may be a numeric range
+    (``0-3``) or a single-letter range (``A-D``); ``0-3,7`` mixes the forms.
+    Whitespace around a label is dropped and both ends of a range are kept. A
+    reversed range (``3-0``) is read ascending and noted in ``warnings``.
     """
-    token = text.strip()
-    if "," in token:
-        return [label.strip() for label in token.split(",")]
-    numeric = re.fullmatch(r"(\d+)-(\d+)", token)
-    if numeric:
-        first, last = int(numeric.group(1)), int(numeric.group(2))
-        return [str(i) for i in range(first, last + 1)]
-    letters = re.fullmatch(r"([A-Za-z])-([A-Za-z])", token)
-    if letters:
-        first, last = letters.group(1), letters.group(2)
-        return [chr(code) for code in range(ord(first), ord(last) + 1)]
-    return [token]
+    labels: list[str] = []
+    for part in text.split(","):
+        part = part.strip()
+        match = _RANGE.fullmatch(part)
+        if match is None:
+            labels.append(part)
+            continue
+        if match.group(1) is not None:
+            first, last = int(match.group(1)), int(match.group(2))
+            if first > last:
+                if warnings is not None:
+                    warnings.append(f"dimIndex range {part} is reversed -- read as {last}-{first}")
+                first, last = last, first
+            labels += [str(i) for i in range(first, last + 1)]
+        else:
+            first, last = match.group(3), match.group(4)
+            if first > last:
+                if warnings is not None:
+                    warnings.append(f"dimIndex range {part} is reversed -- read as {last}-{first}")
+                first, last = last, first
+            labels += [chr(code) for code in range(ord(first), ord(last) + 1)]
+    return labels
 
 
-def _dim(element: ET.Element, name: str) -> Dim | None:
+def _dim(element: ET.Element, name: str, warnings: list[str]) -> Dim | None:
     """Return the ``<dim>`` group of ``element``, or ``None`` when it has none.
 
-    A ``<dim>`` needs a ``<dimIncrement>``, a ``%s`` placeholder in the name,
-    and a ``<dimIndex>`` (when given) with exactly ``dim`` labels. A file that
-    breaks any of these cannot be expanded, so it is refused here, like a field
-    with no bit range; so is the reverse slip, ``%s`` with no ``<dim>``. The
-    stride is not looked at: whether it fits the element needs the resolved
-    register size, which exists only after defaults resolution.
+    A ``<dim>`` needs a ``<dimIncrement>``; without one the file cannot be
+    expanded and is refused here, like a field with no bit range, as is the
+    reverse slip, ``%s`` with no ``<dim>``. Labels are only parsed here; how
+    many there are and whether they are usable names is judged by expansion,
+    which can report at the element's path. The stride is not looked at: it
+    needs the resolved register size, which exists only after defaults.
     """
     count = _int(element, "dim")
     if count is None:
@@ -160,13 +174,28 @@ def _dim(element: ET.Element, name: str) -> Dim | None:
     increment = _int(element, "dimIncrement")
     if increment is None:
         raise ValueError(f"{name!r} has <dim> but no <dimIncrement>")
-    if "%s" not in name:
-        raise ValueError(f"{name!r} has <dim> but no %s placeholder in its name")
     index_text = _text(element, "dimIndex")
-    index = parse_dim_index(index_text) if index_text is not None else None
-    if index is not None and len(index) != count:
-        raise ValueError(f"{name!r}: <dimIndex> gives {len(index)} label(s) for <dim> {count}")
-    return Dim(count=count, increment=increment, index=index)
+    index = None
+    if index_text is not None:
+        notes: list[str] = []
+        index = parse_dim_index(index_text, notes)
+        warnings += [f"{name}: {note}" for note in notes]
+    array_index = [
+        EnumeratedValue(
+            name=_text(value_element, "name") or "",
+            value=parse_svd_int(_text(value_element, "value") or "0"),
+            description=_text(value_element, "description"),
+        )
+        for value_element in element.findall("./dimArrayIndex/enumeratedValue")
+        if _text(value_element, "value") is not None
+    ]
+    return Dim(
+        count=count,
+        increment=increment,
+        index=index,
+        name=_text(element, "dimName"),
+        array_index=array_index,
+    )
 
 
 def _parse_bits(field_element: ET.Element) -> tuple[int, int]:
@@ -191,7 +220,7 @@ def _parse_bits(field_element: ET.Element) -> tuple[int, int]:
     raise ValueError(f"field {name!r} has no recognizable bit-range specification")
 
 
-def _build_field(field_element: ET.Element) -> Field:
+def _build_field(field_element: ET.Element, warnings: list[str]) -> Field:
     name = _text(field_element, "name") or ""
     offset, width = _parse_bits(field_element)
     enums = [
@@ -210,11 +239,11 @@ def _build_field(field_element: ET.Element) -> Field:
         description=_text(field_element, "description"),
         access=_access(field_element),
         enums=enums,
-        dim=_dim(field_element, name),
+        dim=_dim(field_element, name, warnings),
     )
 
 
-def _build_register(register_element: ET.Element) -> Register:
+def _build_register(register_element: ET.Element, warnings: list[str]) -> Register:
     # Register-property values are stored raw (None when silent); the defaults
     # resolution pass fills them from the inheritance chain.
     name = _text(register_element, "name") or ""
@@ -226,12 +255,12 @@ def _build_register(register_element: ET.Element) -> Register:
         reset_mask=_int(register_element, "resetMask"),
         description=_text(register_element, "description"),
         access=_access(register_element),
-        fields=[_build_field(f) for f in register_element.findall("./fields/field")],
-        dim=_dim(register_element, name),
+        fields=[_build_field(f, warnings) for f in register_element.findall("./fields/field")],
+        dim=_dim(register_element, name, warnings),
     )
 
 
-def _build_cluster(cluster_element: ET.Element) -> Cluster:
+def _build_cluster(cluster_element: ET.Element, warnings: list[str]) -> Cluster:
     # Inside a cluster, registers and nested clusters are direct children: the
     # schema has no <registers> wrapper at this level.
     name = _text(cluster_element, "name") or ""
@@ -245,9 +274,9 @@ def _build_cluster(cluster_element: ET.Element) -> Cluster:
         default_access=_access(cluster_element),
         default_reset_value=_int(cluster_element, "resetValue"),
         default_reset_mask=_int(cluster_element, "resetMask"),
-        registers=[_build_register(r) for r in cluster_element.findall("./register")],
-        clusters=[_build_cluster(c) for c in cluster_element.findall("./cluster")],
-        dim=_dim(cluster_element, name),
+        registers=[_build_register(r, warnings) for r in cluster_element.findall("./register")],
+        clusters=[_build_cluster(c, warnings) for c in cluster_element.findall("./cluster")],
+        dim=_dim(cluster_element, name, warnings),
     )
 
 
@@ -281,7 +310,7 @@ def _build_address_block(block_element: ET.Element) -> AddressBlock:
     )
 
 
-def _build_peripheral(peripheral_element: ET.Element) -> Peripheral:
+def _build_peripheral(peripheral_element: ET.Element, warnings: list[str]) -> Peripheral:
     name = _text(peripheral_element, "name") or ""
     return Peripheral(
         name=name,
@@ -294,13 +323,17 @@ def _build_peripheral(peripheral_element: ET.Element) -> Peripheral:
         default_access=_access(peripheral_element),
         default_reset_value=_int(peripheral_element, "resetValue"),
         default_reset_mask=_int(peripheral_element, "resetMask"),
-        registers=[_build_register(r) for r in peripheral_element.findall("./registers/register")],
+        registers=[
+            _build_register(r, warnings) for r in peripheral_element.findall("./registers/register")
+        ],
         interrupts=[_build_interrupt(i) for i in peripheral_element.findall("./interrupt")],
         address_blocks=[
             _build_address_block(b) for b in peripheral_element.findall("./addressBlock")
         ],
-        clusters=[_build_cluster(c) for c in peripheral_element.findall("./registers/cluster")],
-        dim=_dim(peripheral_element, name),
+        clusters=[
+            _build_cluster(c, warnings) for c in peripheral_element.findall("./registers/cluster")
+        ],
+        dim=_dim(peripheral_element, name, warnings),
     )
 
 
@@ -314,9 +347,11 @@ class SvdReader(Reader):
         """Parse the SVD file at ``source`` into a :class:`~regforge.ir.Device`.
 
         Register-property defaults are stored raw at each level; run
-        :func:`regforge.resolve.resolve_defaults` to fill them in.
+        :func:`regforge.resolve.resolve_defaults` to fill them in. Anything the
+        reader had to normalise on the way is left in :attr:`warnings`.
         """
         root = ET.parse(str(source)).getroot()
+        self.warnings = []
         cpu_element = root.find("cpu")
         vendor_ext = root.find("vendorExtensions")
         return Device(
@@ -340,5 +375,8 @@ class SvdReader(Reader):
             default_access=_access(root),
             default_reset_value=_int(root, "resetValue"),
             default_reset_mask=_int(root, "resetMask"),
-            peripherals=[_build_peripheral(p) for p in root.findall("./peripherals/peripheral")],
+            peripherals=[
+                _build_peripheral(p, self.warnings)
+                for p in root.findall("./peripherals/peripheral")
+            ],
         )

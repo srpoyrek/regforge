@@ -8,7 +8,7 @@ import re
 
 import pytest
 
-from regforge.ir import Device, Dim, EnumeratedValue, Field, Peripheral, Register
+from regforge.ir import Cluster, Device, Dim, EnumeratedValue, Field, Peripheral, Register
 from regforge.resolve import expand_dim, resolve_defaults, resolve_derived
 from regforge.writers.base import EmitError
 from regforge.writers.c import CWriter
@@ -144,3 +144,28 @@ def test_unexpanded_template_is_refused():
     )
     with pytest.raises(EmitError, match="%s placeholder"):
         CWriter().render(device)
+
+
+def test_dim_array_index_names_become_index_constants():
+    names = [EnumeratedValue("RX", 0, "receive"), EnumeratedValue("TX", 1)]
+    output = _render(
+        Peripheral(
+            "DMA",
+            0x0,
+            registers=[Register("BUF[%s]", 0x0, size=32, dim=Dim(2, 4, array_index=names))],
+            clusters=[
+                Cluster(
+                    "CH[%s]",
+                    0x10,
+                    dim=Dim(2, 0x10, array_index=names),
+                    registers=[Register("CTRL", 0x0, size=32)],
+                )
+            ],
+        )
+    )
+    assert "/* DMA.BUF[2] index names (dimArrayIndex) */" in output
+    assert "#define DC_DMA_BUF_RX (0U)  /* receive */" in output
+    assert "#define DC_DMA_BUF_TX (1U)" in output
+    assert "/* DMA.CH[2] index names (dimArrayIndex) */" in output
+    assert "#define DC_DMA_CH_TX (1U)" in output
+    assert "#define DC_DMA_CH_CTRL(i)" in output  # the accessors are untouched

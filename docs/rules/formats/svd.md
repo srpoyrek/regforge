@@ -112,14 +112,22 @@ act on them are in [ir/arrays.md](../arrays.md).
 | `<dim>` | the number of copies; at least 1 |
 | `<dimIncrement>` | the distance between two neighbouring copies: address units on a peripheral, cluster or register, bits on a field |
 | `<dimIndex>` | the labels that replace `%s`; absent means `0`, `1`, `2`, ... |
+| `<dimName>` | a name for the type the copies share; see [ir/naming.md](../naming.md) |
+| `<dimArrayIndex>` | names for an array's indices, each an `<enumeratedValue>` with a `<value>` |
 
-`<dimIndex>` has three spellings, all accepted:
+`<dimIndex>` is a comma-separated list; any entry may be a range:
 
 | Written | Labels |
 |---|---|
 | `A,B,C` | `A`, `B`, `C` |
 | `0-3` | `0`, `1`, `2`, `3` |
 | `A-D` | `A`, `B`, `C`, `D` |
+| `0-3,7` | `0`, `1`, `2`, `3`, `7` |
+| `3-0` | `0`, `1`, `2`, `3`, and the reader reports the reversed range |
+
+The reader only turns the text into labels. How many there are, and whether
+they can end an identifier, is judged when the template is expanded; see
+[ir/arrays.md](../arrays.md#rule-4-labels-come-from-dimindex-else-from-0).
 
 A file that cannot be expanded is refused when it is read, the way a field
 with no bit range is:
@@ -127,10 +135,12 @@ with no bit range is:
 | Case | Result |
 |---|---|
 | `<dim>` without `<dimIncrement>` | error |
-| `<dim>` on a name without `%s` | error |
 | `%s` in a name without `<dim>` | error |
-| `<dimIndex>` naming more or fewer labels than `<dim>` | error |
 | `<dim>` of 0 | error |
+
+A `<dim>` on a name without `%s` is not refused. Every copy would be the same
+identifier, so expansion appends the index (`UART` with `<dim>` 4 gives `UART0`
+to `UART3`) and reports it; put `%s` in the name to choose where the index goes.
 
 The stride is not judged here. Whether `<dimIncrement>` fits the element needs
 the resolved register size, which exists only after defaults resolution.
@@ -141,7 +151,6 @@ These are in the SVD schema but do not affect output today:
 
 | Element | Status |
 |---|---|
-| `<dimName>`, `<dimArrayIndex>` | not parsed; nothing consumes them yet |
 | `alternateCluster` | not parsed |
 | `alternatePeripheral`, `alternateRegister` | not parsed; see [ir/address-blocks.md](../address-blocks.md) |
 | `<protection>` | not parsed |

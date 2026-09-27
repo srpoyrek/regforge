@@ -68,11 +68,23 @@ class Dim:
             register, like every other offset in the IR; bits for a field.
         index: The labels that replace ``%s``, in order (``<dimIndex>``);
             ``None`` when the source omits it and the copies are numbered from 0.
+        array: Whether the template stays one array element (``NAME[%s]``)
+            instead of expanding into copies. Set by expansion; a ``Dim`` that
+            survives expansion always carries it.
+        name: A name for the element type the copies share (``<dimName>``);
+            ranks below ``headerStructName`` and above ``groupName`` when a
+            type is named. ``None`` when absent.
+        array_index: Names for the indices of an array (``<dimArrayIndex>``),
+            each an :class:`EnumeratedValue`; empty when absent. A writer may
+            emit them as index constants beside the array.
     """
 
     count: int
     increment: int
     index: list[str] | None = None
+    array: bool = False
+    name: str | None = None
+    array_index: list[EnumeratedValue] = field(default_factory=list)
 
     @property
     def labels(self) -> list[str]:

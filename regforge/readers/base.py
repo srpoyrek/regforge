@@ -32,6 +32,13 @@ class Reader(ABC):
     #: Lower-case file extensions handled by this reader, including the dot.
     file_extensions: tuple[str, ...] = ()
 
+    #: What the last :meth:`read` had to normalise, as human-readable notes (a
+    #: reversed ``dimIndex`` range, for instance). Cleared by each read.
+    warnings: list[str]
+
+    def __init__(self) -> None:
+        self.warnings = []
+
     @abstractmethod
     def read(self, source: Source) -> Device:
         """Parse ``source`` and return the resulting :class:`~regforge.ir.Device`."""
