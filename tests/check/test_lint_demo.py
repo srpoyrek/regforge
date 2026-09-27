@@ -15,11 +15,31 @@ from regforge.writers.c import CWriter
 GOLDEN_COMMAND = "regforge tests/fixtures/svd/lint_demo.svd -o tests/golden/c/lint_demo.h"
 
 
-def test_cross_peripheral_overlap_is_an_error(lint_demo_device):
-    errors = [f for f in run_checks(lint_demo_device) if f.severity is Severity.ERROR]
-    assert len(errors) == 1
-    message = errors[0].message
-    assert "UART" in message and "TIMER" in message and "overlapping" in message
+def test_cross_peripheral_overlaps_are_errors(lint_demo_device):
+    errors = [f.message for f in run_checks(lint_demo_device) if f.severity is Severity.ERROR]
+    assert len(errors) == 4
+    assert any("UART and TIMER" in m and "overlapping" in m for m in errors)
+    # Two copies on one address: the <dimIncrement> 0 case, named as such.
+    assert any("SAME0 and SAME1" in m and "one <dim> declaration (SAME%s)" in m for m in errors)
+    # Copies whose stride is smaller than their footprint.
+    assert any(
+        "OVL0 and OVL1" in m and "dimIncrement is smaller than the footprint" in m for m in errors
+    )
+    # The last copy running into an unrelated peripheral.
+    assert any("SER3 and SPIX" in m and "SER3 was expanded from SER%s" in m for m in errors)
+
+
+def test_array_addressing_warnings_are_flagged(lint_demo_device):
+    warnings = [f.message for f in run_checks(lint_demo_device) if f.severity is Severity.WARNING]
+    assert any("PWMX.CH[4]: array stride 8" in m and "CH0..CH3" in m for m in warnings)
+    assert any("FIFOX.DATA%s: DATA8..DATA15 (8 of its 16 copies" in m for m in warnings)
+    assert not any(m.startswith("FIFOX.DATA9") for m in warnings)  # one line, not eight
+
+
+def test_reader_reports_increment_without_dim(lint_demo_svd_path):
+    reader = SvdReader()
+    reader.read(lint_demo_svd_path)
+    assert reader.warnings == ["NOTDIM: <dimIncrement> without <dim> -- ignored"]
 
 
 def test_addressblock_warnings_are_flagged(lint_demo_device):
@@ -44,12 +64,16 @@ def test_expand_warnings_are_locked(lint_demo_svd_path):
     assert any("TMRX%s" in m and "cannot shift a vector number" in m for m in messages)
     assert any("DMAX.CH[%s]: dimIndex ignored" in m for m in messages)
     assert any("TMRY: <dim> on a name without a %s" in m and "TMRY0..TMRY1" in m for m in messages)
+    assert any("GHOST%s: <dim> 0 declares nothing -- dropped" in m for m in messages)
     errors = [f.message for f in findings if f.severity is Severity.ERROR]
-    assert errors == [
+    assert sorted(errors) == [
+        "SAME%s: <dimIncrement> 0 puts all 2 copies at one address",
+        "TMRW%s: <dim> 2 without <dimIncrement> -- the copies' addresses are unknown; "
+        "emitted as one instance, TMRW",
         "TMRZ%s: dimIndex labels repeat (0,0,1) -- two copies cannot share a name; "
-        "falling back to 0..2"
+        "falling back to 0..2",
     ]
-    assert len(findings) == 4
+    assert len(findings) == 7
 
 
 def test_cluster_derived_from_is_reported(lint_demo_svd_path):

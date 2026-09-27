@@ -194,5 +194,99 @@
         <register><name>CR</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
       </registers>
     </peripheral>
+    <!-- <dim> without <dimIncrement> (ERROR from the expand pass): the copies'
+         addresses are unknown, so one instance, TMRW, is emitted. -->
+    <peripheral>
+      <dim>2</dim>
+      <name>TMRW%s</name>
+      <baseAddress>0x4005A000</baseAddress>
+      <registers>
+        <register><name>CR</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
+    <!-- <dimIncrement> without <dim> (WARNING from the reader): meaningless on
+         its own, so it is ignored. -->
+    <peripheral>
+      <name>NOTDIM</name>
+      <dimIncrement>0x100</dimIncrement>
+      <baseAddress>0x4005B000</baseAddress>
+      <registers>
+        <register><name>CR</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
+    <!-- <dim> 0 (WARNING from the expand pass): declares nothing, so GHOST never
+         reaches the header. -->
+    <peripheral>
+      <dim>0</dim>
+      <dimIncrement>0x100</dimIncrement>
+      <name>GHOST%s</name>
+      <baseAddress>0x4005C000</baseAddress>
+      <registers>
+        <register><name>CR</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
+    <!-- <dimIncrement> 0 (ERROR from the expand pass, then the overlap check):
+         both copies of SAME%s land on 0x4005D000. -->
+    <peripheral>
+      <dim>2</dim>
+      <dimIncrement>0</dimIncrement>
+      <name>SAME%s</name>
+      <baseAddress>0x4005D000</baseAddress>
+      <registers>
+        <register><name>CR</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
+    <!-- Array stride larger than the element (WARNING): CH[%s] asks for a packed
+         C array, but 8 bytes apart cannot be one, so the header gets CH0..CH3
+         with padding between and a CH(i) macro that steps by 8. -->
+    <peripheral>
+      <name>PWMX</name>
+      <baseAddress>0x4005E000</baseAddress>
+      <addressBlock><offset>0</offset><size>0x20</size><usage>registers</usage></addressBlock>
+      <registers>
+        <register><dim>4</dim><dimIncrement>8</dimIncrement><name>CH[%s]</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
+    <!-- Register copies running past the block (WARNING, one line for all):
+         sixteen DATA%s copies 4 bytes apart need 0x40, the block claims 0x20. -->
+    <peripheral>
+      <name>FIFOX</name>
+      <baseAddress>0x4005F000</baseAddress>
+      <addressBlock><offset>0</offset><size>0x20</size><usage>registers</usage></addressBlock>
+      <registers>
+        <register><dim>16</dim><dimIncrement>4</dimIncrement><name>DATA%s</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
+    <!-- Copies overlapping each other (ERROR): OVL%s is 0x100 apart but each
+         copy's block claims 0x400, so OVL1 starts inside OVL0. -->
+    <peripheral>
+      <dim>2</dim>
+      <dimIncrement>0x100</dimIncrement>
+      <name>OVL%s</name>
+      <baseAddress>0x40060000</baseAddress>
+      <addressBlock><offset>0</offset><size>0x400</size><usage>registers</usage></addressBlock>
+      <registers>
+        <register><name>CR</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
+    <!-- The last copy colliding with another peripheral (ERROR): SER0..SER2 are
+         fine, SER3 at 0x40061300 runs into SPIX at 0x40061380. -->
+    <peripheral>
+      <dim>4</dim>
+      <dimIncrement>0x100</dimIncrement>
+      <name>SER%s</name>
+      <baseAddress>0x40061000</baseAddress>
+      <addressBlock><offset>0</offset><size>0x100</size><usage>registers</usage></addressBlock>
+      <registers>
+        <register><name>CR</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
+    <peripheral>
+      <name>SPIX</name>
+      <baseAddress>0x40061380</baseAddress>
+      <registers>
+        <register><name>CR</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
   </peripherals>
 </device>

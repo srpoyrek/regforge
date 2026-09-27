@@ -134,13 +134,16 @@ with no bit range is:
 
 | Case | Result |
 |---|---|
-| `<dim>` without `<dimIncrement>` | error |
 | `%s` in a name without `<dim>` | error |
-| `<dim>` of 0 | error |
+| a negative `<dim>` | error |
 
 A `<dim>` on a name without `%s` is not refused. Every copy would be the same
 identifier, so expansion appends the index (`UART` with `<dim>` 4 gives `UART0`
 to `UART3`) and reports it; put `%s` in the name to choose where the index goes.
+Nor is a `<dim>` of 0 or a `<dim>` without `<dimIncrement>`: both are stored as
+read and judged by expansion (dropped, or kept as one instance), and a
+`<dimIncrement>` with no `<dim>` is noted by the reader and ignored; see
+[ir/arrays.md](../arrays.md#rule-1-expansion-runs-first-and-only-copies).
 
 The stride is not judged here. Whether `<dimIncrement>` fits the element needs
 the resolved register size, which exists only after defaults resolution.

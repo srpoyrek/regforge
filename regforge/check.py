@@ -26,6 +26,10 @@ from .layout import (
     units_to_bytes,
 )
 
+#: One past the last address the C writer's ``UL`` literals can hold. regforge
+#: assumes 32-bit addresses today; a device that reaches beyond is an error.
+ADDRESS_LIMIT = 1 << 32
+
 
 class Severity(Enum):
     """How seriously to treat a :class:`Finding`."""
@@ -120,23 +124,23 @@ def check_address_math(device: Device) -> list[Finding]:
             if cluster.dim is None:
                 continue
             contents = cluster_element_units(cluster, unit_bits)
-            if cluster.dim.increment < contents:
+            if cluster.dim.stride < contents:
                 findings.append(
                     Finding(
                         Severity.ERROR,
-                        f"{path}[{cluster.dim.count}]: stride {cluster.dim.increment} address "
+                        f"{path}[{cluster.dim.count}]: stride {cluster.dim.stride} address "
                         f"unit(s) is smaller than the cluster's contents ({contents}) -- "
                         "the array's elements overlap",
                     )
                 )
         for name, offset, register in _registers_with_offsets(peripheral):
             for field_ in register.fields:
-                if field_.dim is not None and field_.dim.increment < field_.bit_width:
+                if field_.dim is not None and field_.dim.stride < field_.bit_width:
                     findings.append(
                         Finding(
                             Severity.ERROR,
                             f"{name}.{field_.name}[{field_.dim.count}]: increment "
-                            f"{field_.dim.increment} bit(s) is smaller than the "
+                            f"{field_.dim.stride} bit(s) is smaller than the "
                             f"{field_.bit_width}-bit field -- the array's elements overlap",
                         )
                     )
@@ -167,16 +171,51 @@ def check_address_math(device: Device) -> list[Finding]:
                         f"for a {register.size}-bit register",
                     )
                 )
-            if register.dim is not None and register.dim.increment < units_per_register:
-                findings.append(
-                    Finding(
-                        Severity.ERROR,
-                        f"{name}[{register.dim.count}]: stride {register.dim.increment} "
-                        f"address unit(s) is smaller than the {register.size}-bit element "
-                        "-- the array's elements overlap",
+            if register.dim is not None:
+                stride = register.dim.stride
+                count = register.dim.count
+                if stride < units_per_register:
+                    findings.append(
+                        Finding(
+                            Severity.ERROR,
+                            f"{name}[{count}]: stride {stride} address unit(s) is smaller "
+                            f"than the {register.size}-bit element -- the array's "
+                            "elements overlap",
+                        )
                     )
+                elif stride > units_per_register and register.dim.array:
+                    findings.append(
+                        Finding(
+                            Severity.WARNING,
+                            f"{name}[{count}]: array stride {stride} address unit(s) != "
+                            f"element size {units_per_register} -- emitted as separate "
+                            f"members {register.name}0..{register.name}{count - 1} with "
+                            f"padding between; the {register.name}(i) macro still steps "
+                            "by the stride",
+                        )
+                    )
+        # regforge assumes 32-bit addresses: a peripheral reaching past them is a
+        # contradiction for every writer that emits 32-bit literals.
+        base = units_to_bytes(peripheral.base_address, unit_bits)
+        end = base + registers_end(peripheral, unit_bits)
+        for block in peripheral.address_blocks:
+            end = max(end, base + units_to_bytes(block.offset + block.size, unit_bits))
+        if end > ADDRESS_LIMIT:
+            findings.append(
+                Finding(
+                    Severity.ERROR,
+                    f"{peripheral.name}: reaches {end:#x}, past the 32-bit address space"
+                    f"{_origin(peripheral)}",
                 )
+            )
     return findings
+
+
+def _origin(element: Peripheral | Cluster | Register) -> str:
+    """A note naming the ``<dim>`` template a copy came from, or nothing."""
+    if element.expanded_from is None:
+        return ""
+    return f" (a copy expanded from {element.expanded_from})"
 
 
 def check_derived_chains(device: Device) -> list[Finding]:
@@ -374,29 +413,58 @@ def check_address_blocks(device: Device) -> list[Finding]:
     """
     findings: list[Finding] = []
     unit_bits = device.address_unit_bits
+    outside_block = (
+        "outside the peripheral's registers addressBlock(s) -- the block under-declares "
+        "the footprint"
+    )
     for peripheral in device.peripherals:
         blocks = peripheral.address_blocks
         registers_blocks = [b for b in blocks if b.usage in (None, "registers")]
-        extents = [
-            (register.name, register.address_offset, register_span_units(register, unit_bits))
-            for register in peripheral.registers
-        ] + [
-            (cluster.name, cluster.address_offset, cluster_span_units(cluster, unit_bits))
-            for cluster in peripheral.clusters
-        ]
-        for name, start, span in extents:
+        members: list[tuple[Register | Cluster, int, int]] = []
+        for register in peripheral.registers:
+            span = register_span_units(register, unit_bits)
+            members.append((register, register.address_offset, span))
+        for cluster in peripheral.clusters:
+            span = cluster_span_units(cluster, unit_bits)
+            members.append((cluster, cluster.address_offset, span))
+        # Copies of one <dim> template are reported together: sixteen near-identical
+        # lines would bury the one declaration that needs fixing.
+        by_template: dict[str, list[tuple[str, int]]] = {}
+        for member, start, span in members:
             if not registers_blocks:
                 continue
             end = start + span
-            if not any(b.offset <= start and end <= b.offset + b.size for b in registers_blocks):
+            if any(b.offset <= start and end <= b.offset + b.size for b in registers_blocks):
+                continue
+            if member.expanded_from is not None:
+                by_template.setdefault(member.expanded_from, []).append((member.name, start))
+                continue
+            findings.append(
+                Finding(
+                    Severity.WARNING,
+                    f"{peripheral.name}.{member.name}: at offset {start:#x} lies {outside_block}",
+                )
+            )
+        for template, copies in by_template.items():
+            total = sum(1 for member, _, _ in members if member.expanded_from == template)
+            if len(copies) == 1:
+                ((name, start),) = copies
                 findings.append(
                     Finding(
                         Severity.WARNING,
-                        f"{peripheral.name}.{name}: at offset {start:#x} lies "
-                        "outside the peripheral's registers addressBlock(s) -- the block "
-                        "under-declares the footprint",
+                        f"{peripheral.name}.{name}: at offset {start:#x} lies {outside_block} "
+                        f"(a copy expanded from {template})",
                     )
                 )
+                continue
+            findings.append(
+                Finding(
+                    Severity.WARNING,
+                    f"{peripheral.name}.{template}: {copies[0][0]}..{copies[-1][0]} "
+                    f"({len(copies)} of its {total} copies, from offset {copies[0][1]:#x}) lie "
+                    f"{outside_block}",
+                )
+            )
         for i in range(len(blocks)):
             for j in range(i + 1, len(blocks)):
                 first, second = blocks[i], blocks[j]
@@ -426,34 +494,53 @@ def check_peripheral_overlap(device: Device) -> list[Finding]:
     """
     findings: list[Finding] = []
     unit_bits = device.address_unit_bits
-    extents: list[tuple[int, str, int, int]] = []  # (peripheral index, name, start, end)
-    for index, peripheral in enumerate(device.peripherals):
+    extents: list[tuple[Peripheral, int, int]] = []  # (peripheral, start, end)
+    for peripheral in device.peripherals:
         base = peripheral.base_address
         if peripheral.address_blocks:
             for block in peripheral.address_blocks:
                 start = base + units_to_bytes(block.offset, unit_bits)
-                extents.append(
-                    (index, peripheral.name, start, start + units_to_bytes(block.size, unit_bits))
-                )
+                extents.append((peripheral, start, start + units_to_bytes(block.size, unit_bits)))
         else:
             span = registers_end(peripheral, unit_bits)
-            extents.append((index, peripheral.name, base, base + max(span, 1)))
+            extents.append((peripheral, base, base + max(span, 1)))
     for i in range(len(extents)):
         for j in range(i + 1, len(extents)):
-            index_a, name_a, start_a, end_a = extents[i]
-            index_b, name_b, start_b, end_b = extents[j]
-            if index_a == index_b:
+            first, start_a, end_a = extents[i]
+            second, start_b, end_b = extents[j]
+            if first is second:
                 continue  # a peripheral's own blocks are check_address_blocks's job
             if start_a < end_b and start_b < end_a:
                 findings.append(
                     Finding(
                         Severity.ERROR,
-                        f"{name_a} and {name_b} occupy overlapping address ranges "
+                        f"{first.name} and {second.name} occupy overlapping address ranges "
                         f"[{start_a:#x}, {end_a:#x}) / [{start_b:#x}, {end_b:#x}) -- "
-                        "not declared as alternatePeripheral",
+                        f"not declared as alternatePeripheral{_overlap_origin(first, second)}",
                     )
                 )
     return findings
+
+
+def _overlap_origin(first: Peripheral, second: Peripheral) -> str:
+    """Point an overlap at the ``<dim>`` declaration behind it, when there is one.
+
+    Two copies of one template overlapping means the template's stride is
+    smaller than its footprint: that is what to fix, not the copies. One copy
+    running into another peripheral is easy to miss by eye, because the base
+    peripheral looks fine; the note says which copy it was.
+    """
+    if first.expanded_from is not None and first.expanded_from == second.expanded_from:
+        return (
+            f" -- both expanded from one <dim> declaration ({first.expanded_from}): its "
+            "dimIncrement is smaller than the footprint"
+        )
+    notes = [
+        f"{peripheral.name} was expanded from {peripheral.expanded_from}"
+        for peripheral in (first, second)
+        if peripheral.expanded_from is not None
+    ]
+    return f" -- {'; '.join(notes)}" if notes else ""
 
 
 #: Every consistency check, run in order by :func:`run_checks`. Add a new check

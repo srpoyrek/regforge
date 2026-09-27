@@ -49,6 +49,18 @@ Result, in the model:
 
 Each copy gets its own deep copy of the registers, clusters, address blocks and
 interrupts, and the copies replace the template at its position in the list.
+Every copy remembers the template it came from, so a later report about one
+copy can point at the one declaration behind all of them.
+
+A template can also fail to be one:
+
+| Written | Result |
+|---|---|
+| `<dim>` 1 | one copy, `UART0`; the placeholder is still substituted; no finding |
+| `<dim>` 0 | nothing: the element is dropped; `WARNING` (it declares nothing) |
+| `<dim>` without `<dimIncrement>` | the copies' addresses are unknown: one instance, `UART`, with the placeholder removed; `ERROR` |
+| `<dimIncrement>` without `<dim>` | meaningless alone: ignored; `WARNING` from the reader |
+| `<dimIncrement>` 0 | every copy on one address; `ERROR`, and the copies are still made so the overlap is reported where it lands |
 
 ## Rule 2: `NAME%s` is copies, `NAME[%s]` is an array
 
@@ -91,8 +103,8 @@ and [the whole header](targets/c.md#a-peripheral-array-with-a-register-array).
 | Array | Stride | Result |
 |---|---|---|
 | register `[%s]` | equal to the element size | one packed array member |
-| register `[%s]` | larger or smaller | refused: `LayoutError`, CLI exit 4, naming the register. A C array cannot hold space between elements; write `NAME%s` instead. |
-| register, cluster or field, either spelling | smaller than one element | `ERROR` finding: the elements overlap |
+| register `[%s]` | larger than the element | not a packed array, so each element becomes a member of its own (`CH0`..`CH3`) with the holes as padding, and the `CH(i)` macro steps by the true stride; `WARNING` |
+| register, cluster or field, either spelling | smaller than one element | `ERROR` finding: the elements overlap; the layout refuses it too (`LayoutError`, exit 4) |
 | cluster `[%s]` | larger than its contents | the element struct is padded to the stride and its size asserted |
 | cluster `[%s]` | smaller than its contents | refused: `LayoutError`, and an `ERROR` finding |
 
@@ -161,12 +173,29 @@ cluster) emits them as constants beside its accessor -- see
 On a `%s` template the names have nothing to attach to, since each copy already
 carries its label, and they are ignored without a finding.
 
+## Rule 7: copies are checked like anything written out, and reported as copies
+
+After expansion a copy is an ordinary peripheral, cluster, register or field,
+so every check in [address-blocks.md](address-blocks.md) and
+[address-math.md](address-math.md) sees it. What changes is the report:
+
+| Case | Report |
+|---|---|
+| copies running past the `addressBlock` (`DATA%s` sixteen times in a `0x20` block) | one finding: `FIFO.DATA%s: DATA8..DATA15 (8 of its 16 copies, from offset 0x20) lie outside ...` |
+| two copies overlapping each other (stride smaller than the footprint) | `ERROR`, ending `both expanded from one <dim> declaration (UART%s): its dimIncrement is smaller than the footprint` |
+| the last copy running into another peripheral | `ERROR`, ending `UART3 was expanded from UART%s`, since the base peripheral looks fine by eye |
+| a copy past `0xFFFFFFFF` (`baseAddress` `0xFFFFF000`, stride `0x1000`) | `ERROR`: regforge assumes 32-bit addresses today, and the C writer refuses the device rather than wrap the literal |
+
+`dimIncrement` is in address units, like `addressOffset`: on a 16-bit-unit
+device an increment of 2 is 4 bytes. It is converted where offsets are, never
+assumed to be bytes.
+
 ## Corner cases
 
 | Case | Result |
 |---|---|
 | `%s` in the description | Left as written. The spec substitutes in `name` (and `displayName`) only. |
-| `dim` without `dimIncrement`, `%s` without `dim`, `dim` of 0 | Refused when the file is read; see [formats/svd.md](formats/svd.md#arrays). |
+| `%s` without `dim`, a negative `dim` | Refused when the file is read; see [formats/svd.md](formats/svd.md#arrays). |
 | `dim` on a name without `%s` | Accepted with a warning. Every copy would be one identifier, so the index (or `dimIndex` label) is appended: `UART` with `dim` 4 becomes `UART0`..`UART3`. Put `%s` in the name to choose where it goes. |
 | `derivedFrom` naming the template (`UART%s`) | Not found: the template is gone once expanded. Name a copy instead. |
 | Running expansion twice | No change. Copies carry no `dim`, and a kept array's `dim` is flagged as one, so neither is a template any more. |

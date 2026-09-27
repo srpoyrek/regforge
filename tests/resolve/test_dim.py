@@ -391,3 +391,85 @@ def test_dim_name_names_the_type_below_header_struct_name_above_group_name():
     assert spi.header_struct_name == "SPIM"  # an explicit headerStructName still wins
     assert dma.clusters[0].header_struct_name == "Channel"  # a kept array takes it too
     assert {c.header_struct_name for c in dma.clusters[1:]} == {"Queue"}  # copies share it
+
+
+# --- addressing: what a template can fail to be ---
+
+
+def test_missing_increment_keeps_one_instance_and_errors():
+    device = _device(
+        Peripheral("UART%s", 0x0, dim=Dim(2, None)),
+        Peripheral(
+            "P",
+            0x100,
+            registers=[
+                Register("DATA[%s]", 0, dim=Dim(4, None)),
+                Register("X%s", 0x40, dim=Dim(2, None)),
+            ],
+        ),
+    )
+    findings = expand_dim(device)
+    assert [p.name for p in device.peripherals] == ["UART", "P"]
+    assert [r.name for r in device.peripherals[1].registers] == ["DATA", "X"]
+    assert all(r.dim is None for r in device.peripherals[1].registers)  # not arrays either
+    assert device.peripherals[0].dim is None
+    assert device.peripherals[0].expanded_from == "UART%s"
+    errors = _messages(findings, Severity.ERROR)
+    assert len(errors) == 3
+    assert any(
+        "UART%s: <dim> 2 without <dimIncrement>" in m and "one instance, UART" in m for m in errors
+    )
+
+
+def test_dim_of_one_is_a_single_labelled_copy():
+    device = _device(Peripheral("UART%s", 0x0, dim=Dim(1, 0x400)))
+    assert expand_dim(device) == []
+    assert [p.name for p in device.peripherals] == ["UART0"]
+
+
+def test_dim_zero_drops_the_element_with_a_warning():
+    device = _device(
+        Peripheral("GHOST%s", 0x0, dim=Dim(0, 0x100)),
+        Peripheral(
+            "P",
+            0x100,
+            registers=[
+                Register("R", 0, fields=[Field("F%s", 0, 1, dim=Dim(0, 1))]),
+                Register("D[%s]", 0x10, dim=Dim(0, 4)),
+            ],
+            clusters=[Cluster("C%s", 0x20, dim=Dim(0, 0x10), registers=[Register("X", 0)])],
+        ),
+    )
+    findings = expand_dim(device)
+    assert [p.name for p in device.peripherals] == ["P"]
+    assert [r.name for r in device.peripherals[0].registers] == ["R"]
+    assert device.peripherals[0].registers[0].fields == []
+    assert device.peripherals[0].clusters == []
+    warnings = _messages(findings, Severity.WARNING)
+    assert len(warnings) == 4 and all("<dim> 0 declares nothing -- dropped" in m for m in warnings)
+    assert any(m.startswith("GHOST%s:") for m in warnings)
+    assert any(m.startswith("P.R.F%s:") for m in warnings)
+
+
+def test_increment_zero_is_an_error_but_still_expands():
+    device = _device(Peripheral("SAME%s", 0x1000, dim=Dim(2, 0)))
+    findings = expand_dim(device)
+    assert [(p.name, p.base_address) for p in device.peripherals] == [
+        ("SAME0", 0x1000),
+        ("SAME1", 0x1000),
+    ]
+    assert _messages(findings, Severity.ERROR) == [
+        "SAME%s: <dimIncrement> 0 puts all 2 copies at one address"
+    ]
+
+
+def test_copies_remember_their_template():
+    device = _device(
+        _uart_template(dim=Dim(2, 0x400)),
+        Peripheral(
+            "P", 0x9000, registers=[Register("D%s", 0, dim=Dim(2, 4)), Register("PLAIN", 0x10)]
+        ),
+    )
+    expand_dim(device)
+    assert [p.expanded_from for p in device.peripherals] == ["UART%s", "UART%s", None]
+    assert [r.expanded_from for r in device.peripherals[2].registers] == ["D%s", "D%s", None]

@@ -135,3 +135,59 @@ def test_peripheral_overlap_uses_the_cluster_extent():
         Peripheral(name="TIMER", base_address=0x1040, registers=[Register("CR", 0x0, size=32)]),
     )
     assert len(check_peripheral_overlap(device)) == 1
+
+
+def test_copies_past_the_block_are_reported_as_one_finding():
+    # Sixteen DATA%s copies, 4 bytes apart, in a 0x20 block: DATA8..DATA15 stick out.
+    device = _device(
+        Peripheral(
+            name="P",
+            base_address=0x0,
+            registers=[
+                Register(f"DATA{i}", 4 * i, size=32, expanded_from="DATA%s") for i in range(16)
+            ],
+            address_blocks=[AddressBlock(0, 0x20, "registers")],
+        )
+    )
+    (finding,) = check_address_blocks(device)
+    assert (
+        "P.DATA%s: DATA8..DATA15 (8 of its 16 copies, from offset 0x20) lie outside"
+        in finding.message
+    )
+
+
+def test_copies_overlapping_each_other_name_the_declaration():
+    device = _device(
+        Peripheral(
+            name="OVL0",
+            base_address=0x0,
+            expanded_from="OVL%s",
+            address_blocks=[AddressBlock(0, 0x400)],
+        ),
+        Peripheral(
+            name="OVL1",
+            base_address=0x100,
+            expanded_from="OVL%s",
+            address_blocks=[AddressBlock(0, 0x400)],
+        ),
+    )
+    (finding,) = check_peripheral_overlap(device)
+    assert "OVL0 and OVL1" in finding.message
+    assert (
+        "both expanded from one <dim> declaration (OVL%s): its dimIncrement is smaller"
+        in finding.message
+    )
+
+
+def test_a_copy_running_into_another_peripheral_names_the_copy():
+    device = _device(
+        Peripheral(
+            name="SER3",
+            base_address=0x300,
+            expanded_from="SER%s",
+            address_blocks=[AddressBlock(0, 0x100)],
+        ),
+        Peripheral(name="SPIX", base_address=0x380, registers=[Register("CR", 0x0, size=32)]),
+    )
+    (finding,) = check_peripheral_overlap(device)
+    assert "SER3 and SPIX" in finding.message and "SER3 was expanded from SER%s" in finding.message

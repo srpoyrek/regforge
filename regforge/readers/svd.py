@@ -157,23 +157,27 @@ def parse_dim_index(text: str, warnings: list[str] | None = None) -> list[str]:
 def _dim(element: ET.Element, name: str, warnings: list[str]) -> Dim | None:
     """Return the ``<dim>`` group of ``element``, or ``None`` when it has none.
 
-    A ``<dim>`` needs a ``<dimIncrement>``; without one the file cannot be
-    expanded and is refused here, like a field with no bit range, as is the
-    reverse slip, ``%s`` with no ``<dim>``. Labels are only parsed here; how
+    Only ``%s`` with no ``<dim>``, and a negative ``<dim>``, are refused here,
+    like a field with no bit range. A ``<dim>`` of 0, or one with no
+    ``<dimIncrement>``, is stored as read: expansion reports it and drops the
+    element or keeps one instance. A ``<dimIncrement>`` with no ``<dim>`` is
+    noted and ignored. Labels are only parsed here; how
     many there are and whether they are usable names is judged by expansion,
     which can report at the element's path. The stride is not looked at: it
     needs the resolved register size, which exists only after defaults.
     """
     count = _int(element, "dim")
     if count is None:
+        if _text(element, "dimIncrement") is not None:
+            warnings.append(f"{name}: <dimIncrement> without <dim> -- ignored")
         if "%s" in name:
             raise ValueError(f"{name!r} has a %s placeholder but no <dim>")
         return None
-    if count < 1:
-        raise ValueError(f"{name!r}: <dim> must be at least 1, got {count}")
+    if count < 0:
+        raise ValueError(f"{name!r}: <dim> cannot be negative, got {count}")
+    # A missing <dimIncrement> stays None: expansion reports it and keeps one
+    # instance, since the copies' addresses are unknown.
     increment = _int(element, "dimIncrement")
-    if increment is None:
-        raise ValueError(f"{name!r} has <dim> but no <dimIncrement>")
     index_text = _text(element, "dimIndex")
     index = None
     if index_text is not None:

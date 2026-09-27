@@ -9,7 +9,9 @@ layout once; each writer maps :class:`LayoutEntry` values to its own type syntax
 A cluster is laid out the same way, one level down: it takes one slot in its
 parent and carries the layout of its own members. An array -- a register or
 cluster whose ``dim`` is still set after expansion -- is one slot sized for
-every element, so a writer can spell it as a single array member.
+every element when its elements are packed, so a writer can spell it as a
+single array member; a register array with holes between its elements becomes
+one slot per element, since no language array can hold the holes.
 
 Address-unit conversion lives here too, for the same reason: offsets are stored
 in the device's address units, and turning them into bytes is a target-model
@@ -49,7 +51,9 @@ class LayoutEntry:
     a FIFO or packet window you stream through rather than a set of registers --
     so it occupies the struct as one raw array instead of named members. A
     cluster slot carries the layout of its own members. An array slot (a
-    register or cluster whose ``dim`` is set) spans every element.
+    register or cluster whose ``dim`` is set) spans every element when it is
+    packed; a register array with holes between its elements is one slot per
+    element instead, each named after the element (``CH0``, ``CH1``, ...).
 
     Attributes:
         offset: Byte offset of the slot from the block base.
@@ -62,6 +66,9 @@ class LayoutEntry:
             slot -- an array's stride.
         size_bytes: Bytes the whole slot occupies: every element of an array,
             the gap, or the window.
+        count: Elements in the slot: a packed array's ``dim`` count, else 1.
+        name: The member's name when it differs from the register's -- one
+            element of an unpacked array; ``None`` otherwise.
         members: A cluster's own layout, padded to ``element_bytes``; empty for
             every other kind of slot.
     """
@@ -73,6 +80,8 @@ class LayoutEntry:
     cluster: Cluster | None = None
     element_bytes: int = 0
     size_bytes: int = 0
+    count: int = 1
+    name: str | None = None
     members: list[LayoutEntry] = field(default_factory=list)
 
     @property
@@ -81,12 +90,13 @@ class LayoutEntry:
         return self.register is None and self.cluster is None and not self.buffer
 
     @property
-    def count(self) -> int:
-        """Elements in the slot: an array's ``dim`` count, else 1."""
-        owner = self.register if self.register is not None else self.cluster
-        if owner is not None and owner.dim is not None:
-            return owner.dim.count
-        return 1
+    def label(self) -> str:
+        """What to call the slot in a message: the member name, or what it holds."""
+        if self.register is not None:
+            return self.name or self.register.name
+        if self.cluster is not None:
+            return self.cluster.name
+        return "buffer" if self.buffer else "reserved"
 
 
 def struct_block(peripheral: Peripheral) -> AddressBlock | None:
@@ -124,7 +134,7 @@ def register_span_units(register: Register, address_unit_bits: int) -> int:
     """Address units from a register's offset to the end of its last element."""
     units = (register.size or 0) // address_unit_bits
     if register.dim is not None:
-        units += _stride_units(register.dim.count, register.dim.increment)
+        units += _stride_units(register.dim.count, register.dim.stride)
     return units
 
 
@@ -132,7 +142,7 @@ def register_span_bytes(register: Register, address_unit_bits: int) -> int:
     """Bytes from a register's offset to the end of its last element."""
     span = _element_bytes(register)
     if register.dim is not None:
-        stride = _stride_units(register.dim.count, register.dim.increment)
+        stride = _stride_units(register.dim.count, register.dim.stride)
         span += units_to_bytes(stride, address_unit_bits)
     return span
 
@@ -151,7 +161,7 @@ def cluster_span_units(cluster: Cluster, address_unit_bits: int) -> int:
     """Address units from a cluster's offset to the end of its last element."""
     span = cluster_element_units(cluster, address_unit_bits)
     if cluster.dim is not None:
-        span += _stride_units(cluster.dim.count, cluster.dim.increment)
+        span += _stride_units(cluster.dim.count, cluster.dim.stride)
     return span
 
 
@@ -165,7 +175,7 @@ def cluster_span_bytes(cluster: Cluster, address_unit_bits: int) -> int:
         offset = units_to_bytes(inner.address_offset, address_unit_bits)
         end = max(end, offset + cluster_span_bytes(inner, address_unit_bits))
     if cluster.dim is not None:
-        stride = _stride_units(cluster.dim.count, cluster.dim.increment)
+        stride = _stride_units(cluster.dim.count, cluster.dim.stride)
         end += units_to_bytes(stride, address_unit_bits)
     return end
 
@@ -215,26 +225,50 @@ def _end(entries: list[LayoutEntry]) -> int:
     return entries[-1].offset + entries[-1].size_bytes if entries else 0
 
 
-def _register_slot(where: str, register: Register, address_unit_bits: int) -> LayoutEntry:
-    """A register's slot; an array's stride must equal its element size.
+def _register_slots(where: str, register: Register, address_unit_bits: int) -> list[LayoutEntry]:
+    """A register's slot, or one slot per element for an array that is not packed.
 
-    ``NAME[%s]`` claims a packed array, and a language array has no way to put
-    space between its elements, so any other stride is refused by name; the
-    author can write ``NAME%s`` for separately placed registers instead.
+    ``NAME[%s]`` asks for an array. When the stride equals the element size
+    that is one packed array member. When the stride is larger there are holes
+    between the elements, and a language array cannot hold them, so each
+    element becomes a member of its own (``CH0``, ``CH1``, ...) with the holes
+    as padding; an indexed accessor macro still reaches element ``i`` at its
+    true stride. A stride smaller than the element means the elements overlap,
+    which no linear layout can express.
     """
     offset = units_to_bytes(register.address_offset, address_unit_bits)
     element = _element_bytes(register)
-    size = element
-    if register.dim is not None:
-        stride = units_to_bytes(register.dim.increment, address_unit_bits)
-        if stride != element:
-            raise LayoutError(
-                f"{where}.{register.name}[{register.dim.count}]: stride {stride} byte(s) is "
-                f"not the element size {element} -- not a packed array; write "
-                f"{register.name}%s for separately placed registers"
+    if register.dim is None:
+        return [
+            LayoutEntry(offset=offset, register=register, element_bytes=element, size_bytes=element)
+        ]
+    count = register.dim.count
+    stride = units_to_bytes(register.dim.stride, address_unit_bits)
+    if stride < element:
+        raise LayoutError(
+            f"{where}.{register.name}[{count}]: stride {stride} byte(s) is smaller than the "
+            f"element size {element} -- the elements overlap"
+        )
+    if stride == element:
+        return [
+            LayoutEntry(
+                offset=offset,
+                register=register,
+                element_bytes=element,
+                size_bytes=element * count,
+                count=count,
             )
-        size = element * register.dim.count
-    return LayoutEntry(offset=offset, register=register, element_bytes=element, size_bytes=size)
+        ]
+    return [
+        LayoutEntry(
+            offset=offset + index * stride,
+            register=register,
+            element_bytes=element,
+            size_bytes=element,
+            name=f"{register.name}{index}",
+        )
+        for index in range(count)
+    ]
 
 
 def _cluster_slot(where: str, cluster: Cluster, address_unit_bits: int) -> LayoutEntry:
@@ -247,6 +281,7 @@ def _cluster_slot(where: str, cluster: Cluster, address_unit_bits: int) -> Layou
         cluster=cluster,
         element_bytes=element,
         size_bytes=element * count,
+        count=count,
         members=members,
     )
 
@@ -259,7 +294,9 @@ def _block_layout(
     address_unit_bits: int,
     pad_to_bytes: int | None,
 ) -> list[LayoutEntry]:
-    slots = [_register_slot(where, register, address_unit_bits) for register in registers]
+    slots: list[LayoutEntry] = []
+    for register in registers:
+        slots += _register_slots(where, register, address_unit_bits)
     slots += [_cluster_slot(where, cluster, address_unit_bits) for cluster in clusters]
     for block in buffers:
         size = units_to_bytes(block.size, address_unit_bits)
@@ -280,9 +317,9 @@ def _block_layout(
     for slot in sorted(slots, key=lambda entry: entry.offset):
         if slot.offset < cursor:
             if slot.register is not None:
-                what = f"{where}.{slot.register.name}: register"
+                what = f"{where}.{slot.label}: register"
             elif slot.cluster is not None:
-                what = f"{where}.{slot.cluster.name}: cluster"
+                what = f"{where}.{slot.label}: cluster"
             else:
                 what = f"{where}: buffer addressBlock"
             raise LayoutError(
@@ -318,7 +355,7 @@ def cluster_layout(cluster: Cluster, address_unit_bits: int, where: str = "") ->
     members = _block_layout(path, cluster.registers, cluster.clusters, [], address_unit_bits, None)
     if cluster.dim is not None:
         natural = _end(members)
-        stride = units_to_bytes(cluster.dim.increment, address_unit_bits)
+        stride = units_to_bytes(cluster.dim.stride, address_unit_bits)
         if stride < natural:
             raise LayoutError(
                 f"{path}[{cluster.dim.count}]: stride 0x{stride:X} is smaller than the "

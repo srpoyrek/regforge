@@ -8,7 +8,16 @@ import re
 
 import pytest
 
-from regforge.ir import Cluster, Device, Dim, EnumeratedValue, Field, Peripheral, Register
+from regforge.ir import (
+    AddressBlock,
+    Cluster,
+    Device,
+    Dim,
+    EnumeratedValue,
+    Field,
+    Peripheral,
+    Register,
+)
 from regforge.resolve import expand_dim, resolve_defaults, resolve_derived
 from regforge.writers.base import EmitError
 from regforge.writers.c import CWriter
@@ -73,11 +82,40 @@ def test_separate_copies_are_ordinary_registers():
     assert "_COUNT" not in output
 
 
-def test_non_contiguous_array_is_refused_by_name():
-    with pytest.raises(EmitError, match=r"P\.DATA\[4\].*not a packed array"):
+def test_overlapping_array_elements_are_refused_by_name():
+    with pytest.raises(EmitError, match=r"P\.DATA\[4\].*elements overlap"):
         _render(
-            Peripheral("P", 0x0, registers=[Register("DATA[%s]", 0x10, size=32, dim=Dim(4, 8))])
+            Peripheral("P", 0x0, registers=[Register("DATA[%s]", 0x10, size=32, dim=Dim(4, 2))])
         )
+
+
+def test_unpacked_array_is_flat_members_with_an_indexed_macro():
+    output = _render(
+        Peripheral(
+            "PWMX",
+            0x0,
+            address_blocks=[AddressBlock(0, 0x20, "registers")],
+            registers=[Register("CH[%s]", 0x0, size=32, dim=Dim(4, 8))],
+        )
+    )
+    squashed = _squash(output)
+    assert "uint32_t CH[4];" not in squashed  # a C array cannot hold the holes
+    assert "volatile uint32_t CH0;" in squashed and "volatile uint32_t CH3;" in squashed
+    assert "uint8_t RESERVED0[4];" in squashed  # the hole after CH0
+    assert (
+        "REGFORGE_STATIC_ASSERT(offsetof(dc_pwmx_t, CH1) == 0x08, DC_PWMX_CH1_offset, "
+        '"PWMX.CH1 offset");' in output
+    )
+    assert "#define DC_PWMX_CH_COUNT (4U)" in output  # the indexed macro still steps by the stride
+    assert (
+        "#define DC_PWMX_CH(i) (*(volatile uint32_t *)"
+        "(DC_PWMX_BASE + 0x00000000UL + (i) * 0x00000008UL))" in output
+    )
+
+
+def test_address_past_32_bits_is_refused():
+    with pytest.raises(EmitError, match="HI: reaches 0x100000004, past the 32-bit"):
+        _render(Peripheral("HI", 0xFFFFFFF0, registers=[Register("R", 0x10, size=32)]))
 
 
 def test_field_array_emits_indexed_position_and_mask():

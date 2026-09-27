@@ -188,15 +188,46 @@ def test_array_register_is_one_slot_spanning_every_element():
     assert data.register is not None and data.register.name == "DATA"
 
 
-def test_array_register_stride_must_equal_the_element_size():
-    for increment in (8, 2):  # a hole between elements, or overlapping elements
-        peripheral = Peripheral(
-            name="P",
-            base_address=0x0,
-            registers=[Register("DATA", 0x10, size=32, dim=Dim(4, increment))],
-        )
-        with pytest.raises(LayoutError, match=r"P\.DATA\[4\]: stride .* not a packed array"):
-            peripheral_layout(peripheral, address_unit_bits=8)
+def test_overlapping_array_elements_are_refused():
+    peripheral = Peripheral(
+        name="P",
+        base_address=0x0,
+        registers=[Register("DATA", 0x10, size=32, dim=Dim(4, 2, array=True))],
+    )
+    with pytest.raises(LayoutError, match=r"P\.DATA\[4\]: stride 2 .* elements overlap"):
+        peripheral_layout(peripheral, address_unit_bits=8)
+
+
+def test_unpacked_array_becomes_one_member_per_element_with_padding():
+    # Stride 8 for 4-byte elements: no C array can hold the holes, so CH0..CH3
+    # each get a member and the holes become padding; the slots stay in offset order.
+    peripheral = Peripheral(
+        name="P",
+        base_address=0x0,
+        registers=[Register("CH", 0x0, size=32, dim=Dim(4, 8, array=True))],
+    )
+    slots = peripheral_layout(peripheral, address_unit_bits=8)
+    assert [(s.offset, s.gap_bytes, s.label) for s in slots] == [
+        (0x00, 0, "CH0"),
+        (0x04, 4, "reserved"),
+        (0x08, 0, "CH1"),
+        (0x0C, 4, "reserved"),
+        (0x10, 0, "CH2"),
+        (0x14, 4, "reserved"),
+        (0x18, 0, "CH3"),
+    ]
+    assert all(s.count == 1 and s.register is peripheral.registers[0] for s in slots if s.register)
+
+
+def test_word_addressable_stride_is_converted_like_an_offset():
+    # 16 bits per unit: an increment of 2 units is 4 bytes, exactly one 32-bit element.
+    peripheral = Peripheral(
+        name="P",
+        base_address=0x0,
+        registers=[Register("D", 0x2, size=32, dim=Dim(2, 2, array=True))],
+    )
+    (slot,) = peripheral_layout(peripheral, address_unit_bits=16)[1:]
+    assert (slot.offset, slot.element_bytes, slot.size_bytes, slot.count) == (0x4, 4, 8, 2)
 
 
 def test_registers_end_reaches_the_last_array_element():

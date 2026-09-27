@@ -112,3 +112,30 @@ def test_cluster_registers_are_checked_at_their_absolute_offset():
     cluster = Cluster("CH", 0x10, registers=[Register("CTRL", 0x2, size=32)])
     findings = check_address_math(_dma(cluster))
     assert any("DMA.CH.CTRL" in f.message and "misaligned" in f.message for f in findings)
+
+
+def test_unpacked_array_warns_and_names_the_members():
+    findings = check_address_math(
+        _with_register(name="CH", address_offset=0x0, size=32, dim=Dim(4, 8, array=True))
+    )
+    warnings = [f.message for f in findings if f.severity is Severity.WARNING]
+    assert any(
+        "P.CH[4]: array stride 8" in m and "CH0..CH3" in m and "CH(i)" in m for m in warnings
+    )
+    assert not _errors(findings)
+
+
+def test_address_past_32_bits_is_an_error_naming_the_template():
+    device = _device(
+        peripherals=[
+            Peripheral(
+                name="HI3",
+                base_address=0xFFFFF000,
+                expanded_from="HI%s",
+                registers=[Register("R", 0x1000, size=32)],  # ends at 0x1_0000_0004
+            )
+        ]
+    )
+    (message,) = _errors(check_address_math(device))
+    assert "HI3: reaches 0x100000004, past the 32-bit address space" in message
+    assert "(a copy expanded from HI%s)" in message

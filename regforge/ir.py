@@ -66,6 +66,8 @@ class Dim:
         increment: Distance between the starts of two neighbouring copies
             (``<dimIncrement>``): address units for a peripheral, cluster or
             register, like every other offset in the IR; bits for a field.
+            ``None`` when the source omits it: expansion reports that and
+            keeps one instance, so no ``Dim`` that survives expansion lacks it.
         index: The labels that replace ``%s``, in order (``<dimIndex>``);
             ``None`` when the source omits it and the copies are numbered from 0.
         array: Whether the template stays one array element (``NAME[%s]``)
@@ -80,7 +82,7 @@ class Dim:
     """
 
     count: int
-    increment: int
+    increment: int | None
     index: list[str] | None = None
     array: bool = False
     name: str | None = None
@@ -92,6 +94,16 @@ class Dim:
         if self.index is not None:
             return list(self.index)
         return [str(i) for i in range(self.count)]
+
+    @property
+    def stride(self) -> int:
+        """``increment`` once expansion has vouched for it.
+
+        A template without a ``<dimIncrement>`` is never expanded, so every
+        ``Dim`` the layout, the checks and the writers see has one.
+        """
+        assert self.increment is not None
+        return self.increment
 
 
 @dataclass
@@ -109,6 +121,9 @@ class Field:
         dim: Array shape when the field is one of several copies (SVD
             ``<dim>``, increment in bits); ``None`` for a single field. After
             expansion only a ``[%s]`` array keeps it, with ``name`` bare.
+        expanded_from: The ``<dim>`` template this element was expanded from
+            (``UART%s``), so a report can point at the one declaration behind
+            several copies; ``None`` when written out by hand.
     """
 
     name: str
@@ -118,6 +133,7 @@ class Field:
     access: Access | None = None
     enums: list[EnumeratedValue] = field(default_factory=list)
     dim: Dim | None = None
+    expanded_from: str | None = None
 
     @property
     def mask(self) -> int:
@@ -149,6 +165,9 @@ class Register:
             ``[%s]`` array keeps it, and ``name`` is then the bare array name.
             Its stride is compared to the resolved ``size`` only after defaults
             resolution, in the checks and the layout, never here.
+        expanded_from: The ``<dim>`` template this element was expanded from
+            (``UART%s``), so a report can point at the one declaration behind
+            several copies; ``None`` when written out by hand.
     """
 
     name: str
@@ -160,6 +179,7 @@ class Register:
     access: Access | None = None
     fields: list[Field] = field(default_factory=list)
     dim: Dim | None = None
+    expanded_from: str | None = None
 
 
 @dataclass
@@ -191,6 +211,9 @@ class Cluster:
         dim: Array shape when the cluster is one of several copies (SVD
             ``<dim>``); ``None`` for a single cluster. After expansion only a
             ``[%s]`` array keeps it, with ``name`` bare.
+        expanded_from: The ``<dim>`` template this element was expanded from
+            (``UART%s``), so a report can point at the one declaration behind
+            several copies; ``None`` when written out by hand.
     """
 
     name: str
@@ -205,6 +228,7 @@ class Cluster:
     registers: list[Register] = field(default_factory=list)
     clusters: list[Cluster] = field(default_factory=list)
     dim: Dim | None = None
+    expanded_from: str | None = None
 
 
 #: The ``usage`` values CMSIS-SVD defines for an ``<addressBlock>``. A block that
@@ -301,6 +325,9 @@ class Peripheral:
         dim: Array shape when the peripheral is a ``%s`` template for several
             copies (SVD ``<dim>``); cleared by expansion, which replaces the
             template with its copies.
+        expanded_from: The ``<dim>`` template this element was expanded from
+            (``UART%s``), so a report can point at the one declaration behind
+            several copies; ``None`` when written out by hand.
     """
 
     name: str
@@ -318,6 +345,7 @@ class Peripheral:
     address_blocks: list[AddressBlock] = field(default_factory=list)
     clusters: list[Cluster] = field(default_factory=list)
     dim: Dim | None = None
+    expanded_from: str | None = None
 
 
 @dataclass

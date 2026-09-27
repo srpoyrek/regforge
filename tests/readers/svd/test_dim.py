@@ -123,9 +123,8 @@ def test_no_dim_reads_as_none(tmp_path):
 @pytest.mark.parametrize(
     ("body", "message"),
     [
-        ("<dim>4</dim><name>UART%s</name>", "no <dimIncrement>"),
         ("<name>UART%s</name>", "no <dim>"),
-        ("<dim>0</dim><dimIncrement>0x400</dimIncrement><name>UART%s</name>", "at least 1"),
+        ("<dim>-1</dim><dimIncrement>0x400</dimIncrement><name>UART%s</name>", "negative"),
     ],
 )
 def test_unexpandable_dim_is_refused_at_read(tmp_path, body, message):
@@ -183,6 +182,32 @@ def test_dim_name_and_array_index_are_captured(tmp_path):
     ]
 
 
+def test_missing_increment_and_zero_dim_are_read_as_is(tmp_path):
+    # Neither is refused: expansion reports them (one instance / dropped).
+    device = _read(
+        tmp_path,
+        _peripheral("<dim>2</dim><name>UART%s</name>")
+        + _peripheral("<dim>0</dim><dimIncrement>0x100</dimIncrement><name>GHOST%s</name>"),
+    )
+    uart, ghost = device.peripherals
+    assert (uart.dim.count, uart.dim.increment) == (2, None)
+    assert ghost.dim.count == 0
+
+
+def test_increment_without_dim_is_noted_and_ignored(tmp_path):
+    reader = SvdReader()
+    path = tmp_path / "d.svd"
+    path.write_text(
+        _TEMPLATE.format(
+            peripherals=_peripheral("<name>P</name><dimIncrement>0x100</dimIncrement>")
+        ),
+        encoding="utf-8",
+    )
+    device = reader.read(path)
+    assert device.peripherals[0].dim is None
+    assert reader.warnings == ["P: <dimIncrement> without <dim> -- ignored"]
+
+
 def test_dim_without_placeholder_is_read_as_is(tmp_path):
     # Not refused: expansion appends the index and reports it (see tests/resolve).
     device = _read(
@@ -194,8 +219,8 @@ def test_dim_without_placeholder_is_read_as_is(tmp_path):
 
 def test_register_and_field_get_the_same_checks(tmp_path):
     # One rule for every element: the register and field builders route through it too.
-    with pytest.raises(ValueError, match="no <dimIncrement>"):
-        _read(tmp_path, _register("<dim>2</dim><name>D%s</name><addressOffset>0x0</addressOffset>"))
+    with pytest.raises(ValueError, match="no <dim>"):
+        _read(tmp_path, _register("<name>D%s</name><addressOffset>0x0</addressOffset>"))
     with pytest.raises(ValueError, match="no <dim>"):
         _read(
             tmp_path,

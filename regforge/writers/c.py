@@ -29,6 +29,7 @@ from ..layout import (
     LayoutError,
     asserted_struct_size,
     peripheral_layout,
+    registers_end,
     units_to_bytes,
 )
 from ..provenance import Provenance
@@ -40,6 +41,9 @@ _TEMPLATE_DIR = Path(__file__).parent / "templates" / "c"
 #: Mask and hex-digit width for formatting 32-bit register values.
 _UINT32_MASK = 0xFFFFFFFF
 _HEX32_DIGITS = 8
+#: One past the last address a ``UL`` literal can hold; anything beyond is refused
+#: rather than silently wrapped by :func:`_hex32`.
+_ADDRESS_LIMIT = 1 << 32
 #: Register base type keyed on width in bits. 64 is future-proofing (see TODO);
 #: any size absent here is refused rather than rounded.
 _C_TYPE = {8: "uint8_t", 16: "uint16_t", 32: "uint32_t", 64: "uint64_t"}
@@ -152,6 +156,11 @@ def _array_suffix(dim: Dim | None) -> str:
     return f"[{dim.count}]" if dim is not None else ""
 
 
+def _count_suffix(count: int) -> str:
+    """``[N]`` for a slot holding N packed elements, nothing for a single member."""
+    return f"[{count}]" if count > 1 else ""
+
+
 def _c_layout(
     entries: list[LayoutEntry], cluster_names: dict[int, str], bus_width: int
 ) -> list[dict]:
@@ -196,7 +205,7 @@ def _c_layout(
                 {
                     "offset": slot.offset,
                     "type": cluster_names[id(cluster)],
-                    "field": f"{cluster.name}{_array_suffix(cluster.dim)};",
+                    "field": f"{cluster.name}{_count_suffix(slot.count)};",
                     "desc": _short_desc(cluster.description),
                     "member": cluster.name,
                 }
@@ -204,13 +213,14 @@ def _c_layout(
         else:
             register = slot.register
             assert register is not None  # a non-reserved slot always carries a member
+            name = slot.name or register.name  # an unpacked array's element has its own
             entries_out.append(
                 {
                     "offset": slot.offset,
                     "type": _member_type(register),
-                    "field": f"{register.name}{_array_suffix(register.dim)};",
+                    "field": f"{name}{_count_suffix(slot.count)};",
                     "desc": _short_desc(register.description),
-                    "member": register.name,
+                    "member": name,
                 }
             )
     return entries_out
@@ -309,7 +319,7 @@ def _accessors(peripheral: Peripheral, address_unit_bits: int) -> list[dict]:
     def stride_term(dim: Dim, params: list[str]) -> str:
         index = _INDEX_NAMES[len(params)]
         params.append(index)
-        return f"({index}) * {_hex32(units_to_bytes(dim.increment, address_unit_bits))}UL"
+        return f"({index}) * {_hex32(units_to_bytes(dim.stride, address_unit_bits))}UL"
 
     def visit(
         register: Register,
@@ -439,6 +449,15 @@ class CWriter(Writer):
                         f"{register.size} bits has no C type mapping "
                         f"(supported: {sorted(_C_TYPE)})"
                     )
+            base = units_to_bytes(peripheral.base_address, unit_bits)
+            end = base + registers_end(peripheral, unit_bits)
+            for block in peripheral.address_blocks:
+                end = max(end, base + units_to_bytes(block.offset + block.size, unit_bits))
+            if end > _ADDRESS_LIMIT:
+                raise EmitError(
+                    f"{peripheral.name}: reaches {end:#x}, past the 32-bit address space "
+                    "this writer's literals can hold"
+                )
 
         prefix = device.header_prefix or ""
         families = group_families(device)

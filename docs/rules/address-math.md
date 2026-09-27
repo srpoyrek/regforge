@@ -80,6 +80,8 @@ A 24-bit register stops generation by name instead of being rounded to 32.
 | Register array stride smaller than the element | `ERROR` |
 | Cluster array stride smaller than the cluster's contents | `ERROR` |
 | Field array increment smaller than the field width | `ERROR` |
+| Register array (`NAME[%s]`) stride larger than the element | `WARNING` |
+| A peripheral reaching past the 32-bit address space | `ERROR` |
 
 The power-of-two test is used instead of a fixed list of valid widths, so wider
 buses stay correct without editing the check.
@@ -111,6 +113,7 @@ REGFORGE_STATIC_ASSERT(offsetof(dc_gpioa_t, IDR) == 0x10, DC_GPIOA_IDR_offset, "
 | Case | Result |
 |---|---|
 | Two registers overlap | `LayoutError` naming the register. Union and `alternateRegister` layouts are not implemented. |
-| Register array (`NAME[%s]`) | One member spanning every element. The stride must equal the element size; any other stride is a `LayoutError` (exit 4) naming the register, since a C array cannot hold space between elements. Elements that overlap are also an `ERROR` finding. |
+| Register array (`NAME[%s]`) | One member spanning every element when the stride equals the element size. A larger stride leaves holes no C array can hold, so each element becomes a member of its own with the holes as padding (`WARNING`); the indexed macro still steps by the stride. A smaller stride means the elements overlap: an `ERROR` finding and a `LayoutError` (exit 4). |
+| Addresses past `0xFFFFFFFF` | regforge assumes 32-bit addresses today. A peripheral reaching beyond is an `ERROR` finding, and the C writer refuses the device rather than wrap a literal. |
 | Cluster | One member of its own struct type, laid out inside the same way. An array cluster's element is padded to the stride, so the array tiles exactly; a stride smaller than the contents is a `LayoutError` and an `ERROR` finding. |
 | Empty cluster | `LayoutError`. There is no element to lay out (a cluster `derivedFrom` is not resolved yet). |

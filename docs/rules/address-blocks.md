@@ -130,7 +130,9 @@ own copies its base's. Interrupts are not inherited; see
 
 Overlapping extents are reported as an error. A peripheral's extent is its
 blocks' ranges `[base+offset, base+offset+size)`, or the span of its registers
-when it declares no block.
+when it declares no block. When a peripheral involved was expanded from a
+`<dim>` template the report says so, since the template is what needs fixing;
+see [arrays.md](arrays.md#rule-7-copies-are-checked-like-anything-written-out-and-reported-as-copies).
 
 `alternatePeripheral` is not parsed yet, so peripherals that legitimately share
 an address, such as SPI and TWI on nRF parts, are currently reported too.

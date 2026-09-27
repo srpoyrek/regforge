@@ -222,6 +222,11 @@ index, and a count is emitted for loop bounds:
 #define DC_PWMA_CC(i) (*(volatile uint32_t *)(DC_PWMA_BASE + 0x00000010UL + (i) * 0x00000004UL))
 ```
 
+When the stride is larger than the element (`CH[%s]` 8 bytes apart for 32-bit
+registers) no C array fits, so the struct gets one member per element with
+padding between, `CH0`, `RESERVED0`, `CH1`, ..., while `CH_COUNT` and the
+`CH(i)` macro stay, stepping by the true stride.
+
 Reset and field macros are emitted once per array, not once per element. A
 field array (`OD[%s]`) gets an indexed position and mask, and its enumerated
 values once:
