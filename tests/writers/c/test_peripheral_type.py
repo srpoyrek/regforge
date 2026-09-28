@@ -32,8 +32,8 @@ def test_emits_struct_type_and_typed_instance(demo_device):
     assert "#define DC_GPIOA_RESERVED0_SIZE (0x0000000CUL)" in squashed
     # The instance is a typed, non-redefinable symbol -- not a cast-macro.
     assert (
-        "REGFORGE_MAYBE_UNUSED static dc_gpioa_t *const DC_GPIOA = (dc_gpioa_t *)DC_GPIOA_BASE;"
-        in output
+        "REGFORGE_MAYBE_UNUSED static dc_gpioa_t *const DC_GPIOA = "
+        "(dc_gpioa_t *)(uintptr_t)DC_GPIOA_BASE;" in output
     )
     # The base-address define is kept for constant-expression contexts.
     assert "#define DC_GPIOA_BASE" in output

@@ -25,6 +25,7 @@ rewritten.
 
 | Rule | Decides |
 |---|---|
+| [structure.md](structure.md) | The order of blocks in a generated file |
 | [naming.md](naming.md) | What a type is called |
 | [families.md](families.md) | Which peripherals share one type |
 | [address-blocks.md](address-blocks.md) | Declared footprint, size contract, padding |

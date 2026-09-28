@@ -188,7 +188,8 @@ def test_peripheral_array_is_one_type_with_n_instances():
         assert f"#define DC_UART{index}_BASE (0x{base:08X}UL)" in output
         assert f"typedef dc_uart_t dc_uart{index}_t;" in output
         assert (
-            f"static dc_uart_t *const DC_UART{index} = (dc_uart_t *)DC_UART{index}_BASE;" in output
+            f"static dc_uart_t *const DC_UART{index} = (dc_uart_t *)(uintptr_t)DC_UART{index}_BASE;"
+            in output
         )
 
 

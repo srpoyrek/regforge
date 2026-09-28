@@ -24,8 +24,8 @@ def test_cpu_constants_emitted():
     )
     assert '#define CHIP_CPU_CORE "CM4"' in output
     assert '#define CHIP_CPU_REVISION "r0p1"' in output
-    assert "#define CHIP_NVIC_PRIO_BITS 3" in output
-    assert "#define CHIP_NUM_IRQS 48" in output
+    assert "#define CHIP_NVIC_PRIO_BITS (3U)" in output  # unsigned: MISRA 10.4 at its uses
+    assert "#define CHIP_NUM_IRQS (48U)" in output
     assert "#define CHIP_HAS_FPU 1" in output
     assert "#define CHIP_HAS_MPU 1" in output
     assert "#define CHIP_HAS_VTOR 1" in output

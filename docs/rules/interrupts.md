@@ -114,7 +114,7 @@ they bounds-check against [`deviceNumInterrupts`](formats/svd.md#cpu), or agains
 vector plus one when the device omits that element. With `NDEBUG` each helper
 compiles to the register access alone.
 
-The NVIC's geometry is named once, in the CPU block, so the helpers carry no
+The NVIC's geometry is named once, in the NVIC block, so the helpers carry no
 literal shift or mask:
 
 ```c
@@ -135,8 +135,9 @@ REGFORGE_INLINE void dc_nvic_enable(dc_irqn_e irq)
 
 They are shifts and masks rather than divisions so that a `-O0` build on a core
 without a hardware divider stays a few instructions. The priority-field
-constants appear whenever `<nvicPrioBits>` is given; the word geometry only for
-Cortex-M, with the helpers.
+constants and `irq_prio` open the NVIC block whenever `<nvicPrioBits>` is
+given; the word geometry, the banks and the helpers follow only for Cortex-M
+([structure.md](structure.md)).
 
 Other cores get the enum but no helpers. RISC-V PLIC and CLIC, and Cortex-A/R
 GIC, are not implemented.

@@ -37,6 +37,7 @@ nav:
   - Home: index.md
   - Rules:
       - Overview: rules/README.md
+      - Output structure: rules/structure.md
       - Naming: rules/naming.md
       - Families: rules/families.md
       - Address blocks: rules/address-blocks.md

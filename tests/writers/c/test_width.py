@@ -30,7 +30,7 @@ def test_type_selected_from_size():
 
 def test_bus_width_macro_emitted():
     output = CWriter().render(Device(name="Chip", bus_width=32))
-    assert "#define CHIP_BUS_WIDTH 32" in output
+    assert "#define CHIP_BUS_WIDTH (32U)" in output
 
 
 def test_unmappable_size_is_refused():

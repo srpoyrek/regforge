@@ -36,19 +36,25 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            gcc clang g++ gcc-arm-none-eabi binutils-arm-none-eabi
+            gcc clang g++ gcc-arm-none-eabi binutils-arm-none-eabi cppcheck
 
       - name: Set up MSVC (Windows)
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install cppcheck (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install cppcheck --no-progress -y
+          echo "C:\Program Files\Cppcheck" >> $env:GITHUB_PATH
 
       # uv makes each nox session's environment several times faster to build;
       # the noxfile falls back to virtualenv if it is ever missing.
       - name: Install nox
         run: pip install nox uv
 
-      - name: Tests + lint + types
-        run: nox -s tests lint types
+      - name: Tests + lint + types + MISRA C:2012
+        run: nox -s tests lint types misra
 
       - name: Size report (Linux)
         if: runner.os == 'Linux'

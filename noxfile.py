@@ -11,7 +11,13 @@ lint) with a bare ``nox``. Sessions:
 * ``goldens``   -- regenerate the golden test fixtures.
 * ``compilers`` -- compile the golden header with every C/C++ compiler on PATH.
 * ``sizes``     -- report generated-header size per compiler / optimization level.
+* ``misra``     -- check the golden headers against MISRA C:2012 with cppcheck's addon.
 """
+
+import os
+import shutil
+import subprocess
+import sys
 
 import nox
 
@@ -101,6 +107,59 @@ def compilers(session: nox.Session) -> None:
         "tests/writers/c/test_compiles.py",
         "-v",
         *session.posargs,
+    )
+
+
+#: MISRA C:2012 advisory rules the generated header deviates from, each documented
+#: in the header's own preamble: 11.4 (integer to pointer, memory-mapped I/O),
+#: 19.2 (a union for alternateRegister overlays), 2.3 / 2.4 / 2.5 / 8.9 (rules
+#: scoped to one translation unit, meaningless for a definitions header).
+MISRA_DEVIATIONS = ("2.3", "2.4", "2.5", "8.9", "11.4", "19.2")
+
+
+@nox.session(venv_backend="none")
+def misra(session: nox.Session) -> None:
+    """Check the golden headers against MISRA C:2012 with cppcheck's MISRA addon.
+
+    cppcheck is an external tool (apt / choco / brew install cppcheck); set
+    ``REGFORGE_CPPCHECK`` to point at a binary that is not on PATH. Every
+    required rule must hold; the advisory deviations above are suppressed.
+    ``--platform=unix32`` gives essential-type analysis a 32-bit MCU ABI.
+    """
+    cppcheck = os.environ.get("REGFORGE_CPPCHECK") or shutil.which("cppcheck")
+    if cppcheck is None:
+        session.error(
+            "cppcheck is not on PATH. Install it (apt install cppcheck, choco install "
+            "cppcheck, winget install Cppcheck.Cppcheck, brew install cppcheck) or set "
+            "REGFORGE_CPPCHECK to the binary"
+        )
+    # A cppcheck bundled inside another tool (Strawberry Perl ships one) can have
+    # its configuration directory baked to a path that exists only on the build
+    # machine; it then fails on every file. Say so, rather than echo its message.
+    probe = subprocess.run(
+        [cppcheck, "--quiet", "tests/golden/c/minimal.h"], capture_output=True, text=True
+    )
+    if "Failed to load" in probe.stdout + probe.stderr:
+        session.error(
+            f"{cppcheck} cannot find its own configuration files (a broken build, "
+            "typically one bundled inside another tool). Install the official cppcheck "
+            "so it comes first on PATH, or set REGFORGE_CPPCHECK to a working binary"
+        )
+    session.run(
+        cppcheck,
+        "--addon=misra",
+        f"--addon-python={sys.executable}",
+        "--std=c99",
+        "--platform=unix32",
+        "--enable=style",
+        "--error-exitcode=1",
+        "--suppress=missingIncludeSystem",
+        "--suppress=unusedStructMember",  # cppcheck's own per-TU check, not MISRA
+        *(f"--suppress=misra-c2012-{rule}" for rule in MISRA_DEVIATIONS),
+        "--template={file}:{line}: {id} {message}",
+        "tests/golden/c/minimal.h",
+        "tests/golden/c/lint_demo.h",
+        external=True,
     )
 
 
