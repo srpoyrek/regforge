@@ -50,7 +50,9 @@ typedef struct {
 
 With `dim`, the cluster's type is one element: its contents, padded out to
 `dimIncrement`, so that `count` of them tile the array exactly. The element's
-size is asserted against the stride, and the member becomes an array.
+size is asserted against the stride, and the member becomes an array whose
+bound is the cluster's `_COUNT` constant; the padding's length is a named
+constant too.
 
 Input — read as [CMSIS-SVD](formats/svd.md#cluster):
 
@@ -66,13 +68,13 @@ Output — emitted as [C](targets/c.md#cluster-members):
 
 ```c
 typedef struct {
-    volatile uint32_t CTRL;          /* 0x00 */
-    volatile uint32_t SRC;           /* 0x04 */
-    uint8_t           RESERVED0[8];  /* 0x08  (reserved) */
+    volatile uint32_t CTRL;                              /* 0x00 */
+    volatile uint32_t SRC;                               /* 0x04 */
+    uint8_t           RESERVED0[DMA_CH_RESERVED0_SIZE];  /* 0x08  (reserved) */
 } dma_ch_t;
 REGFORGE_STATIC_ASSERT(sizeof(dma_ch_t) == DMA_CH_STRIDE, DMA_CH_SIZE_CHECK, "DMA.CH element size vs dimIncrement");
 
-    dma_ch_t          CH[4];          /* 0x10 */
+    dma_ch_t          CH[DMA_CH_COUNT];  /* 0x10 */
 ```
 
 Complete versions: [the whole SVD](formats/svd.md#a-cluster-array) and

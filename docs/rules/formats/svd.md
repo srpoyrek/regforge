@@ -397,7 +397,7 @@ Produces [this C](../targets/c.md#a-peripheral-array-with-a-register-array).
 
 ### A cluster array
 
-Demonstrates [clusters.md](../clusters.md#rule-2-a-cluster-arrays-element-is-padded-to-the-stride). `CH[%s]` becomes one nested type, padded to the stride and size-asserted, used as `CH[4]`, with indexed macros for its registers.
+Demonstrates [clusters.md](../clusters.md#rule-2-a-cluster-arrays-element-is-padded-to-the-stride). `CH[%s]` becomes one nested type, padded to the stride and size-asserted, used as `CH[DMA_CH_COUNT]`, with indexed macros for its registers.
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>

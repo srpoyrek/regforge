@@ -78,12 +78,13 @@ def test_array_cluster_is_padded_asserted_and_indexed():
     output = _render(_dma(cluster))
     squashed = _squash(output)
     assert "/* DMA.CH -- DMA channel (4 elements, 0x10 bytes apart) */" in output
-    assert "uint8_t RESERVED0[8];" in squashed  # the element is padded to the stride
+    assert "uint8_t RESERVED0[DC_DMA_CH_RESERVED0_SIZE];" in squashed  # padded to the stride
+    assert "#define DC_DMA_CH_RESERVED0_SIZE (0x00000008UL)" in squashed  # named in the type
     assert (
         "REGFORGE_STATIC_ASSERT(sizeof(dc_dma_ch_t) == DC_DMA_CH_STRIDE, DC_DMA_CH_SIZE_CHECK, "
         '"DMA.CH element size vs dimIncrement");' in output
     )
-    assert "dc_dma_ch_t CH[4];" in squashed
+    assert "dc_dma_ch_t CH[DC_DMA_CH_COUNT];" in squashed
     assert (
         "REGFORGE_STATIC_ASSERT(sizeof(((dc_dma_t *)0)->CH) == "
         'DC_DMA_CH_COUNT * DC_DMA_CH_STRIDE, DC_DMA_CH_ARRAY_CHECK, "DMA.CH array size");' in output

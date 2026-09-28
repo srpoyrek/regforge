@@ -155,6 +155,16 @@ def test_cortex_m_emits_nvic_helpers_and_capability_macro():
     assert "#define DC_NVIC_ISER ((volatile uint32_t *)0xE000E100UL)" in output
     assert "assert((uint32_t)irq < CHIP_NUM_IRQS)" in output  # bounds against the count
     assert "dc_irq_prio(priority)" in output  # set_priority routes through the shift helper
+    # The word/bit geometry is named in the CPU block and used by name in every helper.
+    assert "#define CHIP_NVIC_IRQ_WORD_SHIFT (5U)" in output
+    assert "#define CHIP_NVIC_IRQ_BIT_MASK ((1U << CHIP_NVIC_IRQ_WORD_SHIFT) - 1U)" in output
+    assert "#define CHIP_NVIC_IPR_WORD_SHIFT (2U)" in output
+    assert "#define CHIP_NVIC_IPR_SLOT_MASK ((1U << CHIP_NVIC_IPR_WORD_SHIFT) - 1U)" in output
+    assert "uint32_t bit = (uint32_t)irq & CHIP_NVIC_IRQ_BIT_MASK;" in output
+    assert "DC_NVIC_ICPR[(uint32_t)irq >> CHIP_NVIC_IRQ_WORD_SHIFT] = 1UL << bit;" in output
+    assert "&DC_NVIC_IPR[(uint32_t)irq >> CHIP_NVIC_IPR_WORD_SHIFT]" in output
+    assert "((uint32_t)irq & CHIP_NVIC_IPR_SLOT_MASK) * CHIP_NVIC_PRIO_FIELD_BITS" in output
+    assert "~(CHIP_NVIC_PRIO_FIELD_MASK << shift)" in output
 
 
 def test_priority_helpers_need_prio_bits_but_enable_does_not():
@@ -164,6 +174,7 @@ def test_priority_helpers_need_prio_bits_but_enable_does_not():
     assert "dc_nvic_enable(dc_irqn_e irq)" in output
     assert "dc_nvic_set_priority" not in output
     assert "dc_nvic_get_priority" not in output
+    assert "CHIP_NVIC_IRQ_WORD_SHIFT" in output and "NVIC_PRIO_FIELD" not in output
 
 
 def test_non_cortex_m_emits_no_nvic():
@@ -172,6 +183,7 @@ def test_non_cortex_m_emits_no_nvic():
     assert "HAS_NVIC" not in output
     assert "dc_nvic_" not in output
     assert "DC_NVIC_" not in output
+    assert "NVIC_IRQ_WORD_SHIFT" not in output  # the geometry goes with the helpers
 
 
 def test_nvic_bound_falls_back_when_count_absent():

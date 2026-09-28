@@ -104,12 +104,13 @@ typedef enum {
 /* Layout constants: byte offsets from an instance's base; a cluster's members
  * are relative to one element of that cluster. Every assert and accessor below
  * refers to these, so each number is written once. */
-#define LD_UART_DR_OFFSET (0x00000000UL)
-#define LD_UART_SIZE      (0x00000400UL)
+#define LD_UART_DR_OFFSET      (0x00000000UL)
+#define LD_UART_RESERVED0_SIZE (0x000003FCUL)
+#define LD_UART_SIZE           (0x00000400UL)
 
 typedef struct {
-    volatile uint32_t DR;               /* 0x00 */
-    uint8_t           RESERVED0[1020];  /* 0x04  (reserved) */
+    volatile uint32_t DR;                                 /* 0x00 */
+    uint8_t           RESERVED0[LD_UART_RESERVED0_SIZE];  /* 0x04  (reserved) */
 } ld_uart_t;
 REGFORGE_STATIC_ASSERT(offsetof(ld_uart_t, DR) == LD_UART_DR_OFFSET, LD_UART_DR_OFFSET_CHECK, "UART.DR offset");
 REGFORGE_STATIC_ASSERT(sizeof(ld_uart_t) == LD_UART_SIZE, LD_UART_SIZE_CHECK, "UART struct size vs addressBlock");
@@ -128,12 +129,13 @@ REGFORGE_MAYBE_UNUSED static ld_uart_t *const LD_UART = (ld_uart_t *)LD_UART_BAS
 /* Layout constants: byte offsets from an instance's base; a cluster's members
  * are relative to one element of that cluster. Every assert and accessor below
  * refers to these, so each number is written once. */
-#define LD_TIMER_CR_OFFSET (0x00000000UL)
-#define LD_TIMER_SIZE      (0x00000100UL)
+#define LD_TIMER_CR_OFFSET      (0x00000000UL)
+#define LD_TIMER_RESERVED0_SIZE (0x000000FCUL)
+#define LD_TIMER_SIZE           (0x00000100UL)
 
 typedef struct {
-    volatile uint32_t CR;              /* 0x00 */
-    uint8_t           RESERVED0[252];  /* 0x04  (reserved) */
+    volatile uint32_t CR;                                  /* 0x00 */
+    uint8_t           RESERVED0[LD_TIMER_RESERVED0_SIZE];  /* 0x04  (reserved) */
 } ld_timer_t;
 REGFORGE_STATIC_ASSERT(offsetof(ld_timer_t, CR) == LD_TIMER_CR_OFFSET, LD_TIMER_CR_OFFSET_CHECK, "TIMER.CR offset");
 REGFORGE_STATIC_ASSERT(sizeof(ld_timer_t) == LD_TIMER_SIZE, LD_TIMER_SIZE_CHECK, "TIMER struct size vs addressBlock");
@@ -152,14 +154,15 @@ REGFORGE_MAYBE_UNUSED static ld_timer_t *const LD_TIMER = (ld_timer_t *)LD_TIMER
 /* Layout constants: byte offsets from an instance's base; a cluster's members
  * are relative to one element of that cluster. Every assert and accessor below
  * refers to these, so each number is written once. */
-#define LD_FLASH_CR_OFFSET  (0x00000000UL)
-#define LD_FLASH_FAR_OFFSET (0x00000040UL)
-#define LD_FLASH_SIZE       (0x00000044UL)
+#define LD_FLASH_CR_OFFSET      (0x00000000UL)
+#define LD_FLASH_RESERVED0_SIZE (0x0000003CUL)
+#define LD_FLASH_FAR_OFFSET     (0x00000040UL)
+#define LD_FLASH_SIZE           (0x00000044UL)
 
 typedef struct {
-    volatile uint32_t CR;             /* 0x00 */
-    uint8_t           RESERVED0[60];  /* 0x04  (reserved) */
-    volatile uint32_t FAR;            /* 0x40 */
+    volatile uint32_t CR;                                  /* 0x00 */
+    uint8_t           RESERVED0[LD_FLASH_RESERVED0_SIZE];  /* 0x04  (reserved) */
+    volatile uint32_t FAR;                                 /* 0x40 */
 } ld_flash_t;
 REGFORGE_STATIC_ASSERT(offsetof(ld_flash_t, CR) == LD_FLASH_CR_OFFSET, LD_FLASH_CR_OFFSET_CHECK, "FLASH.CR offset");
 REGFORGE_STATIC_ASSERT(offsetof(ld_flash_t, FAR) == LD_FLASH_FAR_OFFSET, LD_FLASH_FAR_OFFSET_CHECK, "FLASH.FAR offset");
@@ -183,13 +186,15 @@ REGFORGE_MAYBE_UNUSED static ld_flash_t *const LD_FLASH = (ld_flash_t *)LD_FLASH
  * are relative to one element of that cluster. Every assert and accessor below
  * refers to these, so each number is written once. */
 #define LD_DMA_CR_OFFSET      (0x00000000UL)
+#define LD_DMA_RESERVED0_SIZE (0x0000000CUL)
 #define LD_DMA_BUFFER0_OFFSET (0x00000010UL)
+#define LD_DMA_BUFFER0_COUNT  (8U)
 #define LD_DMA_SIZE           (0x00000030UL)
 
 typedef struct {
-    volatile uint32_t CR;             /* 0x00 */
-    uint8_t           RESERVED0[12];  /* 0x04  (reserved) */
-    volatile uint32_t BUFFER0[8];     /* 0x10  (buffer) */
+    volatile uint32_t CR;                                /* 0x00 */
+    uint8_t           RESERVED0[LD_DMA_RESERVED0_SIZE];  /* 0x04  (reserved) */
+    volatile uint32_t BUFFER0[LD_DMA_BUFFER0_COUNT];     /* 0x10  (buffer) */
 } ld_dma_t;
 REGFORGE_STATIC_ASSERT(offsetof(ld_dma_t, CR) == LD_DMA_CR_OFFSET, LD_DMA_CR_OFFSET_CHECK, "DMA.CR offset");
 REGFORGE_STATIC_ASSERT(offsetof(ld_dma_t, BUFFER0) == LD_DMA_BUFFER0_OFFSET, LD_DMA_BUFFER0_OFFSET_CHECK, "DMA.BUFFER0 offset");
@@ -209,14 +214,15 @@ REGFORGE_MAYBE_UNUSED static ld_dma_t *const LD_DMA = (ld_dma_t *)LD_DMA_BASE;
 /* Layout constants: byte offsets from an instance's base; a cluster's members
  * are relative to one element of that cluster. Every assert and accessor below
  * refers to these, so each number is written once. */
-#define LD_FIFO_CR_OFFSET   (0x00000000UL)
-#define LD_FIFO_DATA_OFFSET (0x00002000UL)
-#define LD_FIFO_SIZE        (0x00002004UL)
+#define LD_FIFO_CR_OFFSET      (0x00000000UL)
+#define LD_FIFO_RESERVED0_SIZE (0x00001FFCUL)
+#define LD_FIFO_DATA_OFFSET    (0x00002000UL)
+#define LD_FIFO_SIZE           (0x00002004UL)
 
 typedef struct {
-    volatile uint32_t CR;               /* 0x00 */
-    uint8_t           RESERVED0[8188];  /* 0x04  (reserved) */
-    volatile uint32_t DATA;             /* 0x2000 */
+    volatile uint32_t CR;                                 /* 0x00 */
+    uint8_t           RESERVED0[LD_FIFO_RESERVED0_SIZE];  /* 0x04  (reserved) */
+    volatile uint32_t DATA;                               /* 0x2000 */
 } ld_fifo_t;
 REGFORGE_STATIC_ASSERT(offsetof(ld_fifo_t, CR) == LD_FIFO_CR_OFFSET, LD_FIFO_CR_OFFSET_CHECK, "FIFO.CR offset");
 REGFORGE_STATIC_ASSERT(offsetof(ld_fifo_t, DATA) == LD_FIFO_DATA_OFFSET, LD_FIFO_DATA_OFFSET_CHECK, "FIFO.DATA offset");
@@ -446,13 +452,14 @@ REGFORGE_MAYBE_UNUSED static ld_tmrx_t *const LD_TMRV = (ld_tmrx_t *)LD_TMRV_BAS
 #define LD_DMAX_CH_STRIDE         (0x00000010UL)
 #define LD_DMAX_CH_COUNT          (2U)
 #define LD_DMAX_CH_CTRL_OFFSET    (0x00000000UL)
+#define LD_DMAX_CH_RESERVED0_SIZE (0x0000000CUL)
 #define LD_DMAX_EXTRA_OFFSET      (0x00000020UL)
 #define LD_DMAX_EXTRA_CTRL_OFFSET (0x00000000UL)
 
 /* DMAX.CH (2 elements, 0x10 bytes apart) */
 typedef struct {
-    volatile uint32_t CTRL;           /* 0x00 */
-    uint8_t           RESERVED0[12];  /* 0x04  (reserved) */
+    volatile uint32_t CTRL;                                  /* 0x00 */
+    uint8_t           RESERVED0[LD_DMAX_CH_RESERVED0_SIZE];  /* 0x04  (reserved) */
 } ld_dmax_ch_t;
 REGFORGE_STATIC_ASSERT(offsetof(ld_dmax_ch_t, CTRL) == LD_DMAX_CH_CTRL_OFFSET, LD_DMAX_CH_CTRL_OFFSET_CHECK, "DMAX.CH.CTRL offset");
 REGFORGE_STATIC_ASSERT(sizeof(ld_dmax_ch_t) == LD_DMAX_CH_STRIDE, LD_DMAX_CH_SIZE_CHECK, "DMAX.CH element size vs dimIncrement");
@@ -464,8 +471,8 @@ typedef struct {
 REGFORGE_STATIC_ASSERT(offsetof(ld_dmax_extra_t, CTRL) == LD_DMAX_EXTRA_CTRL_OFFSET, LD_DMAX_EXTRA_CTRL_OFFSET_CHECK, "DMAX.EXTRA.CTRL offset");
 
 typedef struct {
-    ld_dmax_ch_t    CH[2];  /* 0x00 */
-    ld_dmax_extra_t EXTRA;  /* 0x20 */
+    ld_dmax_ch_t    CH[LD_DMAX_CH_COUNT];  /* 0x00 */
+    ld_dmax_extra_t EXTRA;                 /* 0x20 */
 } ld_dmax_t;
 REGFORGE_STATIC_ASSERT(offsetof(ld_dmax_t, CH) == LD_DMAX_CH_OFFSET, LD_DMAX_CH_OFFSET_CHECK, "DMAX.CH offset");
 REGFORGE_STATIC_ASSERT(offsetof(ld_dmax_t, EXTRA) == LD_DMAX_EXTRA_OFFSET, LD_DMAX_EXTRA_OFFSET_CHECK, "DMAX.EXTRA offset");
@@ -640,20 +647,24 @@ REGFORGE_MAYBE_UNUSED static ld_same_t *const LD_SAME1 = (ld_same_t *)LD_SAME1_B
 /* Layout constants: byte offsets from an instance's base; a cluster's members
  * are relative to one element of that cluster. Every assert and accessor below
  * refers to these, so each number is written once. */
-#define LD_PWMX_CH_OFFSET (0x00000000UL)
-#define LD_PWMX_CH_STRIDE (0x00000008UL)
-#define LD_PWMX_CH_COUNT  (4U)
-#define LD_PWMX_SIZE      (0x00000020UL)
+#define LD_PWMX_CH_OFFSET      (0x00000000UL)
+#define LD_PWMX_CH_STRIDE      (0x00000008UL)
+#define LD_PWMX_CH_COUNT       (4U)
+#define LD_PWMX_RESERVED0_SIZE (0x00000004UL)
+#define LD_PWMX_RESERVED1_SIZE (0x00000004UL)
+#define LD_PWMX_RESERVED2_SIZE (0x00000004UL)
+#define LD_PWMX_RESERVED3_SIZE (0x00000004UL)
+#define LD_PWMX_SIZE           (0x00000020UL)
 
 typedef struct {
-    volatile uint32_t CH0;           /* 0x00 */
-    uint8_t           RESERVED0[4];  /* 0x04  (reserved) */
-    volatile uint32_t CH1;           /* 0x08 */
-    uint8_t           RESERVED1[4];  /* 0x0C  (reserved) */
-    volatile uint32_t CH2;           /* 0x10 */
-    uint8_t           RESERVED2[4];  /* 0x14  (reserved) */
-    volatile uint32_t CH3;           /* 0x18 */
-    uint8_t           RESERVED3[4];  /* 0x1C  (reserved) */
+    volatile uint32_t CH0;                                /* 0x00 */
+    uint8_t           RESERVED0[LD_PWMX_RESERVED0_SIZE];  /* 0x04  (reserved) */
+    volatile uint32_t CH1;                                /* 0x08 */
+    uint8_t           RESERVED1[LD_PWMX_RESERVED1_SIZE];  /* 0x0C  (reserved) */
+    volatile uint32_t CH2;                                /* 0x10 */
+    uint8_t           RESERVED2[LD_PWMX_RESERVED2_SIZE];  /* 0x14  (reserved) */
+    volatile uint32_t CH3;                                /* 0x18 */
+    uint8_t           RESERVED3[LD_PWMX_RESERVED3_SIZE];  /* 0x1C  (reserved) */
 } ld_pwmx_t;
 REGFORGE_STATIC_ASSERT(offsetof(ld_pwmx_t, CH0) == LD_PWMX_CH_OFFSET + 0U * LD_PWMX_CH_STRIDE, LD_PWMX_CH0_OFFSET_CHECK, "PWMX.CH0 offset");
 REGFORGE_STATIC_ASSERT(offsetof(ld_pwmx_t, CH1) == LD_PWMX_CH_OFFSET + 1U * LD_PWMX_CH_STRIDE, LD_PWMX_CH1_OFFSET_CHECK, "PWMX.CH1 offset");
@@ -788,12 +799,13 @@ REGFORGE_MAYBE_UNUSED static ld_fifox_t *const LD_FIFOX = (ld_fifox_t *)LD_FIFOX
 /* Layout constants: byte offsets from an instance's base; a cluster's members
  * are relative to one element of that cluster. Every assert and accessor below
  * refers to these, so each number is written once. */
-#define LD_OVL_CR_OFFSET (0x00000000UL)
-#define LD_OVL_SIZE      (0x00000400UL)
+#define LD_OVL_CR_OFFSET      (0x00000000UL)
+#define LD_OVL_RESERVED0_SIZE (0x000003FCUL)
+#define LD_OVL_SIZE           (0x00000400UL)
 
 typedef struct {
-    volatile uint32_t CR;               /* 0x00 */
-    uint8_t           RESERVED0[1020];  /* 0x04  (reserved) */
+    volatile uint32_t CR;                                /* 0x00 */
+    uint8_t           RESERVED0[LD_OVL_RESERVED0_SIZE];  /* 0x04  (reserved) */
 } ld_ovl_t;
 REGFORGE_STATIC_ASSERT(offsetof(ld_ovl_t, CR) == LD_OVL_CR_OFFSET, LD_OVL_CR_OFFSET_CHECK, "OVL.CR offset");
 REGFORGE_STATIC_ASSERT(sizeof(ld_ovl_t) == LD_OVL_SIZE, LD_OVL_SIZE_CHECK, "OVL struct size vs addressBlock");
@@ -825,12 +837,13 @@ REGFORGE_MAYBE_UNUSED static ld_ovl_t *const LD_OVL1 = (ld_ovl_t *)LD_OVL1_BASE;
 /* Layout constants: byte offsets from an instance's base; a cluster's members
  * are relative to one element of that cluster. Every assert and accessor below
  * refers to these, so each number is written once. */
-#define LD_SER_CR_OFFSET (0x00000000UL)
-#define LD_SER_SIZE      (0x00000100UL)
+#define LD_SER_CR_OFFSET      (0x00000000UL)
+#define LD_SER_RESERVED0_SIZE (0x000000FCUL)
+#define LD_SER_SIZE           (0x00000100UL)
 
 typedef struct {
-    volatile uint32_t CR;              /* 0x00 */
-    uint8_t           RESERVED0[252];  /* 0x04  (reserved) */
+    volatile uint32_t CR;                                /* 0x00 */
+    uint8_t           RESERVED0[LD_SER_RESERVED0_SIZE];  /* 0x04  (reserved) */
 } ld_ser_t;
 REGFORGE_STATIC_ASSERT(offsetof(ld_ser_t, CR) == LD_SER_CR_OFFSET, LD_SER_CR_OFFSET_CHECK, "SER.CR offset");
 REGFORGE_STATIC_ASSERT(sizeof(ld_ser_t) == LD_SER_SIZE, LD_SER_SIZE_CHECK, "SER struct size vs addressBlock");

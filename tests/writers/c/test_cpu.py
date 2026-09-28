@@ -49,7 +49,8 @@ def test_priority_helper_is_msb_aligned():
     output = _render(nvic_prio_bits=2)
     assert "#define CHIP_IRQ_PRIO_LEVELS (1U << CHIP_NVIC_PRIO_BITS)" in output
     assert "uint8_t chip_irq_prio(uint8_t priority)" in output
-    assert "priority << (8U - CHIP_NVIC_PRIO_BITS)" in output
+    assert "#define CHIP_NVIC_PRIO_FIELD_BITS (8U)" in output
+    assert "priority << (CHIP_NVIC_PRIO_FIELD_BITS - CHIP_NVIC_PRIO_BITS)" in output
     assert "assert(priority < CHIP_IRQ_PRIO_LEVELS)" in output
     assert "#include <assert.h>" in output
 

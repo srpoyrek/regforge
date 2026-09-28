@@ -114,5 +114,29 @@ they bounds-check against [`deviceNumInterrupts`](formats/svd.md#cpu), or agains
 vector plus one when the device omits that element. With `NDEBUG` each helper
 compiles to the register access alone.
 
+The NVIC's geometry is named once, in the CPU block, so the helpers carry no
+literal shift or mask:
+
+```c
+#define DEMOMCU_NVIC_PRIO_FIELD_BITS (8U)
+#define DEMOMCU_NVIC_PRIO_FIELD_MASK ((1UL << DEMOMCU_NVIC_PRIO_FIELD_BITS) - 1UL)
+#define DEMOMCU_NVIC_IRQ_WORD_SHIFT (5U)
+#define DEMOMCU_NVIC_IRQ_BIT_MASK ((1U << DEMOMCU_NVIC_IRQ_WORD_SHIFT) - 1U)
+#define DEMOMCU_NVIC_IPR_WORD_SHIFT (2U)
+#define DEMOMCU_NVIC_IPR_SLOT_MASK ((1U << DEMOMCU_NVIC_IPR_WORD_SHIFT) - 1U)
+
+REGFORGE_INLINE void dc_nvic_enable(dc_irqn_e irq)
+{
+    uint32_t bit = (uint32_t)irq & DEMOMCU_NVIC_IRQ_BIT_MASK;
+    assert((uint32_t)irq < DEMOMCU_NUM_IRQS);
+    DC_NVIC_ISER[(uint32_t)irq >> DEMOMCU_NVIC_IRQ_WORD_SHIFT] = 1UL << bit;
+}
+```
+
+They are shifts and masks rather than divisions so that a `-O0` build on a core
+without a hardware divider stays a few instructions. The priority-field
+constants appear whenever `<nvicPrioBits>` is given; the word geometry only for
+Cortex-M, with the helpers.
+
 Other cores get the enum but no helpers. RISC-V PLIC and CLIC, and Cortex-A/R
 GIC, are not implemented.

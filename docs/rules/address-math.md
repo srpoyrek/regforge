@@ -97,14 +97,15 @@ cluster is checked at its offset from the peripheral.
 ## Rule 5: registers are placed in offset order with explicit padding
 
 Registers are sorted by offset, and the space between them becomes `RESERVED`
-padding so each member lands at its declared offset. Each member's position is
+padding, its length a named constant, so each member lands at its declared
+offset. Each member's position is
 checked at compile time — see [targets/c.md](targets/c.md#member-offsets):
 
 ```c
 typedef struct {
-    volatile uint32_t MODER;           /* 0x00 */
-    uint8_t           RESERVED0[12];   /* 0x04  (reserved) */
-    volatile uint32_t IDR;             /* 0x10 */
+    volatile uint32_t MODER;                               /* 0x00 */
+    uint8_t           RESERVED0[DC_GPIOA_RESERVED0_SIZE];  /* 0x04  (reserved) */
+    volatile uint32_t IDR;                                 /* 0x10 */
 } dc_gpioa_t;
 REGFORGE_STATIC_ASSERT(offsetof(dc_gpioa_t, IDR) == DC_GPIOA_IDR_OFFSET, DC_GPIOA_IDR_OFFSET_CHECK, "GPIOA.IDR offset");
 ```

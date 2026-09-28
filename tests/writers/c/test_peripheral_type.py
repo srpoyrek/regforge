@@ -28,7 +28,8 @@ def test_emits_struct_type_and_typed_instance(demo_device):
     assert "volatile uint32_t MODER;" in squashed
     assert "volatile uint32_t ODR;" in squashed
     # Reserved padding fills 0x04..0x10 (IDR sits at 0x10) so offsets stay true.
-    assert "uint8_t RESERVED0[12];" in squashed
+    assert "uint8_t RESERVED0[DC_GPIOA_RESERVED0_SIZE];" in squashed
+    assert "#define DC_GPIOA_RESERVED0_SIZE (0x0000000CUL)" in squashed
     # The instance is a typed, non-redefinable symbol -- not a cast-macro.
     assert (
         "REGFORGE_MAYBE_UNUSED static dc_gpioa_t *const DC_GPIOA = (dc_gpioa_t *)DC_GPIOA_BASE;"

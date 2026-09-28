@@ -81,6 +81,10 @@ REGFORGE_STATIC_ASSERT(CHAR_BIT == {{ dev }}_ADDRESS_UNIT_BITS, {{ dev }}_ADDRES
 {% endif %}
 {% if cpu.nvic_prio_bits is not none %}
 #define {{ dev }}_NVIC_PRIO_BITS {{ cpu.nvic_prio_bits }}
+/* An NVIC priority field is 8 bits, MSB-aligned; this core implements the top
+ * {{ dev }}_NVIC_PRIO_BITS of them. */
+#define {{ dev }}_NVIC_PRIO_FIELD_BITS (8U)
+#define {{ dev }}_NVIC_PRIO_FIELD_MASK ((1UL << {{ dev }}_NVIC_PRIO_FIELD_BITS) - 1UL)
 {% endif %}
 {% if cpu.num_interrupts is not none %}
 #define {{ dev }}_NUM_IRQS {{ cpu.num_interrupts }}
@@ -96,6 +100,14 @@ REGFORGE_STATIC_ASSERT(CHAR_BIT == {{ dev }}_ADDRESS_UNIT_BITS, {{ dev }}_ADDRES
 {% endif %}
 {% if is_cortex_m %}
 #define {{ dev }}_HAS_NVIC 1
+/* NVIC geometry, fixed by the Cortex-M architecture: ISER/ICER/ISPR/ICPR hold
+ * 32 interrupts per word (1 << 5); IPR holds 4 priority fields per word
+ * (1 << 2). Shifts and masks rather than divisions, so a -O0 build on a core
+ * without a divider stays a few instructions. */
+#define {{ dev }}_NVIC_IRQ_WORD_SHIFT (5U)
+#define {{ dev }}_NVIC_IRQ_BIT_MASK ((1U << {{ dev }}_NVIC_IRQ_WORD_SHIFT) - 1U)
+#define {{ dev }}_NVIC_IPR_WORD_SHIFT (2U)
+#define {{ dev }}_NVIC_IPR_SLOT_MASK ((1U << {{ dev }}_NVIC_IPR_WORD_SHIFT) - 1U)
 {% endif %}
 {% if cpu.endian == "little" %}
 
@@ -124,7 +136,7 @@ REGFORGE_STATIC_ASSERT(CHAR_BIT == {{ dev }}_ADDRESS_UNIT_BITS, {{ dev }}_ADDRES
 REGFORGE_INLINE uint8_t {{ ns|lower }}irq_prio(uint8_t priority)
 {
     assert(priority < {{ dev }}_IRQ_PRIO_LEVELS);
-    return (uint8_t)(priority << (8U - {{ dev }}_NVIC_PRIO_BITS));
+    return (uint8_t)(priority << ({{ dev }}_NVIC_PRIO_FIELD_BITS - {{ dev }}_NVIC_PRIO_BITS));
 }
 {% endif %}
 {% endif %}
@@ -163,55 +175,63 @@ typedef enum {
 
 REGFORGE_INLINE void {{ ns|lower }}nvic_enable({{ prefix|lower }}irqn_e irq)
 {
+    uint32_t bit = (uint32_t)irq & {{ dev }}_NVIC_IRQ_BIT_MASK;
     assert((uint32_t)irq < {{ irq_bound }});
-    {{ ns|upper }}NVIC_ISER[(uint32_t)irq >> 5] = 1UL << ((uint32_t)irq & 31UL);
+    {{ ns|upper }}NVIC_ISER[(uint32_t)irq >> {{ dev }}_NVIC_IRQ_WORD_SHIFT] = 1UL << bit;
 }
 
 REGFORGE_INLINE void {{ ns|lower }}nvic_disable({{ prefix|lower }}irqn_e irq)
 {
+    uint32_t bit = (uint32_t)irq & {{ dev }}_NVIC_IRQ_BIT_MASK;
     assert((uint32_t)irq < {{ irq_bound }});
-    {{ ns|upper }}NVIC_ICER[(uint32_t)irq >> 5] = 1UL << ((uint32_t)irq & 31UL);
+    {{ ns|upper }}NVIC_ICER[(uint32_t)irq >> {{ dev }}_NVIC_IRQ_WORD_SHIFT] = 1UL << bit;
 }
 
 REGFORGE_INLINE uint32_t {{ ns|lower }}nvic_get_enabled({{ prefix|lower }}irqn_e irq)
 {
+    uint32_t bit = (uint32_t)irq & {{ dev }}_NVIC_IRQ_BIT_MASK;
     assert((uint32_t)irq < {{ irq_bound }});
-    return (uint32_t)(({{ ns|upper }}NVIC_ISER[(uint32_t)irq >> 5] >> ((uint32_t)irq & 31UL)) & 1UL);
+    return (uint32_t)(({{ ns|upper }}NVIC_ISER[(uint32_t)irq >> {{ dev }}_NVIC_IRQ_WORD_SHIFT] >> bit) & 1UL);
 }
 
 REGFORGE_INLINE void {{ ns|lower }}nvic_set_pending({{ prefix|lower }}irqn_e irq)
 {
+    uint32_t bit = (uint32_t)irq & {{ dev }}_NVIC_IRQ_BIT_MASK;
     assert((uint32_t)irq < {{ irq_bound }});
-    {{ ns|upper }}NVIC_ISPR[(uint32_t)irq >> 5] = 1UL << ((uint32_t)irq & 31UL);
+    {{ ns|upper }}NVIC_ISPR[(uint32_t)irq >> {{ dev }}_NVIC_IRQ_WORD_SHIFT] = 1UL << bit;
 }
 
 REGFORGE_INLINE void {{ ns|lower }}nvic_clear_pending({{ prefix|lower }}irqn_e irq)
 {
+    uint32_t bit = (uint32_t)irq & {{ dev }}_NVIC_IRQ_BIT_MASK;
     assert((uint32_t)irq < {{ irq_bound }});
-    {{ ns|upper }}NVIC_ICPR[(uint32_t)irq >> 5] = 1UL << ((uint32_t)irq & 31UL);
+    {{ ns|upper }}NVIC_ICPR[(uint32_t)irq >> {{ dev }}_NVIC_IRQ_WORD_SHIFT] = 1UL << bit;
 }
 
 REGFORGE_INLINE uint32_t {{ ns|lower }}nvic_get_pending({{ prefix|lower }}irqn_e irq)
 {
+    uint32_t bit = (uint32_t)irq & {{ dev }}_NVIC_IRQ_BIT_MASK;
     assert((uint32_t)irq < {{ irq_bound }});
-    return (uint32_t)(({{ ns|upper }}NVIC_ISPR[(uint32_t)irq >> 5] >> ((uint32_t)irq & 31UL)) & 1UL);
+    return (uint32_t)(({{ ns|upper }}NVIC_ISPR[(uint32_t)irq >> {{ dev }}_NVIC_IRQ_WORD_SHIFT] >> bit) & 1UL);
 }
 {% if device.cpu.nvic_prio_bits is not none %}
 
 REGFORGE_INLINE void {{ ns|lower }}nvic_set_priority({{ prefix|lower }}irqn_e irq, uint8_t priority)
 {
-    volatile uint32_t *ipr = &{{ ns|upper }}NVIC_IPR[(uint32_t)irq >> 2];
-    uint32_t shift = ((uint32_t)irq & 3UL) * 8UL;
+    volatile uint32_t *ipr = &{{ ns|upper }}NVIC_IPR[(uint32_t)irq >> {{ dev }}_NVIC_IPR_WORD_SHIFT];
+    uint32_t shift = ((uint32_t)irq & {{ dev }}_NVIC_IPR_SLOT_MASK) * {{ dev }}_NVIC_PRIO_FIELD_BITS;
     assert((uint32_t)irq < {{ irq_bound }});
-    *ipr = (*ipr & ~(0xFFUL << shift)) | ((uint32_t){{ ns|lower }}irq_prio(priority) << shift);
+    *ipr = (*ipr & ~({{ dev }}_NVIC_PRIO_FIELD_MASK << shift))
+         | ((uint32_t){{ ns|lower }}irq_prio(priority) << shift);
 }
 
 REGFORGE_INLINE uint8_t {{ ns|lower }}nvic_get_priority({{ prefix|lower }}irqn_e irq)
 {
-    volatile uint32_t *ipr = &{{ ns|upper }}NVIC_IPR[(uint32_t)irq >> 2];
-    uint32_t shift = ((uint32_t)irq & 3UL) * 8UL;
+    volatile uint32_t *ipr = &{{ ns|upper }}NVIC_IPR[(uint32_t)irq >> {{ dev }}_NVIC_IPR_WORD_SHIFT];
+    uint32_t shift = ((uint32_t)irq & {{ dev }}_NVIC_IPR_SLOT_MASK) * {{ dev }}_NVIC_PRIO_FIELD_BITS;
     assert((uint32_t)irq < {{ irq_bound }});
-    return (uint8_t)(((*ipr >> shift) & 0xFFUL) >> (8U - {{ dev }}_NVIC_PRIO_BITS));
+    return (uint8_t)(((*ipr >> shift) & {{ dev }}_NVIC_PRIO_FIELD_MASK)
+                     >> ({{ dev }}_NVIC_PRIO_FIELD_BITS - {{ dev }}_NVIC_PRIO_BITS));
 }
 {% endif %}
 {% endif %}

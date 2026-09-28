@@ -116,21 +116,26 @@ Code: `regforge/writers/c.py` (`_c_layout`), the header template.
 ## Layout constants
 
 Every number the layout produces is named once, per type, and referenced from
-there: each member's byte offset from the instance base, and for an array its
-stride and count. A cluster's own offset is named after the cluster; its
-members are named after the cluster's type and are relative to one element.
+there: each member's byte offset from the instance base, for an array its
+stride and count, for a padding gap its byte size (`_RESERVED<n>_SIZE`) and
+for a buffer window its element count (`_BUFFER<n>_COUNT`). A cluster's own
+offset is named after the cluster; its members are named after the cluster's
+type and are relative to one element.
 
 ```c
-#define DC_DMA_CFG_OFFSET     (0x00000000UL)
-#define DC_DMA_CH_OFFSET      (0x00000010UL)
-#define DC_DMA_CH_STRIDE      (0x00000010UL)
-#define DC_DMA_CH_COUNT       (4U)
-#define DC_DMA_CH_CTRL_OFFSET (0x00000000UL)
-#define DC_DMA_SIZE           (0x00000100UL)
+#define DC_DMA_CFG_OFFSET        (0x00000000UL)
+#define DC_DMA_RESERVED0_SIZE    (0x0000000CUL)
+#define DC_DMA_CH_OFFSET         (0x00000010UL)
+#define DC_DMA_CH_STRIDE         (0x00000010UL)
+#define DC_DMA_CH_COUNT          (4U)
+#define DC_DMA_CH_CTRL_OFFSET    (0x00000000UL)
+#define DC_DMA_CH_RESERVED0_SIZE (0x00000008UL)
+#define DC_DMA_SIZE              (0x00000100UL)
 ```
 
-The asserts and the flat macros below all refer to these, so no number is
-written twice, and user code has them for address tables, DMA descriptors and
+Every array bound in the struct, every assert and every flat macro below
+refers to these, so no number is written twice and the struct carries no
+literal, and user code has them for address tables, DMA descriptors and
 startup assembly. `_SIZE` appears when the struct has a size contract (see
 [ir/address-blocks.md](../address-blocks.md)). An instance that shares a type
 gets its own `_COUNT` name as an alias of the family's, `DC_PWMA_CC_COUNT` for
@@ -143,9 +148,9 @@ trailing comment:
 
 ```c
 typedef struct {
-    volatile uint32_t       MODER;           /* 0x00  Mode register */
-    uint8_t                 RESERVED0[12];   /* 0x04  (reserved) */
-    volatile const uint32_t IDR;             /* 0x10  Input data register */
+    volatile uint32_t       MODER;                               /* 0x00  Mode register */
+    uint8_t                 RESERVED0[DC_GPIOA_RESERVED0_SIZE];  /* 0x04  (reserved) */
+    volatile const uint32_t IDR;                                 /* 0x10  Input data register */
 } dc_gpioa_t;
 ```
 
@@ -176,10 +181,13 @@ without the macro.
 ## Padding members
 
 Space between registers becomes a byte array named `RESERVED<n>`, numbered from
-zero within each struct:
+zero within each struct. Its length is the type's `_RESERVED<n>_SIZE` constant,
+in bytes, emitted with the other layout constants in member order:
 
 ```c
-uint8_t RESERVED0[12];   /* 0x04  (reserved) */
+#define DC_GPIOA_RESERVED0_SIZE (0x0000000CUL)
+
+uint8_t RESERVED0[DC_GPIOA_RESERVED0_SIZE];   /* 0x04  (reserved) */
 ```
 
 Padding is `uint8_t` because it exists to occupy bytes, not to be accessed, and
@@ -188,15 +196,19 @@ it.
 
 ## Buffer windows
 
-A block with `usage="buffer"` becomes one array member named `BUFFER<n>`:
+A block with `usage="buffer"` becomes one array member named `BUFFER<n>`, its
+bound the type's `_BUFFER<n>_COUNT` constant:
 
 ```c
-volatile uint32_t BUFFER0[8];   /* 0x08  (buffer) */
+#define DC_UART_BUFFER0_OFFSET (0x00000008UL)
+#define DC_UART_BUFFER0_COUNT  (8U)
+
+volatile uint32_t BUFFER0[DC_UART_BUFFER0_COUNT];   /* 0x08  (buffer) */
 ```
 
 The element type is the device's `<width>`, because that is the natural access
-size. When the window is not a whole number of bus words the writer falls back
-to `uint8_t`, so no bytes are dropped.
+size, and `_COUNT` counts those elements. When the window is not a whole number
+of bus words the writer falls back to `uint8_t`, so no bytes are dropped.
 
 The name is generated. `<addressBlock>` has no `<name>` element in the schema,
 so there is no vendor name to use, and `BUFFER0` follows the same numbering as
@@ -230,10 +242,10 @@ reads the same.
 ## Array members
 
 A register that kept its `dim` through expansion (`CC[%s]` in the source) is
-one member sized for every element:
+one member, its bound the family's `_COUNT` constant:
 
 ```c
-volatile uint32_t CC[4];   /* 0x10  Capture/compare channel */
+volatile uint32_t CC[DC_PWM_CC_COUNT];   /* 0x10  Capture/compare channel */
 ```
 
 This form needs the stride to equal the element size (see
@@ -290,17 +302,17 @@ cluster carries `dim`:
 ```c
 /* DMA.CH -- DMA channel (4 elements, 0x10 bytes apart) */
 typedef struct {
-    volatile uint32_t CTRL;          /* 0x00  Channel control */
-    volatile uint32_t SRC;           /* 0x04  Source address */
-    uint8_t           RESERVED0[8];  /* 0x08  (reserved) */
+    volatile uint32_t CTRL;                                 /* 0x00  Channel control */
+    volatile uint32_t SRC;                                  /* 0x04  Source address */
+    uint8_t           RESERVED0[DC_DMA_CH_RESERVED0_SIZE];  /* 0x08  (reserved) */
 } dc_dma_ch_t;
 REGFORGE_STATIC_ASSERT(offsetof(dc_dma_ch_t, SRC) == DC_DMA_CH_SRC_OFFSET, DC_DMA_CH_SRC_OFFSET_CHECK, "DMA.CH.SRC offset");
 REGFORGE_STATIC_ASSERT(sizeof(dc_dma_ch_t) == DC_DMA_CH_STRIDE, DC_DMA_CH_SIZE_CHECK, "DMA.CH element size vs dimIncrement");
 
 typedef struct {
-    volatile uint32_t CFG;            /* 0x00 */
-    uint8_t           RESERVED0[12];  /* 0x04  (reserved) */
-    dc_dma_ch_t       CH[4];          /* 0x10  DMA channel */
+    volatile uint32_t CFG;                               /* 0x00 */
+    uint8_t           RESERVED0[DC_DMA_RESERVED0_SIZE];  /* 0x04  (reserved) */
+    dc_dma_ch_t       CH[DC_DMA_CH_COUNT];               /* 0x10  DMA channel */
 } dc_dma_t;
 ```
 
@@ -566,12 +578,13 @@ From [this SVD](../formats/svd.md#a-registers-block-and-a-buffer-block):
 #define UART0_DR_OFFSET      (0x00000000UL)
 #define UART0_SR_OFFSET      (0x00000004UL)
 #define UART0_BUFFER0_OFFSET (0x00000008UL)
+#define UART0_BUFFER0_COUNT  (8U)
 #define UART0_SIZE           (0x00000028UL)
 
 typedef struct {
-    volatile uint32_t       DR;          /* 0x00 */
-    volatile const uint32_t SR;          /* 0x04 */
-    volatile uint32_t       BUFFER0[8];  /* 0x08  (buffer) */
+    volatile uint32_t       DR;                            /* 0x00 */
+    volatile const uint32_t SR;                            /* 0x04 */
+    volatile uint32_t       BUFFER0[UART0_BUFFER0_COUNT];  /* 0x08  (buffer) */
 } uart0_t;
 REGFORGE_STATIC_ASSERT(offsetof(uart0_t, DR) == UART0_DR_OFFSET, UART0_DR_OFFSET_CHECK, "UART0.DR offset");
 REGFORGE_STATIC_ASSERT(offsetof(uart0_t, SR) == UART0_SR_OFFSET, UART0_SR_OFFSET_CHECK, "UART0.SR offset");
@@ -640,22 +653,25 @@ From [this SVD](../formats/svd.md#a-peripheral-array-with-a-register-array):
 /* Layout constants: byte offsets from an instance's base; a cluster's members
  * are relative to one element of that cluster. Every assert and accessor below
  * refers to these, so each number is written once. */
-#define PWM_CTRL_OFFSET (0x00000000UL)
-#define PWM_CC_OFFSET   (0x00000010UL)
-#define PWM_CC_STRIDE   (0x00000004UL)
-#define PWM_CC_COUNT    (4U)
-#define PWM_DT0_OFFSET  (0x00000020UL)
-#define PWM_DT1_OFFSET  (0x00000028UL)
-#define PWM_SIZE        (0x00000030UL)
+#define PWM_CTRL_OFFSET    (0x00000000UL)
+#define PWM_RESERVED0_SIZE (0x0000000CUL)
+#define PWM_CC_OFFSET      (0x00000010UL)
+#define PWM_CC_STRIDE      (0x00000004UL)
+#define PWM_CC_COUNT       (4U)
+#define PWM_DT0_OFFSET     (0x00000020UL)
+#define PWM_RESERVED1_SIZE (0x00000004UL)
+#define PWM_DT1_OFFSET     (0x00000028UL)
+#define PWM_RESERVED2_SIZE (0x00000004UL)
+#define PWM_SIZE           (0x00000030UL)
 
 typedef struct {
-    volatile uint32_t CTRL;           /* 0x00 */
-    uint8_t           RESERVED0[12];  /* 0x04  (reserved) */
-    volatile uint32_t CC[4];          /* 0x10 */
-    volatile uint32_t DT0;            /* 0x20 */
-    uint8_t           RESERVED1[4];   /* 0x24  (reserved) */
-    volatile uint32_t DT1;            /* 0x28 */
-    uint8_t           RESERVED2[4];   /* 0x2C  (reserved) */
+    volatile uint32_t CTRL;                           /* 0x00 */
+    uint8_t           RESERVED0[PWM_RESERVED0_SIZE];  /* 0x04  (reserved) */
+    volatile uint32_t CC[PWM_CC_COUNT];               /* 0x10 */
+    volatile uint32_t DT0;                            /* 0x20 */
+    uint8_t           RESERVED1[PWM_RESERVED1_SIZE];  /* 0x24  (reserved) */
+    volatile uint32_t DT1;                            /* 0x28 */
+    uint8_t           RESERVED2[PWM_RESERVED2_SIZE];  /* 0x2C  (reserved) */
 } pwm_t;
 REGFORGE_STATIC_ASSERT(offsetof(pwm_t, CTRL) == PWM_CTRL_OFFSET, PWM_CTRL_OFFSET_CHECK, "PWM.CTRL offset");
 REGFORGE_STATIC_ASSERT(offsetof(pwm_t, CC) == PWM_CC_OFFSET, PWM_CC_OFFSET_CHECK, "PWM.CC offset");
@@ -707,7 +723,7 @@ REGFORGE_MAYBE_UNUSED static pwm_t *const PWMB = (pwm_t *)PWMB_BASE;
 
 ### A cluster array
 
-Demonstrates [clusters.md](../clusters.md#rule-2-a-cluster-arrays-element-is-padded-to-the-stride). `CH[%s]` becomes one nested type, padded to the stride and size-asserted, used as `CH[4]`, with indexed macros for its registers.
+Demonstrates [clusters.md](../clusters.md#rule-2-a-cluster-arrays-element-is-padded-to-the-stride). `CH[%s]` becomes one nested type, padded to the stride and size-asserted, used as `CH[DMA_CH_COUNT]`, with indexed macros for its registers.
 
 From [this SVD](../formats/svd.md#a-cluster-array):
 
@@ -720,28 +736,30 @@ From [this SVD](../formats/svd.md#a-cluster-array):
 /* Layout constants: byte offsets from an instance's base; a cluster's members
  * are relative to one element of that cluster. Every assert and accessor below
  * refers to these, so each number is written once. */
-#define DMA_CFG_OFFSET     (0x00000000UL)
-#define DMA_CH_OFFSET      (0x00000010UL)
-#define DMA_CH_STRIDE      (0x00000010UL)
-#define DMA_CH_COUNT       (4U)
-#define DMA_CH_CTRL_OFFSET (0x00000000UL)
-#define DMA_CH_SRC_OFFSET  (0x00000004UL)
-#define DMA_SIZE           (0x00000050UL)
+#define DMA_CFG_OFFSET        (0x00000000UL)
+#define DMA_RESERVED0_SIZE    (0x0000000CUL)
+#define DMA_CH_OFFSET         (0x00000010UL)
+#define DMA_CH_STRIDE         (0x00000010UL)
+#define DMA_CH_COUNT          (4U)
+#define DMA_CH_CTRL_OFFSET    (0x00000000UL)
+#define DMA_CH_SRC_OFFSET     (0x00000004UL)
+#define DMA_CH_RESERVED0_SIZE (0x00000008UL)
+#define DMA_SIZE              (0x00000050UL)
 
 /* DMA.CH (4 elements, 0x10 bytes apart) */
 typedef struct {
-    volatile uint32_t CTRL;          /* 0x00 */
-    volatile uint32_t SRC;           /* 0x04 */
-    uint8_t           RESERVED0[8];  /* 0x08  (reserved) */
+    volatile uint32_t CTRL;                              /* 0x00 */
+    volatile uint32_t SRC;                               /* 0x04 */
+    uint8_t           RESERVED0[DMA_CH_RESERVED0_SIZE];  /* 0x08  (reserved) */
 } dma_ch_t;
 REGFORGE_STATIC_ASSERT(offsetof(dma_ch_t, CTRL) == DMA_CH_CTRL_OFFSET, DMA_CH_CTRL_OFFSET_CHECK, "DMA.CH.CTRL offset");
 REGFORGE_STATIC_ASSERT(offsetof(dma_ch_t, SRC) == DMA_CH_SRC_OFFSET, DMA_CH_SRC_OFFSET_CHECK, "DMA.CH.SRC offset");
 REGFORGE_STATIC_ASSERT(sizeof(dma_ch_t) == DMA_CH_STRIDE, DMA_CH_SIZE_CHECK, "DMA.CH element size vs dimIncrement");
 
 typedef struct {
-    volatile uint32_t CFG;            /* 0x00 */
-    uint8_t           RESERVED0[12];  /* 0x04  (reserved) */
-    dma_ch_t          CH[4];          /* 0x10 */
+    volatile uint32_t CFG;                            /* 0x00 */
+    uint8_t           RESERVED0[DMA_RESERVED0_SIZE];  /* 0x04  (reserved) */
+    dma_ch_t          CH[DMA_CH_COUNT];               /* 0x10 */
 } dma_t;
 REGFORGE_STATIC_ASSERT(offsetof(dma_t, CFG) == DMA_CFG_OFFSET, DMA_CFG_OFFSET_CHECK, "DMA.CFG offset");
 REGFORGE_STATIC_ASSERT(offsetof(dma_t, CH) == DMA_CH_OFFSET, DMA_CH_OFFSET_CHECK, "DMA.CH offset");

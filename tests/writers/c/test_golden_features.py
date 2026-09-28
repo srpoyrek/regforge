@@ -148,12 +148,21 @@ def test_fixture_emits_cortex_m_nvic_helpers(demo_device):
     # set_priority routes through the renamed, prefix-namespaced shift helper.
     assert "REGFORGE_INLINE uint8_t dc_irq_prio(uint8_t priority)" in output
     assert "(uint32_t)dc_irq_prio(priority)" in output
+    # The NVIC geometry is named once; no helper body carries a literal shift or mask.
+    assert "#define DEMOMCU_NVIC_IRQ_WORD_SHIFT (5U)" in output
+    assert (
+        "#define DEMOMCU_NVIC_PRIO_FIELD_MASK ((1UL << DEMOMCU_NVIC_PRIO_FIELD_BITS) - 1UL)"
+        in output
+    )
+    assert "DC_NVIC_ISER[(uint32_t)irq >> DEMOMCU_NVIC_IRQ_WORD_SHIFT] = 1UL << bit;" in output
+    assert not re.search(r">> [0-9]\]|& 31UL|0xFFUL|\* 8UL", output)
 
 
 def test_fixture_asserts_struct_size_from_address_block(demo_device):
     output = CWriter().render(demo_device)
     # GPIOA block (0x20) exceeds the last register end (0x18) -> padded + asserted.
-    assert "RESERVED1[8];" in output  # trailing pad to 0x20
+    assert "RESERVED1[DC_GPIOA_RESERVED1_SIZE];" in output  # trailing pad to 0x20
+    assert "#define DC_GPIOA_RESERVED1_SIZE (0x00000008UL)" in output
     assert (
         "REGFORGE_STATIC_ASSERT(sizeof(dc_gpioa_t) == DC_GPIOA_SIZE, DC_GPIOA_SIZE_CHECK, "
         '"GPIOA struct size vs addressBlock");' in output
@@ -170,14 +179,15 @@ def test_fixture_buffer_block_emits_one_raw_window(demo_device):
     output = CWriter().render(demo_device)
     # The vendor names no registers for a buffer block, so none are invented:
     # one array, typed from the device bus width (32 bits -> 0x20 bytes / 8).
-    assert "volatile uint32_t       BUFFER0[8];" in output
+    assert "volatile uint32_t       BUFFER0[DC_UART_BUFFER0_COUNT];" in output
+    assert "#define DC_UART_BUFFER0_COUNT (8U)" in _squash(output)  # bus words
     # Its position is locked as tightly as a register's.
     assert (
         "REGFORGE_STATIC_ASSERT(offsetof(dc_uart_t, BUFFER0) == DC_UART_BUFFER0_OFFSET, "
         'DC_UART_BUFFER0_OFFSET_CHECK, "UART.BUFFER0 offset");' in output
     )
     # It is a window, not padding -- no RESERVED member covers that range.
-    assert "RESERVED0[32];" not in output
+    assert "DC_UART_RESERVED0_SIZE" not in output
 
 
 def test_lint_fixture_derived_peripheral_does_not_inherit_interrupt(lint_demo_device):
@@ -264,7 +274,7 @@ def test_fixture_peripheral_array_is_one_family_with_labelled_instances(demo_dev
 def test_fixture_register_array_and_separate_copies(demo_device):
     output = CWriter().render(demo_device)
     squashed = _squash(output)
-    assert "volatile uint32_t CC[4];" in squashed  # CC[%s]: one packed array member
+    assert "volatile uint32_t CC[DC_PWM_CC_COUNT];" in squashed  # CC[%s]: one packed array
     assert (
         "#define DC_PWMA_CC_COUNT DC_PWM_CC_COUNT" in output
     )  # the family count, by instance name
@@ -301,7 +311,7 @@ def test_fixture_cluster_array_and_single_cluster(demo_device):
         '"DMA.CH element size vs dimIncrement");' in output
     )
     assert "DC_DMA_STAT_SIZE" not in output  # a single cluster has no stride to assert
-    assert "dc_dma_ch_t CH[4];" in squashed and "dc_dma_stat_t STAT;" in squashed
+    assert "dc_dma_ch_t CH[DC_DMA_CH_COUNT];" in squashed and "dc_dma_stat_t STAT;" in squashed
     assert (
         "#define DC_DMA_CH_DST(i) (*(volatile uint32_t *)"
         "(DC_DMA_BASE + DC_DMA_CH_OFFSET + (i) * DC_DMA_CH_STRIDE + DC_DMA_CH_DST_OFFSET))"

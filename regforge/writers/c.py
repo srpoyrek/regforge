@@ -157,20 +157,22 @@ def _array_suffix(dim: Dim | None) -> str:
     return f"[{dim.length}]" if dim is not None else ""
 
 
-def _count_suffix(count: int) -> str:
-    """``[N]`` for a slot holding N packed elements, nothing for a single member."""
-    return f"[{count}]" if count > 1 else ""
+def _count_suffix(spf: str, member: str, count: int) -> str:
+    """``[<SPF>_<MEMBER>_COUNT]`` for a packed array slot, nothing for a single member."""
+    return f"[{spf}_{member.upper()}_COUNT]" if count > 1 else ""
 
 
 def _c_layout(
-    entries: list[LayoutEntry], cluster_names: dict[int, str], bus_width: int
+    entries: list[LayoutEntry], cluster_names: dict[int, str], bus_width: int, spf: str
 ) -> list[dict]:
     """Render layout slots into the C struct members the template needs.
 
     The offset / reserved-gap / overlap math is language-neutral and lives in
     :mod:`regforge.layout`; this adapter only maps each slot to C syntax
-    (``uint8_t`` padding, ``volatile`` member types, ``[N]`` for arrays, the
-    nested type for a cluster, trailing ``;``).
+    (``uint8_t`` padding, ``volatile`` member types, the nested type for a
+    cluster, trailing ``;``). Every array bound is a layout constant of the
+    type ``spf`` names -- ``_COUNT`` for arrays and buffer windows, ``_SIZE``
+    for padding -- so the struct carries no literal number.
     """
     entries_out: list[dict] = []
     pad_index = 0
@@ -183,7 +185,7 @@ def _c_layout(
                 {
                     "offset": slot.offset,
                     "type": f"volatile {_C_TYPE[bits]}",
-                    "field": f"{name}[{slot.gap_bytes // (bits // BITS_PER_BYTE)}];",
+                    "field": f"{name}[{spf}_{name}_COUNT];",
                     "desc": "(buffer)",
                     "member": name,
                     "elements": 1,
@@ -194,11 +196,12 @@ def _c_layout(
             )
             buffer_index += 1
         elif slot.is_reserved:
+            name = f"RESERVED{pad_index}"
             entries_out.append(
                 {
                     "offset": slot.offset,
                     "type": "uint8_t",
-                    "field": f"RESERVED{pad_index}[{slot.gap_bytes}];",
+                    "field": f"{name}[{spf}_{name}_SIZE];",
                     "desc": "(reserved)",
                     "member": None,
                     "elements": 1,
@@ -214,7 +217,7 @@ def _c_layout(
                 {
                     "offset": slot.offset,
                     "type": cluster_names[id(cluster)],
-                    "field": f"{cluster.name}{_count_suffix(slot.count)};",
+                    "field": f"{cluster.name}{_count_suffix(spf, cluster.name, slot.count)};",
                     "desc": _short_desc(cluster.description),
                     "member": cluster.name,
                     "elements": slot.count,
@@ -231,7 +234,7 @@ def _c_layout(
                 {
                     "offset": slot.offset,
                     "type": _member_type(register),
-                    "field": f"{name}{_count_suffix(slot.count)};",
+                    "field": f"{name}{_count_suffix(spf, register.name, slot.count)};",
                     "desc": _short_desc(register.description),
                     "member": name,
                     "elements": slot.count,
@@ -320,7 +323,7 @@ def _cluster_types(
                 "own": f"{tag_prefix}_{cluster.name.upper()}",
                 "label": inner_label,
                 "desc": cluster.description,
-                "members": _c_layout(slot.members, cluster_names, bus_width),
+                "members": _c_layout(slot.members, cluster_names, bus_width, inner_tag),
                 "element_bytes": slot.element_bytes,
                 "count": cluster.dim.length if cluster.dim is not None else None,
             }
@@ -332,26 +335,36 @@ def _constants(
     spf: str,
     entries: list[LayoutEntry],
     address_unit_bits: int,
+    bus_width: int,
     cluster_tags: dict[int, str],
     emitted: set[str],
 ) -> list[dict]:
     """The named numbers of one struct type, in member order.
 
     Every member gets ``<TYPE>_<MEMBER>_OFFSET``; an array adds ``_STRIDE`` and
-    ``_COUNT``. A cluster's own offset (and stride) is named after the cluster,
+    ``_COUNT``; a buffer window adds ``_COUNT`` (bus words); a padding gap is
+    ``_RESERVED<n>_SIZE`` (bytes). So every array bound in the struct is a
+    name. A cluster's own offset (and stride) is named after the cluster,
     and its members after the cluster's *type*, relative to one element, so
     copies of one type share one set, emitted once. Every assert and accessor
     the header emits refers to these, so each number is written exactly once.
     """
     constants: list[dict] = []
     buffer_index = 0
+    pad_index = 0
     seen: set[int] = set()
     for slot in entries:
         if slot.buffer:
-            constants.append(
-                {"name": f"{spf}_BUFFER{buffer_index}_OFFSET", "value": f"{_hex32(slot.offset)}UL"}
-            )
+            stem = f"{spf}_BUFFER{buffer_index}"
+            bits = _buffer_element_bits(slot.gap_bytes, bus_width)
+            count = slot.gap_bytes // (bits // BITS_PER_BYTE)
+            constants.append({"name": f"{stem}_OFFSET", "value": f"{_hex32(slot.offset)}UL"})
+            constants.append({"name": f"{stem}_COUNT", "value": f"{count}U"})
             buffer_index += 1
+        elif slot.is_reserved:
+            stem = f"{spf}_RESERVED{pad_index}"
+            constants.append({"name": f"{stem}_SIZE", "value": f"{_hex32(slot.gap_bytes)}UL"})
+            pad_index += 1
         elif slot.register is not None:
             register = slot.register
             if id(register) in seen:
@@ -377,7 +390,7 @@ def _constants(
             if type_stem not in emitted:
                 emitted.add(type_stem)
                 constants += _constants(
-                    type_stem, slot.members, address_unit_bits, cluster_tags, emitted
+                    type_stem, slot.members, address_unit_bits, bus_width, cluster_tags, emitted
                 )
     return constants
 
@@ -584,8 +597,10 @@ class CWriter(Writer):
                 shared_clusters,
                 device.bus_width,
             )
-            layouts[id(source)] = _c_layout(entries, cluster_names, device.bus_width)
-            family_constants = _constants(spf, entries, unit_bits, cluster_tags, set())
+            layouts[id(source)] = _c_layout(entries, cluster_names, device.bus_width, spf)
+            family_constants = _constants(
+                spf, entries, unit_bits, device.bus_width, cluster_tags, set()
+            )
             if size is not None:
                 family_constants.append({"name": f"{spf}_SIZE", "value": f"{_hex32(size)}UL"})
             constants[id(family)] = family_constants

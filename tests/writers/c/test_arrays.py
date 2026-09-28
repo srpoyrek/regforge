@@ -55,7 +55,7 @@ def test_array_register_is_one_member_with_count_and_indexed_macro():
         )
     )
     squashed = _squash(output)
-    assert "volatile uint32_t CC[4];" in squashed
+    assert "volatile uint32_t CC[DC_PWM_CC_COUNT];" in squashed  # the bound is the constant
     assert (
         "REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, CC) == DC_PWM_CC_OFFSET, "
         'DC_PWM_CC_OFFSET_CHECK, "PWM.CC offset");' in output
@@ -80,7 +80,8 @@ def test_separate_copies_are_ordinary_registers():
     )
     squashed = _squash(output)
     assert "volatile uint32_t DT0;" in squashed and "volatile uint32_t DT1;" in squashed
-    assert "uint8_t RESERVED1[4];" in squashed  # the hole between the copies is padding
+    assert "uint8_t RESERVED1[DC_PWM_RESERVED1_SIZE];" in squashed  # the hole between copies
+    assert "#define DC_PWM_RESERVED1_SIZE (0x00000004UL)" in squashed
     assert "#define DC_PWM_DT0 (*(volatile uint32_t *)(DC_PWM_BASE + DC_PWM_DT0_OFFSET))" in output
     assert "#define DC_PWM_DT1 (*(volatile uint32_t *)(DC_PWM_BASE + DC_PWM_DT1_OFFSET))" in output
     assert "_COUNT" not in output
@@ -103,9 +104,9 @@ def test_unpacked_array_is_flat_members_with_an_indexed_macro():
         )
     )
     squashed = _squash(output)
-    assert "uint32_t CH[4];" not in squashed  # a C array cannot hold the holes
+    assert "CH[DC_PWMX_CH_COUNT];" not in squashed  # a C array cannot hold the holes
     assert "volatile uint32_t CH0;" in squashed and "volatile uint32_t CH3;" in squashed
-    assert "uint8_t RESERVED0[4];" in squashed  # the hole after CH0
+    assert "uint8_t RESERVED0[DC_PWMX_RESERVED0_SIZE];" in squashed  # the hole after CH0
     assert (
         "REGFORGE_STATIC_ASSERT(offsetof(dc_pwmx_t, CH1) == "
         "DC_PWMX_CH_OFFSET + 1U * DC_PWMX_CH_STRIDE, DC_PWMX_CH1_OFFSET_CHECK, "
