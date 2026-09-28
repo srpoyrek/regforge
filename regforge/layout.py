@@ -274,9 +274,26 @@ def _register_slots(where: str, register: Register, address_unit_bits: int) -> l
     ]
 
 
+def _alignment_bytes(entries: list[LayoutEntry]) -> int:
+    """The natural alignment of a struct holding ``entries``: its widest register, at most 8."""
+    widest = 1
+    for slot in entries:
+        if slot.register is not None:
+            widest = max(widest, min((slot.register.size or 0) // BITS_PER_BYTE, 8))
+        elif slot.members:
+            widest = max(widest, _alignment_bytes(slot.members))
+    return widest
+
+
 def _cluster_slot(where: str, cluster: Cluster, address_unit_bits: int) -> LayoutEntry:
     members = cluster_layout(cluster, address_unit_bits, where)
     element = _end(members)
+    if cluster.dim is None:
+        # A struct is never smaller than a multiple of its alignment, so a single
+        # cluster whose last register ends mid-word occupies the padded size in
+        # its parent; the writer asserts sizeof against exactly this number.
+        alignment = _alignment_bytes(members)
+        element = -(-element // alignment) * alignment
     count = cluster.dim.length if cluster.dim is not None else 1
     return LayoutEntry(
         offset=units_to_bytes(cluster.address_offset, address_unit_bits),

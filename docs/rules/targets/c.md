@@ -38,7 +38,7 @@ A peripheral produces three things, all upper-case with the same prefix:
 ```c
 #define DC_UART0_BASE (0x40004000UL)
 REGFORGE_MAYBE_UNUSED static dc_uart_t *const DC_UART0 = (dc_uart_t *)DC_UART0_BASE;
-#define DC_UART0_DR (*(volatile uint32_t *)(DC_UART0_BASE + DC_UART_DR_OFFSET))
+#define DC_UART0_DR (DC_UART0->DR)
 ```
 
 `REGFORGE_MAYBE_UNUSED` keeps the pointer from warning when a translation unit
@@ -133,11 +133,13 @@ type and are relative to one element.
 #define DC_DMA_SIZE              (0x00000100UL)
 ```
 
-Every array bound in the struct, every assert and every flat macro below
-refers to these, so no number is written twice and the struct carries no
-literal, and user code has them for address tables, DMA descriptors and
-startup assembly. `_SIZE` appears when the struct has a size contract (see
-[ir/address-blocks.md](../address-blocks.md)). An instance that shares a type
+Every array bound in the struct and every assert below refers to these, so no
+number is written twice and the struct carries no literal; the register macros
+go through the typed instance and repeat none of them. User code has the
+constants for address tables, DMA descriptors and startup assembly, where an
+address must be a constant expression. `_SIZE` appears when the struct has a
+size contract (see [ir/address-blocks.md](../address-blocks.md)) and on a
+single cluster's type, whose contract is its own extent. An instance that shares a type
 gets its own `_COUNT` name as an alias of the family's, `DC_PWMA_CC_COUNT` for
 `DC_PWM_CC_COUNT`, so a loop can be written against the instance.
 
@@ -216,15 +218,24 @@ so there is no vendor name to use, and `BUFFER0` follows the same numbering as
 
 ## Flat macros
 
-Alongside the struct, each register also gets a direct macro, so the header is
-usable without the struct:
+Alongside the struct, each register also gets a macro that names it directly.
+The macro is the register's path through the typed instance pointer:
 
 ```c
-#define DC_GPIOA_IDR (*(volatile const uint32_t *)(DC_GPIOA_BASE + DC_GPIOA_IDR_OFFSET))
+#define DC_GPIOA_IDR (DC_GPIOA->IDR)
+#define DC_DMA_STAT_FLAGS (DC_DMA->STAT.FLAGS)
+#define DC_DMA_CH_CTRL(ch_index) (DC_DMA->CH[(ch_index)].CTRL)
 ```
 
-The qualifiers match the struct member, so a read-only register cannot be
-written through either route.
+Because the macro is the member, its type and qualifiers are the member's own:
+a read-only register cannot be written through either route, and the offsets
+live in one place, the struct, where the asserts check them. Only an array the
+struct cannot hold as an array (see [Array members](#array-members)) is
+addressed arithmetically, from the layout constants:
+
+```c
+#define DC_PWMX_CH(ch_index) (*(volatile uint32_t *)(DC_PWMX_BASE + DC_PWMX_CH_OFFSET + (ch_index) * DC_PWMX_CH_STRIDE))
+```
 
 ## Field macros
 
@@ -250,26 +261,30 @@ volatile uint32_t CC[DC_PWM_CC_COUNT];   /* 0x10  Capture/compare channel */
 
 This form needs the stride to equal the element size (see
 [ir/address-math.md](../address-math.md)); a larger stride gives flat members
-instead, below. The flat macro takes the index, and a count is emitted for
-loop bounds:
+instead, below. The flat macro takes the index, named after the array it
+steps through, and a count is emitted for loop bounds:
 
 ```c
 #define DC_PWMA_CC_COUNT DC_PWM_CC_COUNT
-#define DC_PWMA_CC(i) (*(volatile uint32_t *)(DC_PWMA_BASE + DC_PWM_CC_OFFSET + (i) * DC_PWM_CC_STRIDE))
+#define DC_PWMA_CC(cc_index) (DC_PWMA->CC[(cc_index)])
 ```
 
-One `offsetof` assert covers the whole array, and a `sizeof` assert on the
+Three asserts pin the array. One `offsetof` covers its start; a `sizeof` on the
 member checks it holds exactly its elements (`sizeof` is unevaluated, so the
-null pointer is never dereferenced):
+null pointer is never dereferenced); and the last element is placed outright,
+so `CC[k]` reaching `OFFSET + k * STRIDE` is stated rather than inferred:
 
 ```c
 REGFORGE_STATIC_ASSERT(sizeof(((dc_pwm_t *)0)->CC) == DC_PWM_CC_COUNT * DC_PWM_CC_STRIDE, DC_PWM_CC_ARRAY_CHECK, "PWM.CC array size");
+REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, CC[DC_PWM_CC_COUNT - 1U]) == DC_PWM_CC_OFFSET + (DC_PWM_CC_COUNT - 1U) * DC_PWM_CC_STRIDE, DC_PWM_CC_LAST_CHECK, "PWM.CC[3] offset via the struct");
 ```
 
 When the stride is larger than the element (`CH[%s]` 8 bytes apart for 32-bit
 registers) no C array fits, so the struct gets one member per element with
 padding between, `CH0`, `RESERVED0`, `CH1`, ..., while `CH_COUNT` and the
-`CH(i)` macro stay, stepping by the true stride.
+`CH(ch_index)` macro stay. With no array member to index, that macro is the
+one place the address is summed from the layout constants, stepping by the
+true stride.
 
 Reset and field macros are emitted once per array, not once per element. A
 field array (`OD[%s]`) gets an indexed position and mask, and its enumerated
@@ -277,8 +292,8 @@ values once:
 
 ```c
 #define DC_GPIOA_ODR_OD_COUNT (16U)
-#define DC_GPIOA_ODR_OD_Pos(i) (0U + (i) * 1U)
-#define DC_GPIOA_ODR_OD_Msk(i) (0x00000001UL << ((i) * 1U))
+#define DC_GPIOA_ODR_OD_Pos(od_index) (0U + (od_index) * 1U)
+#define DC_GPIOA_ODR_OD_Msk(od_index) (0x00000001UL << ((od_index) * 1U))
 ```
 
 An array whose source names its indices (`dimArrayIndex`) gets one constant per
@@ -309,6 +324,13 @@ typedef struct {
 REGFORGE_STATIC_ASSERT(offsetof(dc_dma_ch_t, SRC) == DC_DMA_CH_SRC_OFFSET, DC_DMA_CH_SRC_OFFSET_CHECK, "DMA.CH.SRC offset");
 REGFORGE_STATIC_ASSERT(sizeof(dc_dma_ch_t) == DC_DMA_CH_STRIDE, DC_DMA_CH_SIZE_CHECK, "DMA.CH element size vs dimIncrement");
 
+/* DMA.STAT -- Status block */
+typedef struct {
+    volatile const uint32_t FLAGS;  /* 0x00 */
+    volatile const uint32_t ERR;    /* 0x04 */
+} dc_dma_stat_t;
+REGFORGE_STATIC_ASSERT(sizeof(dc_dma_stat_t) == DC_DMA_STAT_SIZE, DC_DMA_STAT_SIZE_CHECK, "DMA.STAT size vs its last register");
+
 typedef struct {
     volatile uint32_t CFG;                               /* 0x00 */
     uint8_t           RESERVED0[DC_DMA_RESERVED0_SIZE];  /* 0x04  (reserved) */
@@ -320,20 +342,25 @@ The type is named `<prefix><family>_<cluster>_t`, the cluster's
 `headerStructName` replacing its name when given, and a nested cluster appends
 its own name (`dc_dma_ch_sub_t`); see [ir/naming.md](../naming.md). An array
 cluster's element is padded to the stride and its size asserted, so the array
-tiles the vendor's spacing exactly. A single cluster gets no size assert,
-because the source declares no size for it.
+tiles the vendor's spacing exactly, and its last element is placed by an
+`offsetof` assert of its own. A single cluster's type is asserted against its
+extent, the end of its last register rounded up to the type's alignment, so
+the inner struct is checked on its own terms rather than only through the
+padding its parent computes after it.
 
 ## Indexed macros
 
 A register inside a cluster is reached through the cluster's name, and every
-array on the path adds one index, outermost first:
+array on the path adds one parameter, outermost first, named after the array
+it indexes:
 
 ```c
-#define DC_DMA0_CH_CTRL(i) (*(volatile uint32_t *)(DC_DMA0_BASE + DC_DMA_CH_OFFSET + (i) * DC_DMA_CH_STRIDE + DC_DMA_CH_CTRL_OFFSET))
-#define DC_DMA0_CH_BUF(i, j) (*(volatile uint32_t *)(DC_DMA0_BASE + DC_DMA_CH_OFFSET + (i) * DC_DMA_CH_STRIDE + DC_DMA_CH_BUF_OFFSET + (j) * DC_DMA_CH_BUF_STRIDE))
+#define DC_DMA0_CH_CTRL(ch_index) (DC_DMA0->CH[(ch_index)].CTRL)
+#define DC_DMA0_CH_BUF(ch_index, buf_index) (DC_DMA0->CH[(ch_index)].BUF[(buf_index)])
 ```
 
-Every term is one of the family's layout constants, added up. A cluster
+A call site therefore reads against a signature that says what each number
+is. Two arrays of one name on a path get `ch_index` and `ch2_index`. A cluster
 without `dim` adds no index, so `DC_DMA0_STAT_FLAGS` is an ordinary macro. No
 bounds are checked; the `_COUNT` macros are there for the caller's loops.
 
@@ -370,7 +397,9 @@ compile time rather than reading the wrong register at run time.
 
 Buffer windows get one too, so the window's position is checked as tightly as a
 register's. So do array members and cluster members, and a cluster's own
-members are asserted inside its type.
+members are asserted inside its type. An array member gets a second one on
+its last element, `CC[DC_PWM_CC_COUNT - 1U]`, so element addressing is checked
+outright rather than inferred from the element size.
 
 ## Struct size
 
@@ -385,7 +414,8 @@ instances, `((dc_uart_t *)DC_UART0_BASE)[1]` is `DC_UART1`.
 Emitted only when the source supports it; see
 [ir/address-blocks.md](../address-blocks.md) for when it is skipped. An
 array cluster's element type is asserted against `dimIncrement` the same way,
-so `CH[3]` lands where the third channel really is.
+so `CH[3]` lands where the third channel really is, and a single cluster's
+type against its own extent, `DC_DMA_STAT_SIZE`.
 
 ## Endianness and FPU
 
@@ -422,8 +452,9 @@ From [this SVD](../formats/svd.md#naming-precedence):
 /* CAN_NODE */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define CAN_NODE_NCR_OFFSET (0x00000000UL)
 #define CAN_NODE_NSR_OFFSET (0x00000004UL)
 
@@ -444,10 +475,10 @@ typedef can_node_t can_node0_t;
 REGFORGE_MAYBE_UNUSED static can_node_t *const CAN_NODE0 = (can_node_t *)CAN_NODE0_BASE;
 
 /* CAN_NODE0.NCR */
-#define CAN_NODE0_NCR (*(volatile uint32_t *)(CAN_NODE0_BASE + CAN_NODE_NCR_OFFSET))
+#define CAN_NODE0_NCR (CAN_NODE0->NCR)
 
 /* CAN_NODE0.NSR */
-#define CAN_NODE0_NSR (*(volatile uint32_t *)(CAN_NODE0_BASE + CAN_NODE_NSR_OFFSET))
+#define CAN_NODE0_NSR (CAN_NODE0->NSR)
 ```
 
 ### One group becoming two types
@@ -463,8 +494,9 @@ From [this SVD](../formats/svd.md#one-group-becoming-two-types):
 /* FPU_CPACR */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define FPU_CPACR_CPACR_OFFSET (0x00000000UL)
 
 typedef struct {
@@ -477,7 +509,7 @@ REGFORGE_STATIC_ASSERT(offsetof(fpu_cpacr_t, CPACR) == FPU_CPACR_CPACR_OFFSET, F
 REGFORGE_MAYBE_UNUSED static fpu_cpacr_t *const FPU_CPACR = (fpu_cpacr_t *)FPU_CPACR_BASE;
 
 /* FPU_CPACR.CPACR */
-#define FPU_CPACR_CPACR (*(volatile uint32_t *)(FPU_CPACR_BASE + FPU_CPACR_CPACR_OFFSET))
+#define FPU_CPACR_CPACR (FPU_CPACR->CPACR)
 
 
 /* -------------------------------------------------------------------------- */
@@ -485,8 +517,9 @@ REGFORGE_MAYBE_UNUSED static fpu_cpacr_t *const FPU_CPACR = (fpu_cpacr_t *)FPU_C
 /* family FPU: split 2 ways by layout (FPU_CPACR | FPU); first differs at CPACR */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define FPU_FPCCR_OFFSET (0x00000000UL)
 #define FPU_FPCAR_OFFSET (0x00000004UL)
 
@@ -502,10 +535,10 @@ REGFORGE_STATIC_ASSERT(offsetof(fpu_t, FPCAR) == FPU_FPCAR_OFFSET, FPU_FPCAR_OFF
 REGFORGE_MAYBE_UNUSED static fpu_t *const FPU = (fpu_t *)FPU_BASE;
 
 /* FPU.FPCCR */
-#define FPU_FPCCR (*(volatile uint32_t *)(FPU_BASE + FPU_FPCCR_OFFSET))
+#define FPU_FPCCR (FPU->FPCCR)
 
 /* FPU.FPCAR */
-#define FPU_FPCAR (*(volatile uint32_t *)(FPU_BASE + FPU_FPCAR_OFFSET))
+#define FPU_FPCAR (FPU->FPCAR)
 ```
 
 ### Two peripherals sharing one type
@@ -521,8 +554,9 @@ From [this SVD](../formats/svd.md#two-peripherals-sharing-one-type):
 /* UART (family: UART0, UART1) */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define UART_DR_OFFSET (0x00000000UL)
 #define UART_SR_OFFSET (0x00000004UL)
 
@@ -544,20 +578,20 @@ typedef uart_t uart1_t;
 REGFORGE_MAYBE_UNUSED static uart_t *const UART0 = (uart_t *)UART0_BASE;
 
 /* UART0.DR */
-#define UART0_DR (*(volatile uint32_t *)(UART0_BASE + UART_DR_OFFSET))
+#define UART0_DR (UART0->DR)
 
 /* UART0.SR */
-#define UART0_SR (*(volatile const uint32_t *)(UART0_BASE + UART_SR_OFFSET))
+#define UART0_SR (UART0->SR)
 
 /* UART1 @ 0x40004400 */
 #define UART1_BASE (0x40004400UL)
 REGFORGE_MAYBE_UNUSED static uart_t *const UART1 = (uart_t *)UART1_BASE;
 
 /* UART1.DR */
-#define UART1_DR (*(volatile uint32_t *)(UART1_BASE + UART_DR_OFFSET))
+#define UART1_DR (UART1->DR)
 
 /* UART1.SR */
-#define UART1_SR (*(volatile const uint32_t *)(UART1_BASE + UART_SR_OFFSET))
+#define UART1_SR (UART1->SR)
 ```
 
 ### A registers block and a buffer block
@@ -573,8 +607,9 @@ From [this SVD](../formats/svd.md#a-registers-block-and-a-buffer-block):
 /* UART0 */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define UART0_DR_OFFSET      (0x00000000UL)
 #define UART0_SR_OFFSET      (0x00000004UL)
 #define UART0_BUFFER0_OFFSET (0x00000008UL)
@@ -596,10 +631,10 @@ REGFORGE_STATIC_ASSERT(sizeof(uart0_t) == UART0_SIZE, UART0_SIZE_CHECK, "UART0 s
 REGFORGE_MAYBE_UNUSED static uart0_t *const UART0 = (uart0_t *)UART0_BASE;
 
 /* UART0.DR */
-#define UART0_DR (*(volatile uint32_t *)(UART0_BASE + UART0_DR_OFFSET))
+#define UART0_DR (UART0->DR)
 
 /* UART0.SR */
-#define UART0_SR (*(volatile const uint32_t *)(UART0_BASE + UART0_SR_OFFSET))
+#define UART0_SR (UART0->SR)
 ```
 
 ### Inherited register properties
@@ -615,8 +650,9 @@ From [this SVD](../formats/svd.md#inherited-register-properties):
 /* MISC */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define MISC_DR_OFFSET (0x00000000UL)
 #define MISC_SR_OFFSET (0x00000004UL)
 
@@ -632,10 +668,10 @@ REGFORGE_STATIC_ASSERT(offsetof(misc_t, SR) == MISC_SR_OFFSET, MISC_SR_OFFSET_CH
 REGFORGE_MAYBE_UNUSED static misc_t *const MISC = (misc_t *)MISC_BASE;
 
 /* MISC.DR */
-#define MISC_DR (*(volatile uint32_t *)(MISC_BASE + MISC_DR_OFFSET))
+#define MISC_DR (MISC->DR)
 
 /* MISC.SR */
-#define MISC_SR (*(volatile const uint32_t *)(MISC_BASE + MISC_SR_OFFSET))
+#define MISC_SR (MISC->SR)
 ```
 
 ### A peripheral array with a register array
@@ -651,8 +687,9 @@ From [this SVD](../formats/svd.md#a-peripheral-array-with-a-register-array):
 /* PWM (family: PWMA, PWMB) */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define PWM_CTRL_OFFSET    (0x00000000UL)
 #define PWM_RESERVED0_SIZE (0x0000000CUL)
 #define PWM_CC_OFFSET      (0x00000010UL)
@@ -678,6 +715,7 @@ REGFORGE_STATIC_ASSERT(offsetof(pwm_t, CC) == PWM_CC_OFFSET, PWM_CC_OFFSET_CHECK
 REGFORGE_STATIC_ASSERT(offsetof(pwm_t, DT0) == PWM_DT0_OFFSET, PWM_DT0_OFFSET_CHECK, "PWM.DT0 offset");
 REGFORGE_STATIC_ASSERT(offsetof(pwm_t, DT1) == PWM_DT1_OFFSET, PWM_DT1_OFFSET_CHECK, "PWM.DT1 offset");
 REGFORGE_STATIC_ASSERT(sizeof(((pwm_t *)0)->CC) == PWM_CC_COUNT * PWM_CC_STRIDE, PWM_CC_ARRAY_CHECK, "PWM.CC array size");
+REGFORGE_STATIC_ASSERT(offsetof(pwm_t, CC[PWM_CC_COUNT - 1U]) == PWM_CC_OFFSET + (PWM_CC_COUNT - 1U) * PWM_CC_STRIDE, PWM_CC_LAST_CHECK, "PWM.CC[3] offset via the struct");
 REGFORGE_STATIC_ASSERT(sizeof(pwm_t) == PWM_SIZE, PWM_SIZE_CHECK, "PWM struct size vs addressBlock");
 
 /* Per-instance names for the shared type, so a signature never has to know
@@ -691,34 +729,34 @@ typedef pwm_t pwmb_t;
 REGFORGE_MAYBE_UNUSED static pwm_t *const PWMA = (pwm_t *)PWMA_BASE;
 
 /* PWMA.CTRL */
-#define PWMA_CTRL (*(volatile uint32_t *)(PWMA_BASE + PWM_CTRL_OFFSET))
+#define PWMA_CTRL (PWMA->CTRL)
 
 /* PWMA.CC[4] */
 #define PWMA_CC_COUNT PWM_CC_COUNT
-#define PWMA_CC(i) (*(volatile uint32_t *)(PWMA_BASE + PWM_CC_OFFSET + (i) * PWM_CC_STRIDE))
+#define PWMA_CC(cc_index) (PWMA->CC[(cc_index)])
 
 /* PWMA.DT0 */
-#define PWMA_DT0 (*(volatile uint32_t *)(PWMA_BASE + PWM_DT0_OFFSET))
+#define PWMA_DT0 (PWMA->DT0)
 
 /* PWMA.DT1 */
-#define PWMA_DT1 (*(volatile uint32_t *)(PWMA_BASE + PWM_DT1_OFFSET))
+#define PWMA_DT1 (PWMA->DT1)
 
 /* PWMB @ 0x40015100 */
 #define PWMB_BASE (0x40015100UL)
 REGFORGE_MAYBE_UNUSED static pwm_t *const PWMB = (pwm_t *)PWMB_BASE;
 
 /* PWMB.CTRL */
-#define PWMB_CTRL (*(volatile uint32_t *)(PWMB_BASE + PWM_CTRL_OFFSET))
+#define PWMB_CTRL (PWMB->CTRL)
 
 /* PWMB.CC[4] */
 #define PWMB_CC_COUNT PWM_CC_COUNT
-#define PWMB_CC(i) (*(volatile uint32_t *)(PWMB_BASE + PWM_CC_OFFSET + (i) * PWM_CC_STRIDE))
+#define PWMB_CC(cc_index) (PWMB->CC[(cc_index)])
 
 /* PWMB.DT0 */
-#define PWMB_DT0 (*(volatile uint32_t *)(PWMB_BASE + PWM_DT0_OFFSET))
+#define PWMB_DT0 (PWMB->DT0)
 
 /* PWMB.DT1 */
-#define PWMB_DT1 (*(volatile uint32_t *)(PWMB_BASE + PWM_DT1_OFFSET))
+#define PWMB_DT1 (PWMB->DT1)
 ```
 
 ### A cluster array
@@ -734,8 +772,9 @@ From [this SVD](../formats/svd.md#a-cluster-array):
 /* DMA */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define DMA_CFG_OFFSET        (0x00000000UL)
 #define DMA_RESERVED0_SIZE    (0x0000000CUL)
 #define DMA_CH_OFFSET         (0x00000010UL)
@@ -764,6 +803,7 @@ typedef struct {
 REGFORGE_STATIC_ASSERT(offsetof(dma_t, CFG) == DMA_CFG_OFFSET, DMA_CFG_OFFSET_CHECK, "DMA.CFG offset");
 REGFORGE_STATIC_ASSERT(offsetof(dma_t, CH) == DMA_CH_OFFSET, DMA_CH_OFFSET_CHECK, "DMA.CH offset");
 REGFORGE_STATIC_ASSERT(sizeof(((dma_t *)0)->CH) == DMA_CH_COUNT * DMA_CH_STRIDE, DMA_CH_ARRAY_CHECK, "DMA.CH array size");
+REGFORGE_STATIC_ASSERT(offsetof(dma_t, CH[DMA_CH_COUNT - 1U]) == DMA_CH_OFFSET + (DMA_CH_COUNT - 1U) * DMA_CH_STRIDE, DMA_CH_LAST_CHECK, "DMA.CH[3] offset via the struct");
 REGFORGE_STATIC_ASSERT(sizeof(dma_t) == DMA_SIZE, DMA_SIZE_CHECK, "DMA struct size vs addressBlock");
 
 /* DMA @ 0x40016000 */
@@ -771,11 +811,11 @@ REGFORGE_STATIC_ASSERT(sizeof(dma_t) == DMA_SIZE, DMA_SIZE_CHECK, "DMA struct si
 REGFORGE_MAYBE_UNUSED static dma_t *const DMA = (dma_t *)DMA_BASE;
 
 /* DMA.CFG */
-#define DMA_CFG (*(volatile uint32_t *)(DMA_BASE + DMA_CFG_OFFSET))
+#define DMA_CFG (DMA->CFG)
 
 /* DMA.CH[4].CTRL */
-#define DMA_CH_CTRL(i) (*(volatile uint32_t *)(DMA_BASE + DMA_CH_OFFSET + (i) * DMA_CH_STRIDE + DMA_CH_CTRL_OFFSET))
+#define DMA_CH_CTRL(ch_index) (DMA->CH[(ch_index)].CTRL)
 
 /* DMA.CH[4].SRC */
-#define DMA_CH_SRC(i) (*(volatile uint32_t *)(DMA_BASE + DMA_CH_OFFSET + (i) * DMA_CH_STRIDE + DMA_CH_SRC_OFFSET))
+#define DMA_CH_SRC(ch_index) (DMA->CH[(ch_index)].SRC)
 ```

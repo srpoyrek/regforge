@@ -20,8 +20,9 @@ Tests: `tests/readers/svd/test_clusters.py`, `tests/core/test_layout.py`,
 
 Its registers are laid out inside it exactly as a peripheral's are: offsets
 relative to the cluster, gaps padded, overlaps refused. The cluster then takes
-one slot in its parent at its own offset. The emitted type is defined before
-the struct that uses it.
+one slot in its parent at its own offset, sized to its extent rounded up to
+the type's alignment, and that size is asserted so the inner struct is checked
+on its own terms. The emitted type is defined before the struct that uses it.
 
 ### Example
 
@@ -42,6 +43,7 @@ typedef struct {
     volatile const uint32_t FLAGS;  /* 0x00 */
     volatile const uint32_t ERR;    /* 0x04 */
 } dc_dma_stat_t;
+REGFORGE_STATIC_ASSERT(sizeof(dc_dma_stat_t) == DC_DMA_STAT_SIZE, DC_DMA_STAT_SIZE_CHECK, "DMA.STAT size vs its last register");
 
     dc_dma_stat_t     STAT;            /* 0x50 */
 ```
@@ -80,7 +82,7 @@ REGFORGE_STATIC_ASSERT(sizeof(dma_ch_t) == DMA_CH_STRIDE, DMA_CH_SIZE_CHECK, "DM
 Complete versions: [the whole SVD](formats/svd.md#a-cluster-array) and
 [the whole header](targets/c.md#a-cluster-array).
 
-A single cluster gets no size assert: the source declares no size for it.
+A single cluster is asserted against its extent instead of a stride; see Rule 1.
 
 ## Rule 3: the type is named inside the family
 
@@ -112,6 +114,7 @@ clusters match too: name, offset, shape and contents
 | `derivedFrom` on a cluster | Parsed, reported as a warning, not resolved. The cluster is emitted as written, so it needs registers of its own. |
 | `dimIndex` on `CH[%s]` | Ignored with a warning; array elements are indexed by the language. |
 | `CH%s` | Copies `CH0`, `CH1`, ... `dimIncrement` apart, one shared type named after the stem. |
-| A register array inside a cluster array | Both indices in the flat macro, outermost first: `DMA_CH_BUF(i, j)`. |
+| A register array inside a cluster array | Both indices in the flat macro, outermost first, each named for its array: `DMA_CH_BUF(ch_index, buf_index)`. |
+| A single cluster ending mid-word | Its C type is padded to its alignment, so the slot and `_SIZE` are the padded extent; a register placed in that padding is a `LayoutError`. |
 | `alternateCluster` | Not read. |
 | Interrupts, address blocks or fields written inside a cluster | Ignored: the schema puts them on the peripheral and the register. |

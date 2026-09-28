@@ -156,9 +156,9 @@ def test_read_only_member_and_macro_are_const():
     squashed = _squash(output)
     assert "volatile uint32_t RW;" in squashed  # read-write: writable
     assert "volatile const uint32_t RO;" in squashed  # read-only: const struct member
-    # The flat macro is const too, so it cannot be a write backdoor to a RO register.
-    assert "#define P_RO (*(volatile const uint32_t *)" in output
-    assert "#define P_RW (*(volatile uint32_t *)" in output
+    # The flat macro is the member itself, so it cannot be a write backdoor to RO.
+    assert "#define P_RO (P->RO)" in output
+    assert "#define P_RW (P->RW)" in output
 
 
 def test_size_less_register_is_refused_without_resolution():

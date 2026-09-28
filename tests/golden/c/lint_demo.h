@@ -102,8 +102,9 @@ typedef enum {
 /* UART */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_UART_DR_OFFSET      (0x00000000UL)
 #define LD_UART_RESERVED0_SIZE (0x000003FCUL)
 #define LD_UART_SIZE           (0x00000400UL)
@@ -120,15 +121,16 @@ REGFORGE_STATIC_ASSERT(sizeof(ld_uart_t) == LD_UART_SIZE, LD_UART_SIZE_CHECK, "U
 REGFORGE_MAYBE_UNUSED static ld_uart_t *const LD_UART = (ld_uart_t *)LD_UART_BASE;
 
 /* UART.DR */
-#define LD_UART_DR (*(volatile uint32_t *)(LD_UART_BASE + LD_UART_DR_OFFSET))
+#define LD_UART_DR (LD_UART->DR)
 
 
 /* -------------------------------------------------------------------------- */
 /* TIMER */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_TIMER_CR_OFFSET      (0x00000000UL)
 #define LD_TIMER_RESERVED0_SIZE (0x000000FCUL)
 #define LD_TIMER_SIZE           (0x00000100UL)
@@ -145,15 +147,16 @@ REGFORGE_STATIC_ASSERT(sizeof(ld_timer_t) == LD_TIMER_SIZE, LD_TIMER_SIZE_CHECK,
 REGFORGE_MAYBE_UNUSED static ld_timer_t *const LD_TIMER = (ld_timer_t *)LD_TIMER_BASE;
 
 /* TIMER.CR */
-#define LD_TIMER_CR (*(volatile uint32_t *)(LD_TIMER_BASE + LD_TIMER_CR_OFFSET))
+#define LD_TIMER_CR (LD_TIMER->CR)
 
 
 /* -------------------------------------------------------------------------- */
 /* FLASH */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_FLASH_CR_OFFSET      (0x00000000UL)
 #define LD_FLASH_RESERVED0_SIZE (0x0000003CUL)
 #define LD_FLASH_FAR_OFFSET     (0x00000040UL)
@@ -173,18 +176,19 @@ REGFORGE_STATIC_ASSERT(sizeof(ld_flash_t) == LD_FLASH_SIZE, LD_FLASH_SIZE_CHECK,
 REGFORGE_MAYBE_UNUSED static ld_flash_t *const LD_FLASH = (ld_flash_t *)LD_FLASH_BASE;
 
 /* FLASH.CR */
-#define LD_FLASH_CR (*(volatile uint32_t *)(LD_FLASH_BASE + LD_FLASH_CR_OFFSET))
+#define LD_FLASH_CR (LD_FLASH->CR)
 
 /* FLASH.FAR */
-#define LD_FLASH_FAR (*(volatile uint32_t *)(LD_FLASH_BASE + LD_FLASH_FAR_OFFSET))
+#define LD_FLASH_FAR (LD_FLASH->FAR)
 
 
 /* -------------------------------------------------------------------------- */
 /* DMA */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_DMA_CR_OFFSET      (0x00000000UL)
 #define LD_DMA_RESERVED0_SIZE (0x0000000CUL)
 #define LD_DMA_BUFFER0_OFFSET (0x00000010UL)
@@ -205,15 +209,16 @@ REGFORGE_STATIC_ASSERT(sizeof(ld_dma_t) == LD_DMA_SIZE, LD_DMA_SIZE_CHECK, "DMA 
 REGFORGE_MAYBE_UNUSED static ld_dma_t *const LD_DMA = (ld_dma_t *)LD_DMA_BASE;
 
 /* DMA.CR */
-#define LD_DMA_CR (*(volatile uint32_t *)(LD_DMA_BASE + LD_DMA_CR_OFFSET))
+#define LD_DMA_CR (LD_DMA->CR)
 
 
 /* -------------------------------------------------------------------------- */
 /* FIFO */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_FIFO_CR_OFFSET      (0x00000000UL)
 #define LD_FIFO_RESERVED0_SIZE (0x00001FFCUL)
 #define LD_FIFO_DATA_OFFSET    (0x00002000UL)
@@ -233,18 +238,19 @@ REGFORGE_STATIC_ASSERT(sizeof(ld_fifo_t) == LD_FIFO_SIZE, LD_FIFO_SIZE_CHECK, "F
 REGFORGE_MAYBE_UNUSED static ld_fifo_t *const LD_FIFO = (ld_fifo_t *)LD_FIFO_BASE;
 
 /* FIFO.CR */
-#define LD_FIFO_CR (*(volatile uint32_t *)(LD_FIFO_BASE + LD_FIFO_CR_OFFSET))
+#define LD_FIFO_CR (LD_FIFO->CR)
 
 /* FIFO.DATA */
-#define LD_FIFO_DATA (*(volatile uint32_t *)(LD_FIFO_BASE + LD_FIFO_DATA_OFFSET))
+#define LD_FIFO_DATA (LD_FIFO->DATA)
 
 
 /* -------------------------------------------------------------------------- */
 /* MISC */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_MISC_REG_OFFSET (0x00000000UL)
 
 typedef struct {
@@ -257,15 +263,16 @@ REGFORGE_STATIC_ASSERT(offsetof(ld_misc_t, REG) == LD_MISC_REG_OFFSET, LD_MISC_R
 REGFORGE_MAYBE_UNUSED static ld_misc_t *const LD_MISC = (ld_misc_t *)LD_MISC_BASE;
 
 /* MISC.REG */
-#define LD_MISC_REG (*(volatile uint32_t *)(LD_MISC_BASE + LD_MISC_REG_OFFSET))
+#define LD_MISC_REG (LD_MISC->REG)
 
 
 /* -------------------------------------------------------------------------- */
 /* FPU_CPACR */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_FPU_CPACR_CPACR_OFFSET (0x00000000UL)
 
 typedef struct {
@@ -278,7 +285,7 @@ REGFORGE_STATIC_ASSERT(offsetof(ld_fpu_cpacr_t, CPACR) == LD_FPU_CPACR_CPACR_OFF
 REGFORGE_MAYBE_UNUSED static ld_fpu_cpacr_t *const LD_FPU_CPACR = (ld_fpu_cpacr_t *)LD_FPU_CPACR_BASE;
 
 /* FPU_CPACR.CPACR */
-#define LD_FPU_CPACR_CPACR (*(volatile uint32_t *)(LD_FPU_CPACR_BASE + LD_FPU_CPACR_CPACR_OFFSET))
+#define LD_FPU_CPACR_CPACR (LD_FPU_CPACR->CPACR)
 
 
 /* -------------------------------------------------------------------------- */
@@ -286,8 +293,9 @@ REGFORGE_MAYBE_UNUSED static ld_fpu_cpacr_t *const LD_FPU_CPACR = (ld_fpu_cpacr_
 /* family FPU: split 2 ways by layout (FPU_CPACR | FPU); first differs at CPACR */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_FPU_FPCCR_OFFSET (0x00000000UL)
 #define LD_FPU_FPCAR_OFFSET (0x00000004UL)
 
@@ -303,10 +311,10 @@ REGFORGE_STATIC_ASSERT(offsetof(ld_fpu_t, FPCAR) == LD_FPU_FPCAR_OFFSET, LD_FPU_
 REGFORGE_MAYBE_UNUSED static ld_fpu_t *const LD_FPU = (ld_fpu_t *)LD_FPU_BASE;
 
 /* FPU.FPCCR */
-#define LD_FPU_FPCCR (*(volatile uint32_t *)(LD_FPU_BASE + LD_FPU_FPCCR_OFFSET))
+#define LD_FPU_FPCCR (LD_FPU->FPCCR)
 
 /* FPU.FPCAR */
-#define LD_FPU_FPCAR (*(volatile uint32_t *)(LD_FPU_BASE + LD_FPU_FPCAR_OFFSET))
+#define LD_FPU_FPCAR (LD_FPU->FPCAR)
 
 
 /* -------------------------------------------------------------------------- */
@@ -314,8 +322,9 @@ REGFORGE_MAYBE_UNUSED static ld_fpu_t *const LD_FPU = (ld_fpu_t *)LD_FPU_BASE;
 /* family TMR: split 2 ways by layout (TMR0 | TIMER_ADV); first differs at RCR */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_TMR_CR1_OFFSET (0x00000000UL)
 
 typedef struct {
@@ -333,15 +342,16 @@ typedef ld_tmr_t ld_tmr0_t;
 REGFORGE_MAYBE_UNUSED static ld_tmr_t *const LD_TMR0 = (ld_tmr_t *)LD_TMR0_BASE;
 
 /* TMR0.CR1 */
-#define LD_TMR0_CR1 (*(volatile uint32_t *)(LD_TMR0_BASE + LD_TMR_CR1_OFFSET))
+#define LD_TMR0_CR1 (LD_TMR0->CR1)
 
 
 /* -------------------------------------------------------------------------- */
 /* TIMER_ADV */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_TIMER_ADV_CR1_OFFSET (0x00000000UL)
 #define LD_TIMER_ADV_RCR_OFFSET (0x00000004UL)
 
@@ -357,18 +367,19 @@ REGFORGE_STATIC_ASSERT(offsetof(ld_timer_adv_t, RCR) == LD_TIMER_ADV_RCR_OFFSET,
 REGFORGE_MAYBE_UNUSED static ld_timer_adv_t *const LD_TIMER_ADV = (ld_timer_adv_t *)LD_TIMER_ADV_BASE;
 
 /* TIMER_ADV.CR1 */
-#define LD_TIMER_ADV_CR1 (*(volatile uint32_t *)(LD_TIMER_ADV_BASE + LD_TIMER_ADV_CR1_OFFSET))
+#define LD_TIMER_ADV_CR1 (LD_TIMER_ADV->CR1)
 
 /* TIMER_ADV.RCR */
-#define LD_TIMER_ADV_RCR (*(volatile uint32_t *)(LD_TIMER_ADV_BASE + LD_TIMER_ADV_RCR_OFFSET))
+#define LD_TIMER_ADV_RCR (LD_TIMER_ADV->RCR)
 
 
 /* -------------------------------------------------------------------------- */
 /* ADCA (family: ADCA, ADCB) */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_ADCA_CR_OFFSET (0x00000000UL)
 
 typedef struct {
@@ -387,22 +398,23 @@ REGFORGE_MAYBE_UNUSED static ld_adca_t *const LD_ADCA = (ld_adca_t *)LD_ADCA_BAS
 #define LD_ADCA_IRQ LD_ADCA_IRQn  /* vector 40 */
 
 /* ADCA.CR */
-#define LD_ADCA_CR (*(volatile uint32_t *)(LD_ADCA_BASE + LD_ADCA_CR_OFFSET))
+#define LD_ADCA_CR (LD_ADCA->CR)
 
 /* ADCB @ 0x40055000 */
 #define LD_ADCB_BASE (0x40055000UL)
 REGFORGE_MAYBE_UNUSED static ld_adca_t *const LD_ADCB = (ld_adca_t *)LD_ADCB_BASE;
 
 /* ADCB.CR */
-#define LD_ADCB_CR (*(volatile uint32_t *)(LD_ADCB_BASE + LD_ADCA_CR_OFFSET))
+#define LD_ADCB_CR (LD_ADCB->CR)
 
 
 /* -------------------------------------------------------------------------- */
 /* TMRX (family: TMRX0, TMRX1, TMRV) */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_TMRX_CR_OFFSET (0x00000000UL)
 
 typedef struct {
@@ -423,7 +435,7 @@ REGFORGE_MAYBE_UNUSED static ld_tmrx_t *const LD_TMRX0 = (ld_tmrx_t *)LD_TMRX0_B
 #define LD_TMRX0_IRQ LD_TMRX0_IRQn  /* vector 41 -- shared with LD_TMRX1; demux in ISR */
 
 /* TMRX0.CR */
-#define LD_TMRX0_CR (*(volatile uint32_t *)(LD_TMRX0_BASE + LD_TMRX_CR_OFFSET))
+#define LD_TMRX0_CR (LD_TMRX0->CR)
 
 /* TMRX1 @ 0x40056100 */
 #define LD_TMRX1_BASE (0x40056100UL)
@@ -431,7 +443,7 @@ REGFORGE_MAYBE_UNUSED static ld_tmrx_t *const LD_TMRX1 = (ld_tmrx_t *)LD_TMRX1_B
 #define LD_TMRX1_IRQ LD_TMRX1_IRQn  /* vector 41 -- shared with LD_TMRX0; demux in ISR */
 
 /* TMRX1.CR */
-#define LD_TMRX1_CR (*(volatile uint32_t *)(LD_TMRX1_BASE + LD_TMRX_CR_OFFSET))
+#define LD_TMRX1_CR (LD_TMRX1->CR)
 
 /* TMRV @ 0x40062000 */
 #define LD_TMRV_BASE (0x40062000UL)
@@ -439,21 +451,23 @@ REGFORGE_MAYBE_UNUSED static ld_tmrx_t *const LD_TMRV = (ld_tmrx_t *)LD_TMRV_BAS
 #define LD_TMRV_IRQ LD_TMRV_IRQn  /* vector 42 */
 
 /* TMRV.CR */
-#define LD_TMRV_CR (*(volatile uint32_t *)(LD_TMRV_BASE + LD_TMRX_CR_OFFSET))
+#define LD_TMRV_CR (LD_TMRV->CR)
 
 
 /* -------------------------------------------------------------------------- */
 /* DMAX */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_DMAX_CH_OFFSET         (0x00000000UL)
 #define LD_DMAX_CH_STRIDE         (0x00000010UL)
 #define LD_DMAX_CH_COUNT          (2U)
 #define LD_DMAX_CH_CTRL_OFFSET    (0x00000000UL)
 #define LD_DMAX_CH_RESERVED0_SIZE (0x0000000CUL)
 #define LD_DMAX_EXTRA_OFFSET      (0x00000020UL)
+#define LD_DMAX_EXTRA_SIZE        (0x00000004UL)
 #define LD_DMAX_EXTRA_CTRL_OFFSET (0x00000000UL)
 
 /* DMAX.CH (2 elements, 0x10 bytes apart) */
@@ -469,6 +483,7 @@ typedef struct {
     volatile uint32_t CTRL;  /* 0x00 */
 } ld_dmax_extra_t;
 REGFORGE_STATIC_ASSERT(offsetof(ld_dmax_extra_t, CTRL) == LD_DMAX_EXTRA_CTRL_OFFSET, LD_DMAX_EXTRA_CTRL_OFFSET_CHECK, "DMAX.EXTRA.CTRL offset");
+REGFORGE_STATIC_ASSERT(sizeof(ld_dmax_extra_t) == LD_DMAX_EXTRA_SIZE, LD_DMAX_EXTRA_SIZE_CHECK, "DMAX.EXTRA size vs its last register");
 
 typedef struct {
     ld_dmax_ch_t    CH[LD_DMAX_CH_COUNT];  /* 0x00 */
@@ -477,24 +492,26 @@ typedef struct {
 REGFORGE_STATIC_ASSERT(offsetof(ld_dmax_t, CH) == LD_DMAX_CH_OFFSET, LD_DMAX_CH_OFFSET_CHECK, "DMAX.CH offset");
 REGFORGE_STATIC_ASSERT(offsetof(ld_dmax_t, EXTRA) == LD_DMAX_EXTRA_OFFSET, LD_DMAX_EXTRA_OFFSET_CHECK, "DMAX.EXTRA offset");
 REGFORGE_STATIC_ASSERT(sizeof(((ld_dmax_t *)0)->CH) == LD_DMAX_CH_COUNT * LD_DMAX_CH_STRIDE, LD_DMAX_CH_ARRAY_CHECK, "DMAX.CH array size");
+REGFORGE_STATIC_ASSERT(offsetof(ld_dmax_t, CH[LD_DMAX_CH_COUNT - 1U]) == LD_DMAX_CH_OFFSET + (LD_DMAX_CH_COUNT - 1U) * LD_DMAX_CH_STRIDE, LD_DMAX_CH_LAST_CHECK, "DMAX.CH[1] offset via the struct");
 
 /* DMAX @ 0x40057000 */
 #define LD_DMAX_BASE (0x40057000UL)
 REGFORGE_MAYBE_UNUSED static ld_dmax_t *const LD_DMAX = (ld_dmax_t *)LD_DMAX_BASE;
 
 /* DMAX.CH[2].CTRL */
-#define LD_DMAX_CH_CTRL(i) (*(volatile uint32_t *)(LD_DMAX_BASE + LD_DMAX_CH_OFFSET + (i) * LD_DMAX_CH_STRIDE + LD_DMAX_CH_CTRL_OFFSET))
+#define LD_DMAX_CH_CTRL(ch_index) (LD_DMAX->CH[(ch_index)].CTRL)
 
 /* DMAX.EXTRA.CTRL */
-#define LD_DMAX_EXTRA_CTRL (*(volatile uint32_t *)(LD_DMAX_BASE + LD_DMAX_EXTRA_OFFSET + LD_DMAX_EXTRA_CTRL_OFFSET))
+#define LD_DMAX_EXTRA_CTRL (LD_DMAX->EXTRA.CTRL)
 
 
 /* -------------------------------------------------------------------------- */
 /* TMRY (family: TMRY0, TMRY1) */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_TMRY_CR_OFFSET (0x00000000UL)
 
 typedef struct {
@@ -513,22 +530,23 @@ typedef ld_tmry_t ld_tmry1_t;
 REGFORGE_MAYBE_UNUSED static ld_tmry_t *const LD_TMRY0 = (ld_tmry_t *)LD_TMRY0_BASE;
 
 /* TMRY0.CR */
-#define LD_TMRY0_CR (*(volatile uint32_t *)(LD_TMRY0_BASE + LD_TMRY_CR_OFFSET))
+#define LD_TMRY0_CR (LD_TMRY0->CR)
 
 /* TMRY1 @ 0x40058100 */
 #define LD_TMRY1_BASE (0x40058100UL)
 REGFORGE_MAYBE_UNUSED static ld_tmry_t *const LD_TMRY1 = (ld_tmry_t *)LD_TMRY1_BASE;
 
 /* TMRY1.CR */
-#define LD_TMRY1_CR (*(volatile uint32_t *)(LD_TMRY1_BASE + LD_TMRY_CR_OFFSET))
+#define LD_TMRY1_CR (LD_TMRY1->CR)
 
 
 /* -------------------------------------------------------------------------- */
 /* TMRZ (family: TMRZ0, TMRZ1, TMRZ2) */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_TMRZ_CR_OFFSET (0x00000000UL)
 
 typedef struct {
@@ -548,29 +566,30 @@ typedef ld_tmrz_t ld_tmrz2_t;
 REGFORGE_MAYBE_UNUSED static ld_tmrz_t *const LD_TMRZ0 = (ld_tmrz_t *)LD_TMRZ0_BASE;
 
 /* TMRZ0.CR */
-#define LD_TMRZ0_CR (*(volatile uint32_t *)(LD_TMRZ0_BASE + LD_TMRZ_CR_OFFSET))
+#define LD_TMRZ0_CR (LD_TMRZ0->CR)
 
 /* TMRZ1 @ 0x40059100 */
 #define LD_TMRZ1_BASE (0x40059100UL)
 REGFORGE_MAYBE_UNUSED static ld_tmrz_t *const LD_TMRZ1 = (ld_tmrz_t *)LD_TMRZ1_BASE;
 
 /* TMRZ1.CR */
-#define LD_TMRZ1_CR (*(volatile uint32_t *)(LD_TMRZ1_BASE + LD_TMRZ_CR_OFFSET))
+#define LD_TMRZ1_CR (LD_TMRZ1->CR)
 
 /* TMRZ2 @ 0x40059200 */
 #define LD_TMRZ2_BASE (0x40059200UL)
 REGFORGE_MAYBE_UNUSED static ld_tmrz_t *const LD_TMRZ2 = (ld_tmrz_t *)LD_TMRZ2_BASE;
 
 /* TMRZ2.CR */
-#define LD_TMRZ2_CR (*(volatile uint32_t *)(LD_TMRZ2_BASE + LD_TMRZ_CR_OFFSET))
+#define LD_TMRZ2_CR (LD_TMRZ2->CR)
 
 
 /* -------------------------------------------------------------------------- */
 /* TMRW */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_TMRW_CR_OFFSET (0x00000000UL)
 
 typedef struct {
@@ -583,15 +602,16 @@ REGFORGE_STATIC_ASSERT(offsetof(ld_tmrw_t, CR) == LD_TMRW_CR_OFFSET, LD_TMRW_CR_
 REGFORGE_MAYBE_UNUSED static ld_tmrw_t *const LD_TMRW = (ld_tmrw_t *)LD_TMRW_BASE;
 
 /* TMRW.CR */
-#define LD_TMRW_CR (*(volatile uint32_t *)(LD_TMRW_BASE + LD_TMRW_CR_OFFSET))
+#define LD_TMRW_CR (LD_TMRW->CR)
 
 
 /* -------------------------------------------------------------------------- */
 /* NOTDIM */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_NOTDIM_CR_OFFSET (0x00000000UL)
 
 typedef struct {
@@ -604,15 +624,16 @@ REGFORGE_STATIC_ASSERT(offsetof(ld_notdim_t, CR) == LD_NOTDIM_CR_OFFSET, LD_NOTD
 REGFORGE_MAYBE_UNUSED static ld_notdim_t *const LD_NOTDIM = (ld_notdim_t *)LD_NOTDIM_BASE;
 
 /* NOTDIM.CR */
-#define LD_NOTDIM_CR (*(volatile uint32_t *)(LD_NOTDIM_BASE + LD_NOTDIM_CR_OFFSET))
+#define LD_NOTDIM_CR (LD_NOTDIM->CR)
 
 
 /* -------------------------------------------------------------------------- */
 /* SAME (family: SAME0, SAME1) */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_SAME_CR_OFFSET (0x00000000UL)
 
 typedef struct {
@@ -631,22 +652,23 @@ typedef ld_same_t ld_same1_t;
 REGFORGE_MAYBE_UNUSED static ld_same_t *const LD_SAME0 = (ld_same_t *)LD_SAME0_BASE;
 
 /* SAME0.CR */
-#define LD_SAME0_CR (*(volatile uint32_t *)(LD_SAME0_BASE + LD_SAME_CR_OFFSET))
+#define LD_SAME0_CR (LD_SAME0->CR)
 
 /* SAME1 @ 0x4005D000 */
 #define LD_SAME1_BASE (0x4005D000UL)
 REGFORGE_MAYBE_UNUSED static ld_same_t *const LD_SAME1 = (ld_same_t *)LD_SAME1_BASE;
 
 /* SAME1.CR */
-#define LD_SAME1_CR (*(volatile uint32_t *)(LD_SAME1_BASE + LD_SAME_CR_OFFSET))
+#define LD_SAME1_CR (LD_SAME1->CR)
 
 
 /* -------------------------------------------------------------------------- */
 /* PWMX */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_PWMX_CH_OFFSET      (0x00000000UL)
 #define LD_PWMX_CH_STRIDE      (0x00000008UL)
 #define LD_PWMX_CH_COUNT       (4U)
@@ -677,15 +699,16 @@ REGFORGE_STATIC_ASSERT(sizeof(ld_pwmx_t) == LD_PWMX_SIZE, LD_PWMX_SIZE_CHECK, "P
 REGFORGE_MAYBE_UNUSED static ld_pwmx_t *const LD_PWMX = (ld_pwmx_t *)LD_PWMX_BASE;
 
 /* PWMX.CH[4] */
-#define LD_PWMX_CH(i) (*(volatile uint32_t *)(LD_PWMX_BASE + LD_PWMX_CH_OFFSET + (i) * LD_PWMX_CH_STRIDE))
+#define LD_PWMX_CH(ch_index) (*(volatile uint32_t *)(LD_PWMX_BASE + LD_PWMX_CH_OFFSET + (ch_index) * LD_PWMX_CH_STRIDE))
 
 
 /* -------------------------------------------------------------------------- */
 /* FIFOX */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_FIFOX_DATA0_OFFSET  (0x00000000UL)
 #define LD_FIFOX_DATA1_OFFSET  (0x00000004UL)
 #define LD_FIFOX_DATA2_OFFSET  (0x00000008UL)
@@ -745,60 +768,61 @@ REGFORGE_STATIC_ASSERT(sizeof(ld_fifox_t) == LD_FIFOX_SIZE, LD_FIFOX_SIZE_CHECK,
 REGFORGE_MAYBE_UNUSED static ld_fifox_t *const LD_FIFOX = (ld_fifox_t *)LD_FIFOX_BASE;
 
 /* FIFOX.DATA0 */
-#define LD_FIFOX_DATA0 (*(volatile uint32_t *)(LD_FIFOX_BASE + LD_FIFOX_DATA0_OFFSET))
+#define LD_FIFOX_DATA0 (LD_FIFOX->DATA0)
 
 /* FIFOX.DATA1 */
-#define LD_FIFOX_DATA1 (*(volatile uint32_t *)(LD_FIFOX_BASE + LD_FIFOX_DATA1_OFFSET))
+#define LD_FIFOX_DATA1 (LD_FIFOX->DATA1)
 
 /* FIFOX.DATA2 */
-#define LD_FIFOX_DATA2 (*(volatile uint32_t *)(LD_FIFOX_BASE + LD_FIFOX_DATA2_OFFSET))
+#define LD_FIFOX_DATA2 (LD_FIFOX->DATA2)
 
 /* FIFOX.DATA3 */
-#define LD_FIFOX_DATA3 (*(volatile uint32_t *)(LD_FIFOX_BASE + LD_FIFOX_DATA3_OFFSET))
+#define LD_FIFOX_DATA3 (LD_FIFOX->DATA3)
 
 /* FIFOX.DATA4 */
-#define LD_FIFOX_DATA4 (*(volatile uint32_t *)(LD_FIFOX_BASE + LD_FIFOX_DATA4_OFFSET))
+#define LD_FIFOX_DATA4 (LD_FIFOX->DATA4)
 
 /* FIFOX.DATA5 */
-#define LD_FIFOX_DATA5 (*(volatile uint32_t *)(LD_FIFOX_BASE + LD_FIFOX_DATA5_OFFSET))
+#define LD_FIFOX_DATA5 (LD_FIFOX->DATA5)
 
 /* FIFOX.DATA6 */
-#define LD_FIFOX_DATA6 (*(volatile uint32_t *)(LD_FIFOX_BASE + LD_FIFOX_DATA6_OFFSET))
+#define LD_FIFOX_DATA6 (LD_FIFOX->DATA6)
 
 /* FIFOX.DATA7 */
-#define LD_FIFOX_DATA7 (*(volatile uint32_t *)(LD_FIFOX_BASE + LD_FIFOX_DATA7_OFFSET))
+#define LD_FIFOX_DATA7 (LD_FIFOX->DATA7)
 
 /* FIFOX.DATA8 */
-#define LD_FIFOX_DATA8 (*(volatile uint32_t *)(LD_FIFOX_BASE + LD_FIFOX_DATA8_OFFSET))
+#define LD_FIFOX_DATA8 (LD_FIFOX->DATA8)
 
 /* FIFOX.DATA9 */
-#define LD_FIFOX_DATA9 (*(volatile uint32_t *)(LD_FIFOX_BASE + LD_FIFOX_DATA9_OFFSET))
+#define LD_FIFOX_DATA9 (LD_FIFOX->DATA9)
 
 /* FIFOX.DATA10 */
-#define LD_FIFOX_DATA10 (*(volatile uint32_t *)(LD_FIFOX_BASE + LD_FIFOX_DATA10_OFFSET))
+#define LD_FIFOX_DATA10 (LD_FIFOX->DATA10)
 
 /* FIFOX.DATA11 */
-#define LD_FIFOX_DATA11 (*(volatile uint32_t *)(LD_FIFOX_BASE + LD_FIFOX_DATA11_OFFSET))
+#define LD_FIFOX_DATA11 (LD_FIFOX->DATA11)
 
 /* FIFOX.DATA12 */
-#define LD_FIFOX_DATA12 (*(volatile uint32_t *)(LD_FIFOX_BASE + LD_FIFOX_DATA12_OFFSET))
+#define LD_FIFOX_DATA12 (LD_FIFOX->DATA12)
 
 /* FIFOX.DATA13 */
-#define LD_FIFOX_DATA13 (*(volatile uint32_t *)(LD_FIFOX_BASE + LD_FIFOX_DATA13_OFFSET))
+#define LD_FIFOX_DATA13 (LD_FIFOX->DATA13)
 
 /* FIFOX.DATA14 */
-#define LD_FIFOX_DATA14 (*(volatile uint32_t *)(LD_FIFOX_BASE + LD_FIFOX_DATA14_OFFSET))
+#define LD_FIFOX_DATA14 (LD_FIFOX->DATA14)
 
 /* FIFOX.DATA15 */
-#define LD_FIFOX_DATA15 (*(volatile uint32_t *)(LD_FIFOX_BASE + LD_FIFOX_DATA15_OFFSET))
+#define LD_FIFOX_DATA15 (LD_FIFOX->DATA15)
 
 
 /* -------------------------------------------------------------------------- */
 /* OVL (family: OVL0, OVL1) */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_OVL_CR_OFFSET      (0x00000000UL)
 #define LD_OVL_RESERVED0_SIZE (0x000003FCUL)
 #define LD_OVL_SIZE           (0x00000400UL)
@@ -821,22 +845,23 @@ typedef ld_ovl_t ld_ovl1_t;
 REGFORGE_MAYBE_UNUSED static ld_ovl_t *const LD_OVL0 = (ld_ovl_t *)LD_OVL0_BASE;
 
 /* OVL0.CR */
-#define LD_OVL0_CR (*(volatile uint32_t *)(LD_OVL0_BASE + LD_OVL_CR_OFFSET))
+#define LD_OVL0_CR (LD_OVL0->CR)
 
 /* OVL1 @ 0x40060100 */
 #define LD_OVL1_BASE (0x40060100UL)
 REGFORGE_MAYBE_UNUSED static ld_ovl_t *const LD_OVL1 = (ld_ovl_t *)LD_OVL1_BASE;
 
 /* OVL1.CR */
-#define LD_OVL1_CR (*(volatile uint32_t *)(LD_OVL1_BASE + LD_OVL_CR_OFFSET))
+#define LD_OVL1_CR (LD_OVL1->CR)
 
 
 /* -------------------------------------------------------------------------- */
 /* SER (family: SER0, SER1, SER2, SER3, SERX0, SERX1, SERX2, SERX3) */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_SER_CR_OFFSET      (0x00000000UL)
 #define LD_SER_RESERVED0_SIZE (0x000000FCUL)
 #define LD_SER_SIZE           (0x00000100UL)
@@ -865,64 +890,65 @@ typedef ld_ser_t ld_serx3_t;
 REGFORGE_MAYBE_UNUSED static ld_ser_t *const LD_SER0 = (ld_ser_t *)LD_SER0_BASE;
 
 /* SER0.CR */
-#define LD_SER0_CR (*(volatile uint32_t *)(LD_SER0_BASE + LD_SER_CR_OFFSET))
+#define LD_SER0_CR (LD_SER0->CR)
 
 /* SER1 @ 0x40061100 */
 #define LD_SER1_BASE (0x40061100UL)
 REGFORGE_MAYBE_UNUSED static ld_ser_t *const LD_SER1 = (ld_ser_t *)LD_SER1_BASE;
 
 /* SER1.CR */
-#define LD_SER1_CR (*(volatile uint32_t *)(LD_SER1_BASE + LD_SER_CR_OFFSET))
+#define LD_SER1_CR (LD_SER1->CR)
 
 /* SER2 @ 0x40061200 */
 #define LD_SER2_BASE (0x40061200UL)
 REGFORGE_MAYBE_UNUSED static ld_ser_t *const LD_SER2 = (ld_ser_t *)LD_SER2_BASE;
 
 /* SER2.CR */
-#define LD_SER2_CR (*(volatile uint32_t *)(LD_SER2_BASE + LD_SER_CR_OFFSET))
+#define LD_SER2_CR (LD_SER2->CR)
 
 /* SER3 @ 0x40061300 */
 #define LD_SER3_BASE (0x40061300UL)
 REGFORGE_MAYBE_UNUSED static ld_ser_t *const LD_SER3 = (ld_ser_t *)LD_SER3_BASE;
 
 /* SER3.CR */
-#define LD_SER3_CR (*(volatile uint32_t *)(LD_SER3_BASE + LD_SER_CR_OFFSET))
+#define LD_SER3_CR (LD_SER3->CR)
 
 /* SERX0 @ 0x40063000 */
 #define LD_SERX0_BASE (0x40063000UL)
 REGFORGE_MAYBE_UNUSED static ld_ser_t *const LD_SERX0 = (ld_ser_t *)LD_SERX0_BASE;
 
 /* SERX0.CR */
-#define LD_SERX0_CR (*(volatile uint32_t *)(LD_SERX0_BASE + LD_SER_CR_OFFSET))
+#define LD_SERX0_CR (LD_SERX0->CR)
 
 /* SERX1 @ 0x40063200 */
 #define LD_SERX1_BASE (0x40063200UL)
 REGFORGE_MAYBE_UNUSED static ld_ser_t *const LD_SERX1 = (ld_ser_t *)LD_SERX1_BASE;
 
 /* SERX1.CR */
-#define LD_SERX1_CR (*(volatile uint32_t *)(LD_SERX1_BASE + LD_SER_CR_OFFSET))
+#define LD_SERX1_CR (LD_SERX1->CR)
 
 /* SERX2 @ 0x40063400 */
 #define LD_SERX2_BASE (0x40063400UL)
 REGFORGE_MAYBE_UNUSED static ld_ser_t *const LD_SERX2 = (ld_ser_t *)LD_SERX2_BASE;
 
 /* SERX2.CR */
-#define LD_SERX2_CR (*(volatile uint32_t *)(LD_SERX2_BASE + LD_SER_CR_OFFSET))
+#define LD_SERX2_CR (LD_SERX2->CR)
 
 /* SERX3 @ 0x40063600 */
 #define LD_SERX3_BASE (0x40063600UL)
 REGFORGE_MAYBE_UNUSED static ld_ser_t *const LD_SERX3 = (ld_ser_t *)LD_SERX3_BASE;
 
 /* SERX3.CR */
-#define LD_SERX3_CR (*(volatile uint32_t *)(LD_SERX3_BASE + LD_SER_CR_OFFSET))
+#define LD_SERX3_CR (LD_SERX3->CR)
 
 
 /* -------------------------------------------------------------------------- */
 /* SPIX */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_SPIX_CR_OFFSET (0x00000000UL)
 
 typedef struct {
@@ -935,15 +961,16 @@ REGFORGE_STATIC_ASSERT(offsetof(ld_spix_t, CR) == LD_SPIX_CR_OFFSET, LD_SPIX_CR_
 REGFORGE_MAYBE_UNUSED static ld_spix_t *const LD_SPIX = (ld_spix_t *)LD_SPIX_BASE;
 
 /* SPIX.CR */
-#define LD_SPIX_CR (*(volatile uint32_t *)(LD_SPIX_BASE + LD_SPIX_CR_OFFSET))
+#define LD_SPIX_CR (LD_SPIX->CR)
 
 
 /* -------------------------------------------------------------------------- */
 /* TMRU (family: TMRU0, TMRU1) */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 #define LD_TMRU_CR_OFFSET (0x00000000UL)
 
 typedef struct {
@@ -963,13 +990,13 @@ REGFORGE_MAYBE_UNUSED static ld_tmru_t *const LD_TMRU0 = (ld_tmru_t *)LD_TMRU0_B
 #define LD_TMRU_IRQ_IRQ LD_TMRU_IRQ_IRQn  /* vector 43 */
 
 /* TMRU0.CR */
-#define LD_TMRU0_CR (*(volatile uint32_t *)(LD_TMRU0_BASE + LD_TMRU_CR_OFFSET))
+#define LD_TMRU0_CR (LD_TMRU0->CR)
 
 /* TMRU1 @ 0x40064100 */
 #define LD_TMRU1_BASE (0x40064100UL)
 REGFORGE_MAYBE_UNUSED static ld_tmru_t *const LD_TMRU1 = (ld_tmru_t *)LD_TMRU1_BASE;
 
 /* TMRU1.CR */
-#define LD_TMRU1_CR (*(volatile uint32_t *)(LD_TMRU1_BASE + LD_TMRU_CR_OFFSET))
+#define LD_TMRU1_CR (LD_TMRU1->CR)
 
 #endif /* REGFORGE_LINTDEMO_H */

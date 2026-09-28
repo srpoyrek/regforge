@@ -258,8 +258,9 @@ REGFORGE_INLINE uint8_t {{ ns|lower }}nvic_get_priority({{ prefix|lower }}irqn_e
 {% set cw = consts|map(attribute='name')|map('length')|max %}
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
- * are relative to one element of that cluster. Every assert and accessor below
- * refers to these, so each number is written once. */
+ * are relative to one element of that cluster. Every assert below refers to
+ * these, so each number is written once; the register macros go through the
+ * typed instance and repeat none of them. */
 {% for c in consts %}
 #define {{ "%-*s"|format(cw, c.name) }} ({{ c.value }})
 {% endfor %}
@@ -279,9 +280,12 @@ REGFORGE_STATIC_ASSERT(offsetof({{ ct.tname }}, {{ m.member }}) == {% if m.index
 {% endfor %}
 {% for m in ct.members if m.member and m.elements > 1 %}
 REGFORGE_STATIC_ASSERT(sizeof((({{ ct.tname }} *)0)->{{ m.member }}) == {{ ct.spf }}_{{ m.member|upper }}_COUNT * {{ ct.spf }}_{{ m.member|upper }}_STRIDE, {{ ct.spf }}_{{ m.member|upper }}_ARRAY_CHECK, "{{ ct.label }}.{{ m.member }} array size");
+REGFORGE_STATIC_ASSERT(offsetof({{ ct.tname }}, {{ m.member }}[{{ ct.spf }}_{{ m.member|upper }}_COUNT - 1U]) == {{ ct.spf }}_{{ m.member|upper }}_OFFSET + ({{ ct.spf }}_{{ m.member|upper }}_COUNT - 1U) * {{ ct.spf }}_{{ m.member|upper }}_STRIDE, {{ ct.spf }}_{{ m.member|upper }}_LAST_CHECK, "{{ ct.label }}.{{ m.member }}[{{ m.elements - 1 }}] offset via the struct");
 {% endfor %}
 {% if ct.count %}
 REGFORGE_STATIC_ASSERT(sizeof({{ ct.tname }}) == {{ ct.own }}_STRIDE, {{ ct.spf }}_SIZE_CHECK, "{{ ct.label }} element size vs dimIncrement");
+{% else %}
+REGFORGE_STATIC_ASSERT(sizeof({{ ct.tname }}) == {{ ct.own }}_SIZE, {{ ct.spf }}_SIZE_CHECK, "{{ ct.label }} size vs its last register");
 {% endif %}
 {% endfor %}
 
@@ -295,6 +299,7 @@ REGFORGE_STATIC_ASSERT(offsetof({{ tname }}, {{ m.member }}) == {% if m.index is
 {% endfor %}
 {% for m in members if m.member and m.elements > 1 %}
 REGFORGE_STATIC_ASSERT(sizeof((({{ tname }} *)0)->{{ m.member }}) == {{ spf }}_{{ m.member|upper }}_COUNT * {{ spf }}_{{ m.member|upper }}_STRIDE, {{ spf }}_{{ m.member|upper }}_ARRAY_CHECK, "{{ family.name }}.{{ m.member }} array size");
+REGFORGE_STATIC_ASSERT(offsetof({{ tname }}, {{ m.member }}[{{ spf }}_{{ m.member|upper }}_COUNT - 1U]) == {{ spf }}_{{ m.member|upper }}_OFFSET + ({{ spf }}_{{ m.member|upper }}_COUNT - 1U) * {{ spf }}_{{ m.member|upper }}_STRIDE, {{ spf }}_{{ m.member|upper }}_LAST_CHECK, "{{ family.name }}.{{ m.member }}[{{ m.elements - 1 }}] offset via the struct");
 {% endfor %}
 {% set ssize = struct_size(src) %}
 {% if ssize is not none %}
@@ -335,7 +340,11 @@ REGFORGE_MAYBE_UNUSED static {{ tname }} *const {{ pf }} = ({{ tname }} *){{ pf 
 {% if acc.count and pf != spf %}
 #define {{ rn }}_COUNT {{ acc.count }}
 {% endif %}
+{% if acc.unpacked %}
 #define {{ rn }}{{ acc.params }} (*({{ member_type(reg) }} *)({{ pf }}_BASE + {{ acc.address }}))
+{% else %}
+#define {{ rn }}{{ acc.params }} ({{ pf }}->{{ acc.path }})
+{% endif %}
 {% if reg.reset_value is not none %}
 #define {{ rn }}_RESET_VALUE ({{ reg.reset_value|hex32 }}UL)
 {% endif %}
@@ -346,8 +355,9 @@ REGFORGE_MAYBE_UNUSED static {{ tname }} *const {{ pf }} = ({{ tname }} *){{ pf 
 {% set fn = rn ~ "_" ~ field.name|upper %}
 {% if field.dim %}
 #define {{ fn }}_COUNT ({{ field.dim.count }}U)
-#define {{ fn }}_Pos(i) ({{ field.bit_offset }}U + (i) * {{ field.dim.increment }}U)
-#define {{ fn }}_Msk(i) ({{ field.mask|hex32 }}UL << ((i) * {{ field.dim.increment }}U))
+{% set fi = field.name|lower ~ "_index" %}
+#define {{ fn }}_Pos({{ fi }}) ({{ field.bit_offset }}U + ({{ fi }}) * {{ field.dim.increment }}U)
+#define {{ fn }}_Msk({{ fi }}) ({{ field.mask|hex32 }}UL << (({{ fi }}) * {{ field.dim.increment }}U))
 {% else %}
 #define {{ fn }}_Pos ({{ field.bit_offset }}U)
 #define {{ fn }}_Msk ({{ field.mask|hex32 }}UL)

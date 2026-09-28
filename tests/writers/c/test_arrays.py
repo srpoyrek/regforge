@@ -66,9 +66,11 @@ def test_array_register_is_one_member_with_count_and_indexed_macro():
         "REGFORGE_STATIC_ASSERT(sizeof(((dc_pwm_t *)0)->CC) == "
         'DC_PWM_CC_COUNT * DC_PWM_CC_STRIDE, DC_PWM_CC_ARRAY_CHECK, "PWM.CC array size");' in output
     )
-    assert (
-        "#define DC_PWM_CC(i) (*(volatile uint32_t *)"
-        "(DC_PWM_BASE + DC_PWM_CC_OFFSET + (i) * DC_PWM_CC_STRIDE))" in output
+    assert "#define DC_PWM_CC(cc_index) (DC_PWM->CC[(cc_index)])" in output  # via the type
+    assert (  # the last element is placed outright, so CC[k] is stated, not inferred
+        "REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, CC[DC_PWM_CC_COUNT - 1U]) == "
+        "DC_PWM_CC_OFFSET + (DC_PWM_CC_COUNT - 1U) * DC_PWM_CC_STRIDE, DC_PWM_CC_LAST_CHECK, "
+        '"PWM.CC[3] offset via the struct");' in output
     )
     assert output.count("DC_PWM_CC_RESET_VALUE") == 1  # once per array, not per element
     assert "#define DC_PWM_CC_V_Pos (0U)" in output  # fields once, index-free
@@ -82,8 +84,8 @@ def test_separate_copies_are_ordinary_registers():
     assert "volatile uint32_t DT0;" in squashed and "volatile uint32_t DT1;" in squashed
     assert "uint8_t RESERVED1[DC_PWM_RESERVED1_SIZE];" in squashed  # the hole between copies
     assert "#define DC_PWM_RESERVED1_SIZE (0x00000004UL)" in squashed
-    assert "#define DC_PWM_DT0 (*(volatile uint32_t *)(DC_PWM_BASE + DC_PWM_DT0_OFFSET))" in output
-    assert "#define DC_PWM_DT1 (*(volatile uint32_t *)(DC_PWM_BASE + DC_PWM_DT1_OFFSET))" in output
+    assert "#define DC_PWM_DT0 (DC_PWM->DT0)" in output
+    assert "#define DC_PWM_DT1 (DC_PWM->DT1)" in output
     assert "_COUNT" not in output
 
 
@@ -116,8 +118,8 @@ def test_unpacked_array_is_flat_members_with_an_indexed_macro():
         "#define DC_PWMX_CH_COUNT (4U)" in squashed
     )  # the indexed macro still steps by the stride
     assert (
-        "#define DC_PWMX_CH(i) (*(volatile uint32_t *)"
-        "(DC_PWMX_BASE + DC_PWMX_CH_OFFSET + (i) * DC_PWMX_CH_STRIDE))" in output
+        "#define DC_PWMX_CH(ch_index) (*(volatile uint32_t *)"
+        "(DC_PWMX_BASE + DC_PWMX_CH_OFFSET + (ch_index) * DC_PWMX_CH_STRIDE))" in output
     )
 
 
@@ -153,8 +155,8 @@ def test_field_array_emits_indexed_position_and_mask():
         )
     )
     assert "#define DC_GPIOA_ODR_OD_COUNT (16U)" in output
-    assert "#define DC_GPIOA_ODR_OD_Pos(i) (0U + (i) * 1U)" in output
-    assert "#define DC_GPIOA_ODR_OD_Msk(i) (0x00000001UL << ((i) * 1U))" in output
+    assert "#define DC_GPIOA_ODR_OD_Pos(od_index) (0U + (od_index) * 1U)" in output
+    assert "#define DC_GPIOA_ODR_OD_Msk(od_index) (0x00000001UL << ((od_index) * 1U))" in output
     assert "#define DC_GPIOA_ODR_OD_LOW (0U)" in output  # enumerated values once
 
 
@@ -223,4 +225,4 @@ def test_dim_array_index_names_become_index_constants():
     assert "#define DC_DMA_BUF_TX (1U)" in output
     assert "/* DMA.CH[2] index names (dimArrayIndex) */" in output
     assert "#define DC_DMA_CH_TX (1U)" in output
-    assert "#define DC_DMA_CH_CTRL(i)" in output  # the accessors are untouched
+    assert "#define DC_DMA_CH_CTRL(ch_index)" in output  # the accessors are untouched

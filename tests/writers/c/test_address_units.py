@@ -26,7 +26,7 @@ def test_byte_addressable_emits_byte_offsets():
     assert "#define P_BASE (0x00001000UL)" in output
     squashed = " ".join(output.split())  # the constants block is column-aligned
     assert "P_R_OFFSET (0x00000014UL)" in squashed  # the offset, once, as a named constant
-    assert "P_BASE + P_" in output  # and the accessor refers to it by name
+    assert "#define P_R (P->R)" in output  # the accessor goes through the typed instance
     # The unit is emitted as a macro and self-checked against the compiler.
     # Tie the expected value to the input so the two can't drift apart.
     assert f"#define CHIP_ADDRESS_UNIT_BITS {unit_bits}" in output

@@ -22,10 +22,10 @@ def _render_with_register(size):
 
 
 def test_type_selected_from_size():
-    assert "volatile uint8_t *" in _render_with_register(8)
-    assert "volatile uint16_t *" in _render_with_register(16)
-    assert "volatile uint32_t *" in _render_with_register(32)
-    assert "volatile uint64_t *" in _render_with_register(64)
+    assert "volatile uint8_t R;" in " ".join(_render_with_register(8).split())
+    assert "volatile uint16_t R;" in " ".join(_render_with_register(16).split())
+    assert "volatile uint32_t R;" in " ".join(_render_with_register(32).split())
+    assert "volatile uint64_t R;" in " ".join(_render_with_register(64).split())
 
 
 def test_bus_width_macro_emitted():

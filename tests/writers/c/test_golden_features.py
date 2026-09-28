@@ -29,10 +29,10 @@ def test_fixture_emits_reset_mask_only_where_partial(demo_device):
 
 def test_fixture_marks_read_only_register_const(demo_device):
     output = CWriter().render(demo_device)
-    # IDR is <access>read-only</access>: the struct member and flat macro are const,
-    # so writing it (IDR = x) is a compile error -- while ODR (read-write) is not.
+    # IDR is <access>read-only</access>: the struct member is const and the flat
+    # macro is that member, so writing it (IDR = x) is a compile error either way.
     assert "volatile const uint32_t IDR;" in output
-    assert "#define DC_GPIOA_IDR (*(volatile const uint32_t *)" in output
+    assert "#define DC_GPIOA_IDR (DC_GPIOA->IDR)" in output
     assert "volatile const uint32_t ODR;" not in output  # ODR stays writable
 
 
@@ -278,15 +278,10 @@ def test_fixture_register_array_and_separate_copies(demo_device):
     assert (
         "#define DC_PWMA_CC_COUNT DC_PWM_CC_COUNT" in output
     )  # the family count, by instance name
-    assert (
-        "#define DC_PWMA_CC(i) (*(volatile uint32_t *)"
-        "(DC_PWMA_BASE + DC_PWM_CC_OFFSET + (i) * DC_PWM_CC_STRIDE))" in output
-    )
+    assert "#define DC_PWMA_CC(cc_index) (DC_PWMA->CC[(cc_index)])" in output
     assert output.count("DC_PWMA_CC_RESET_VALUE") == 1  # once per array
     assert "volatile uint32_t DT0;" in squashed and "volatile uint32_t DT1;" in squashed  # DT%s
-    assert (
-        "#define DC_PWMB_DT1 (*(volatile uint32_t *)(DC_PWMB_BASE + DC_PWM_DT1_OFFSET))" in output
-    )
+    assert "#define DC_PWMB_DT1 (DC_PWMB->DT1)" in output
 
 
 def test_fixture_field_array_and_separate_copies(demo_device):
@@ -296,8 +291,8 @@ def test_fixture_field_array_and_separate_copies(demo_device):
     assert "#define DC_GPIOA_MODER_MODE1_ANALOG (3U)" in output
     # OD[%s] stays one field with indexed position/mask macros.
     assert "#define DC_GPIOA_ODR_OD_COUNT (16U)" in output
-    assert "#define DC_GPIOA_ODR_OD_Pos(i) (0U + (i) * 1U)" in output
-    assert "#define DC_GPIOA_ODR_OD_Msk(i) (0x00000001UL << ((i) * 1U))" in output
+    assert "#define DC_GPIOA_ODR_OD_Pos(od_index) (0U + (od_index) * 1U)" in output
+    assert "#define DC_GPIOA_ODR_OD_Msk(od_index) (0x00000001UL << ((od_index) * 1U))" in output
 
 
 def test_fixture_cluster_array_and_single_cluster(demo_device):
@@ -310,15 +305,11 @@ def test_fixture_cluster_array_and_single_cluster(demo_device):
         "REGFORGE_STATIC_ASSERT(sizeof(dc_dma_ch_t) == DC_DMA_CH_STRIDE, DC_DMA_CH_SIZE_CHECK, "
         '"DMA.CH element size vs dimIncrement");' in output
     )
-    assert "DC_DMA_STAT_SIZE" not in output  # a single cluster has no stride to assert
+    assert (  # a single cluster is asserted against its own extent
+        "REGFORGE_STATIC_ASSERT(sizeof(dc_dma_stat_t) == DC_DMA_STAT_SIZE, "
+        'DC_DMA_STAT_SIZE_CHECK, "DMA.STAT size vs its last register");' in output
+    )
     assert "dc_dma_ch_t CH[DC_DMA_CH_COUNT];" in squashed and "dc_dma_stat_t STAT;" in squashed
-    assert (
-        "#define DC_DMA_CH_DST(i) (*(volatile uint32_t *)"
-        "(DC_DMA_BASE + DC_DMA_CH_OFFSET + (i) * DC_DMA_CH_STRIDE + DC_DMA_CH_DST_OFFSET))"
-        in output
-    )
+    assert "#define DC_DMA_CH_DST(ch_index) (DC_DMA->CH[(ch_index)].DST)" in output
     assert "#define DC_DMA_CH_CTRL_EN_Pos (0U)" in output
-    assert (
-        "#define DC_DMA_STAT_ERR (*(volatile const uint32_t *)"
-        "(DC_DMA_BASE + DC_DMA_STAT_OFFSET + DC_DMA_STAT_ERR_OFFSET))" in output
-    )
+    assert "#define DC_DMA_STAT_ERR (DC_DMA->STAT.ERR)" in output

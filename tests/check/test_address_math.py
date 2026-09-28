@@ -120,7 +120,7 @@ def test_unpacked_array_warns_and_names_the_members():
     )
     warnings = [f.message for f in findings if f.severity is Severity.WARNING]
     assert any(
-        "P.CH[4]: array stride 8" in m and "CH0..CH3" in m and "CH(i)" in m for m in warnings
+        "P.CH[4]: array stride 8" in m and "CH0..CH3" in m and "CH(ch_index)" in m for m in warnings
     )
     assert not _errors(findings)
 

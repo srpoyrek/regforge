@@ -191,7 +191,8 @@ def check_address_math(device: Device) -> list[Finding]:
                             f"{name}[{count}]: array stride {stride} address unit(s) != "
                             f"element size {units_per_register} -- emitted as separate "
                             f"members {register.name}0..{register.name}{count - 1} with "
-                            f"padding between; the {register.name}(i) macro still steps "
+                            f"padding between; the {register.name}({register.name.lower()}_index) "
+                            "macro still steps "
                             "by the stride",
                         )
                     )

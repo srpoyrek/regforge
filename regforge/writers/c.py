@@ -55,7 +55,6 @@ _MAX_INLINE_DESC = 40
 #: tile evenly. Bytes divide any window and are always representable.
 _BUFFER_FALLBACK_BITS = 8
 #: Macro parameter names for array indices, outermost array first.
-_INDEX_NAMES = "ijklmn"
 
 
 def _hex32(value: int) -> str:
@@ -386,6 +385,10 @@ def _constants(
                     {"name": f"{own}_STRIDE", "value": f"{_hex32(slot.element_bytes)}UL"}
                 )
                 constants.append({"name": f"{own}_COUNT", "value": f"{slot.count}U"})
+            else:  # a single cluster's contract is its own extent
+                constants.append(
+                    {"name": f"{own}_SIZE", "value": f"{_hex32(slot.element_bytes)}UL"}
+                )
             type_stem = cluster_tags[id(cluster)]
             if type_stem not in emitted:
                 emitted.add(type_stem)
@@ -395,41 +398,75 @@ def _constants(
     return constants
 
 
-def _accessors(peripheral: Peripheral, spf: str, cluster_tags: dict[int, str]) -> list[dict]:
-    """Every register reachable from ``peripheral`` as a flat macro: name, indices, address.
+def _index_name(array: str, used: list[str]) -> str:
+    """The macro parameter that indexes the array ``array``: ``ch_index``, unique per macro.
 
-    A register inside a cluster is reached through the cluster's name
-    (``CH_CTRL``); every array on the path adds one macro parameter, outermost
-    first (``(i, j)``), and one ``(index) * <STEM>_STRIDE`` term. The address
-    is a sum of the family's layout constants, never a literal, so a plain
-    register reads ``BASE + DC_UART_DR_OFFSET``.
+    Named after the array so a call site reads against what it steps through;
+    a second array of the same name on one path gets ``ch2_index``.
+    """
+    base = array.lower()
+    candidate = f"{base}_index"
+    suffix = 2
+    while candidate in used:
+        candidate = f"{base}{suffix}_index"
+        suffix += 1
+    used.append(candidate)
+    return candidate
+
+
+def _unpacked_registers(entries: list[LayoutEntry]) -> set[int]:
+    """Ids of the registers the layout split into one member per element."""
+    found: set[int] = set()
+    for slot in entries:
+        if slot.index is not None and slot.register is not None:
+            found.add(id(slot.register))
+        found |= _unpacked_registers(slot.members)
+    return found
+
+
+def _accessors(
+    peripheral: Peripheral, spf: str, cluster_tags: dict[int, str], unpacked: set[int]
+) -> list[dict]:
+    """Every register reachable from ``peripheral`` as a flat macro.
+
+    The macro is the register's path through the typed instance,
+    ``DC_DMA->CH[(ch_index)].CTRL``: a register inside a cluster is reached
+    through the cluster's name, and every array on the path adds one macro
+    parameter, outermost first, named after the array it indexes. The struct
+    and its asserts carry the offsets; the macro repeats none of them.
+
+    An array the struct could not hold as an array (``unpacked``: a stride
+    wider than the element, so the members are ``CH0``, ``CH1``, ...) has no
+    member to index, so its macro is the address as a sum of the layout
+    constants instead, ``BASE + OFFSET + (ch_index) * STRIDE``.
     """
     result: list[dict] = []
-
-    def stride_term(stem: str, params: list[str]) -> str:
-        index = _INDEX_NAMES[len(params)]
-        params.append(index)
-        return f"({index}) * {stem}_STRIDE"
 
     def visit(
         register: Register,
         names: list[str],
         labels: list[str],
         params: list[str],
+        path: list[str],
         terms: list[str],
         type_stem: str,
     ) -> None:
         params = list(params)
         stem = f"{type_stem}_{register.name.upper()}"
         terms = [*terms, f"{stem}_OFFSET"]
+        member = register.name
         if register.dim is not None:
-            terms.append(stride_term(stem, params))
+            index = _index_name(register.name, params)
+            terms.append(f"({index}) * {stem}_STRIDE")
+            member = f"{register.name}[({index})]"
         result.append(
             {
                 "name": "_".join([*names, register.name]),
                 "label": ".".join([*labels, register.name + _array_suffix(register.dim)]),
                 "params": f"({', '.join(params)})" if params else "",
+                "path": ".".join([*path, member]),
                 "address": " + ".join(terms),
+                "unpacked": id(register) in unpacked,
                 "register": register,
                 "count": f"{stem}_COUNT" if register.dim is not None else None,
             }
@@ -440,6 +477,7 @@ def _accessors(peripheral: Peripheral, spf: str, cluster_tags: dict[int, str]) -
         names: list[str],
         labels: list[str],
         params: list[str],
+        path: list[str],
         terms: list[str],
         type_stem: str,
     ) -> None:
@@ -447,18 +485,38 @@ def _accessors(peripheral: Peripheral, spf: str, cluster_tags: dict[int, str]) -
             own = f"{type_stem}_{cluster.name.upper()}"
             inner_params = list(params)
             inner_terms = [*terms, f"{own}_OFFSET"]
+            member = cluster.name
             if cluster.dim is not None:
-                inner_terms.append(stride_term(own, inner_params))
+                index = _index_name(cluster.name, inner_params)
+                inner_terms.append(f"({index}) * {own}_STRIDE")
+                member = f"{cluster.name}[({index})]"
             inner_type = cluster_tags[id(cluster)]
             inner_names = [*names, cluster.name]
             inner_labels = [*labels, cluster.name + _array_suffix(cluster.dim)]
+            inner_path = [*path, member]
             for register in cluster.registers:
-                visit(register, inner_names, inner_labels, inner_params, inner_terms, inner_type)
-            walk(cluster.clusters, inner_names, inner_labels, inner_params, inner_terms, inner_type)
+                visit(
+                    register,
+                    inner_names,
+                    inner_labels,
+                    inner_params,
+                    inner_path,
+                    inner_terms,
+                    inner_type,
+                )
+            walk(
+                cluster.clusters,
+                inner_names,
+                inner_labels,
+                inner_params,
+                inner_path,
+                inner_terms,
+                inner_type,
+            )
 
     for register in peripheral.registers:
-        visit(register, [], [], [], [], spf)
-    walk(peripheral.clusters, [], [], [], [], spf)
+        visit(register, [], [], [], [], [], spf)
+    walk(peripheral.clusters, [], [], [], [], [], spf)
     return result
 
 
@@ -605,7 +663,9 @@ class CWriter(Writer):
                 family_constants.append({"name": f"{spf}_SIZE", "value": f"{_hex32(size)}UL"})
             constants[id(family)] = family_constants
             # Instances of a family share its layout, so one accessor list serves all.
-            accessors[id(family)] = _accessors(source, spf, cluster_tags)
+            accessors[id(family)] = _accessors(
+                source, spf, cluster_tags, _unpacked_registers(entries)
+            )
         array_indices = {id(p): _array_indices(p) for p in device.peripherals}
 
         template = self._env.get_template("header.h.j2")

@@ -69,11 +69,11 @@ The spelling of the placeholder decides the shape:
 | Written | Becomes | Emitted as [C](targets/c.md#array-members) |
 |---|---|---|
 | `DATA%s` | eight registers `DATA0`..`DATA7`, `dimIncrement` apart | eight ordinary members and macros |
-| `DATA[%s]` | one register `DATA` that keeps its `dim` | `volatile uint32_t DATA[8];` and `DATA(i)` |
+| `DATA[%s]` | one register `DATA` that keeps its `dim` | `volatile uint32_t DATA[8];` and `DATA(data_index)` |
 | `CH%s` (cluster) | eight clusters `CH0`..`CH7` sharing one type | eight members of `dma_ch_t` |
-| `CH[%s]` (cluster) | one cluster `CH` that keeps its `dim` | `dma_ch_t CH[8];` and `CH_CTRL(i)` |
+| `CH[%s]` (cluster) | one cluster `CH` that keeps its `dim` | `dma_ch_t CH[8];` and `CH_CTRL(ch_index)` |
 | `MODE%s` (field) | sixteen fields, `dimIncrement` **bits** apart | sixteen `_Pos` / `_Msk` pairs |
-| `MODE[%s]` (field) | one field `MODE` that keeps its `dim` | `MODE_Pos(i)` / `MODE_Msk(i)` |
+| `MODE[%s]` (field) | one field `MODE` that keeps its `dim` | `MODE_Pos(mode_index)` / `MODE_Msk(mode_index)` |
 | `UART[%s]` (peripheral) | treated as `UART%s`, with a warning | separate instances |
 
 A peripheral is an instance, not an array (`UART[0]` is not an identifier), so
@@ -90,9 +90,9 @@ Input — read as [CMSIS-SVD](formats/svd.md#register):
 Output — emitted as [C](targets/c.md#array-members):
 
 ```c
-volatile uint32_t DATA[8];   /* 0x10 */
+volatile uint32_t DATA[FIFO_DATA_COUNT];   /* 0x10 */
 #define FIFO_DATA_COUNT (8U)
-#define FIFO_DATA(i) (*(volatile uint32_t *)(FIFO_BASE + FIFO_DATA_OFFSET + (i) * FIFO_DATA_STRIDE))
+#define FIFO_DATA(data_index) (FIFO->DATA[(data_index)])
 ```
 
 Complete versions: [the whole SVD](formats/svd.md#a-peripheral-array-with-a-register-array)
@@ -103,7 +103,7 @@ and [the whole header](targets/c.md#a-peripheral-array-with-a-register-array).
 | Array | Stride | Result |
 |---|---|---|
 | register `[%s]` | equal to the element size | one packed array member |
-| register `[%s]` | larger than the element | not a packed array, so each element becomes a member of its own (`CH0`..`CH3`) with the holes as padding, and the `CH(i)` macro steps by the true stride; `WARNING` |
+| register `[%s]` | larger than the element | not a packed array, so each element becomes a member of its own (`CH0`..`CH3`) with the holes as padding, and the `CH(ch_index)` macro steps by the true stride from the layout constants; `WARNING` |
 | register, cluster or field, either spelling | smaller than one element | `ERROR` finding: the elements overlap; the layout refuses it too (`LayoutError`, exit 4) |
 | cluster `[%s]` | larger than its contents | the element struct is padded to the stride and its size asserted |
 | cluster `[%s]` | smaller than its contents | refused: `LayoutError`, and an `ERROR` finding |
