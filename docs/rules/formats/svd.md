@@ -81,6 +81,28 @@ offsets relative to the cluster.
 | `<description>` | comment text | absent |
 | `<fields><field>` | the bit fields | none |
 | `<dim>`, `<dimIncrement>`, `<dimIndex>` | a template for several copies, see [Arrays](#arrays) | see [ir/arrays.md](../arrays.md) |
+| `<alternateRegister>`, `<alternateGroup>` | another view of the register named, see [Alternate registers](#alternate-registers) | see [ir/alternates.md](../alternates.md) |
+
+## Alternate registers
+
+`<alternateRegister>` names another register of the same peripheral or
+cluster that describes the same word with a different layout. Both are read
+as registers; the name is kept as written and matched after expansion, so it
+may name a `%s` template or a `[%s]` array.
+
+```xml
+<register><name>CCMR1_Output</name><addressOffset>0x18</addressOffset></register>
+<register>
+  <name>CCMR1_Input</name><alternateRegister>CCMR1_Output</alternateRegister>
+  <addressOffset>0x18</addressOffset>
+</register>
+```
+
+`<alternateGroup>` is the schema's other spelling of the same idea: a register
+reusing another's name in a named group. It is read as a register named
+`NAME_GROUP` whose `alternateRegister` is `NAME` (an explicit
+`<alternateRegister>` beside it is kept as written). What the pair becomes is
+decided by [ir/alternates.md](../alternates.md).
 
 ## Field
 
@@ -155,7 +177,7 @@ These are in the SVD schema but do not affect output today:
 | Element | Status |
 |---|---|
 | `alternateCluster` | not parsed |
-| `alternatePeripheral`, `alternateRegister` | not parsed; see [ir/address-blocks.md](../address-blocks.md) |
+| `alternatePeripheral` | not parsed; see [ir/address-blocks.md](../address-blocks.md) |
 | `<protection>` | not parsed |
 | `<prependToName>`, `<appendToName>` | not applied |
 | `<headerSystemFilename>` | not applied |
@@ -425,3 +447,37 @@ Demonstrates [clusters.md](../clusters.md#rule-2-a-cluster-arrays-element-is-pad
 ```
 
 Produces [this C](../targets/c.md#a-cluster-array).
+
+### An alternate register pair
+
+Demonstrates [alternates.md](../alternates.md). `CCMR1_Input` names `CCMR1_Output` as its `alternateRegister`, so the word at `0x0C` is one union `CCMR1` with a member per view, asserted for offset and size, and each view keeps its own field macros.
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<device schemaVersion="1.3">
+  <name>DEMO</name>
+  <addressUnitBits>8</addressUnitBits>
+  <width>32</width>
+  <size>32</size>
+  <access>read-write</access>
+  <peripherals>
+    <peripheral>
+      <name>TIM1</name><baseAddress>0x40010000</baseAddress>
+      <addressBlock><offset>0</offset><size>0x10</size><usage>registers</usage></addressBlock>
+      <registers>
+        <register><name>CR1</name><addressOffset>0x0</addressOffset></register>
+        <register>
+          <name>CCMR1_Output</name><addressOffset>0xC</addressOffset>
+          <fields><field><name>OC1M</name><bitOffset>4</bitOffset><bitWidth>3</bitWidth></field></fields>
+        </register>
+        <register>
+          <name>CCMR1_Input</name><alternateRegister>CCMR1_Output</alternateRegister><addressOffset>0xC</addressOffset>
+          <fields><field><name>IC1F</name><bitOffset>4</bitOffset><bitWidth>4</bitWidth></field></fields>
+        </register>
+      </registers>
+    </peripheral>
+  </peripherals>
+</device>
+```
+
+Produces [this C](../targets/c.md#an-alternate-register-pair).

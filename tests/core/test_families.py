@@ -268,3 +268,21 @@ def test_differing_clusters_split_the_family_and_name_the_cluster():
     families = group_families(device)
     assert len(families) == 2
     assert "first differs at CH" in (families[0].note or "")
+
+
+def test_alternate_sets_are_part_of_the_layout_signature():
+    from regforge.families import layout_signature
+    from regforge.resolve import resolve_alternates
+
+    def peripheral(name: str, alternate: bool) -> Peripheral:
+        second = Register("DR_Raw", 0x0, size=32, alternate_register="DR" if alternate else None)
+        return Peripheral(name, 0x0, registers=[Register("DR", 0x0, size=32), second])
+
+    device = Device(
+        name="Chip",
+        peripherals=[peripheral("A", True), peripheral("B", True), peripheral("C", False)],
+    )
+    resolve_alternates(device)
+    a, b, c = device.peripherals
+    assert layout_signature(a) == layout_signature(b)
+    assert layout_signature(a) != layout_signature(c)  # a union is not two registers

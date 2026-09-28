@@ -4,14 +4,17 @@ Three passes turn the parsed IR into the flat, fully-valued device that every
 downstream consumer -- each emitter, the docs generator, the linter -- reads,
 so none of them re-derives a chain differently. They run in this order::
 
-    parse -> expand_dim -> resolve_derived -> resolve_defaults -> checks -> emit
+    parse -> expand_dim -> resolve_derived -> resolve_alternates -> resolve_defaults
+          -> checks -> emit
 
 ``expand_dim`` goes first so a ``derivedFrom`` can name a copy (``UART1`` out
 of ``UART%s``), and so a derived peripheral that is itself a template is split
 into shells before the base's registers are copied into each. ``resolve_derived``
 precedes ``resolve_defaults`` so the copied registers resolve under the derived
 peripheral's own chain (its ``<size>``/``<access>``, then the base's, then the
-device's) instead of being frozen at the base's values.
+device's) instead of being frozen at the base's values. ``resolve_alternates``
+runs once every register exists under its final name, so an
+``alternateRegister`` can point at an expanded copy or an inherited register.
 
 ``size``, ``access``, ``resetValue``, and ``resetMask`` may be declared at the
 device, peripheral, cluster, register, or (for ``access``) field level, each
@@ -549,6 +552,147 @@ def resolve_derived(device: Device) -> list[str]:
                     "resolved yet -- the cluster is emitted as written"
                 )
     return warnings
+
+
+# --- alternate registers ---
+
+
+def _alternate_target(
+    register: Register, registers: list[Register], where: str, findings: list[Finding]
+) -> Register | None:
+    """The register ``register.alternate_register`` names, or ``None`` with a finding.
+
+    Names are matched after expansion, so a copy expanded from ``DTR%s`` that
+    names ``DT%s`` pairs with the copy of the same index, and an array kept as
+    ``CCI`` that names ``CC[%s]`` pairs with ``CC``. Two views must share the
+    offset and, when arrays, the shape; a view naming itself, or a name no
+    register of the block carries, leaves the register an ordinary one.
+    """
+    wanted = register.alternate_register
+    assert wanted is not None  # only called for a register that declares one
+    label = f"{where}.{register.name}"
+    by_name = {candidate.name: candidate for candidate in registers}
+    target: Register | None
+    if _ARRAY in wanted:
+        target = by_name.get(wanted.replace(_ARRAY, ""))
+    elif _COPY in wanted:
+        copies = [candidate for candidate in registers if candidate.expanded_from == wanted]
+        target = None
+        if copies and register.expanded_from is None:
+            target = copies[0]
+            findings.append(
+                Finding(
+                    Severity.WARNING,
+                    f"{label}: alternateRegister names the template '{wanted}' -- resolved "
+                    f"to its first copy, {target.name}",
+                )
+            )
+        elif copies:
+            siblings = [c for c in registers if c.expanded_from == register.expanded_from]
+            if len(siblings) != len(copies):
+                findings.append(
+                    Finding(
+                        Severity.WARNING,
+                        f"{label}: alternateRegister '{wanted}' expands to {len(copies)} "
+                        f"copies, not {len(siblings)} -- left unrelated",
+                    )
+                )
+                return None
+            target = copies[siblings.index(register)]
+    else:
+        target = by_name.get(wanted)
+    if target is None:
+        findings.append(
+            Finding(
+                Severity.ERROR,
+                f"{label}: alternateRegister '{wanted}' -- no register of that name in "
+                f"{where}; treated as an ordinary register",
+            )
+        )
+        return None
+    if target is register:
+        findings.append(
+            Finding(Severity.WARNING, f"{label}: alternateRegister names itself -- ignored")
+        )
+        return None
+    same_shape = (register.dim is None and target.dim is None) or (
+        register.dim is not None
+        and target.dim is not None
+        and (register.dim.count, register.dim.increment) == (target.dim.count, target.dim.increment)
+    )
+    if not same_shape:
+        findings.append(
+            Finding(
+                Severity.WARNING,
+                f"{label}: alternateRegister '{target.name}' has a different <dim> shape -- "
+                "left unrelated",
+            )
+        )
+        return None
+    if target.address_offset != register.address_offset:
+        findings.append(
+            Finding(
+                Severity.WARNING,
+                f"{label}: alternateRegister '{target.name}' is at offset "
+                f"0x{target.address_offset:X}, not 0x{register.address_offset:X} -- an "
+                "alternate view must share the offset; left unrelated",
+            )
+        )
+        return None
+    return target
+
+
+def _link_alternates(where: str, registers: list[Register], findings: list[Finding]) -> None:
+    """Union-find the declared views of one block into sets, primary first."""
+    parent: dict[int, int] = {id(register): id(register) for register in registers}
+
+    def find(key: int) -> int:
+        while parent[key] != key:
+            parent[key] = parent[parent[key]]
+            key = parent[key]
+        return key
+
+    linked: set[int] = set()  # registers whose own declaration was accepted
+    for register in registers:
+        if register.alternate_register is None:
+            continue
+        target = _alternate_target(register, registers, where, findings)
+        if target is None:
+            continue
+        linked.add(id(register))
+        parent[find(id(register))] = find(id(target))
+    groups: dict[int, list[Register]] = {}
+    for register in registers:
+        groups.setdefault(find(id(register)), []).append(register)
+    for members in groups.values():
+        if len(members) < 2:
+            continue
+        # The primary is the view nothing points away from; a cycle (A alt B,
+        # B alt A) has none, and file order decides.
+        primary = next((member for member in members if id(member) not in linked), members[0])
+        names = (primary.name, *(member.name for member in members if member is not primary))
+        for member in members:
+            member.alternates = names
+
+
+def resolve_alternates(device: Device) -> list[Finding]:
+    """Link every ``alternateRegister`` into its set of views, block by block.
+
+    Runs after ``expand_dim`` and ``resolve_derived`` so the names it matches
+    are the final ones. Each register of a set gets ``alternates``: every
+    view's name, the primary first, so the layout can emit one union for the
+    word and the checks can compare the views. A declaration that cannot be
+    honoured -- a missing target (``ERROR``), a self-reference, another
+    offset, another shape (``WARNING``) -- leaves the register an ordinary
+    one, and an undeclared overlap is then refused by the layout as it always
+    was. Mutates ``device`` in place and returns the findings.
+    """
+    findings: list[Finding] = []
+    for peripheral in device.peripherals:
+        _link_alternates(peripheral.name, peripheral.registers, findings)
+        for path, cluster in walk_clusters(peripheral.clusters, peripheral.name):
+            _link_alternates(path, cluster.registers, findings)
+    return findings
 
 
 # --- defaults resolution ---

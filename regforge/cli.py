@@ -20,7 +20,7 @@ from .check import ALL_CHECKS, Severity, run_checks
 from .postprocess import FormatterNotAvailable, uncrustify
 from .provenance import build_provenance
 from .readers import available_readers, get_reader, reader_for_path
-from .resolve import expand_dim, resolve_defaults, resolve_derived
+from .resolve import expand_dim, resolve_alternates, resolve_defaults, resolve_derived
 from .writers import EmitError, Writer, available_writers, get_writer, writer_for_path
 
 logger = logging.getLogger("regforge")
@@ -269,6 +269,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     for warning in derived_warnings:
         log(logging.WARNING, "%s", warning)
+
+    alternate_findings = resolve_alternates(device)
+    log(logging.INFO, "resolved alternateRegister: %d finding(s)", len(alternate_findings))
+    for finding in alternate_findings:
+        level = logging.ERROR if finding.severity is Severity.ERROR else logging.WARNING
+        log(level, "%s", finding.message)
 
     warnings = resolve_defaults(device)
     log(logging.INFO, "resolved defaults: %d warning(s)", len(warnings))

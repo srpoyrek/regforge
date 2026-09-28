@@ -94,9 +94,9 @@ def test_array_cluster_is_padded_asserted_and_indexed():
     assert "#define DC_DMA_CH_CTRL(ch_index) (DC_DMA->CH[(ch_index)].CTRL)" in output
     assert "#define DC_DMA_CH_SRC(ch_index) (DC_DMA->CH[(ch_index)].SRC)" in output
     assert (  # the last element is placed outright, so CH[k] is stated, not inferred
-        "REGFORGE_STATIC_ASSERT(offsetof(dc_dma_t, CH[DC_DMA_CH_COUNT - 1U]) == "
-        "DC_DMA_CH_OFFSET + (DC_DMA_CH_COUNT - 1U) * DC_DMA_CH_STRIDE, DC_DMA_CH_LAST_CHECK, "
-        '"DMA.CH[3] offset via the struct");' in output
+        "REGFORGE_STATIC_ASSERT(offsetof(dc_dma_t, CH) + (DC_DMA_CH_COUNT - 1U) * "
+        "sizeof(((dc_dma_t *)0)->CH[0]) == DC_DMA_CH_OFFSET + (DC_DMA_CH_COUNT - 1U) * "
+        'DC_DMA_CH_STRIDE, DC_DMA_CH_LAST_CHECK, "DMA.CH[3] offset via the struct");' in output
     )
     assert "#define DC_DMA_CH_CTRL_EN_Pos (0U)" in output  # fields are index-free
 
@@ -115,8 +115,9 @@ def test_array_register_inside_array_cluster_takes_two_indices():
         "(DC_DMA->CH[(ch_index)].BUF[(buf_index)])" in output
     )
     assert (  # the inner array is placed inside its own type
-        "REGFORGE_STATIC_ASSERT(offsetof(dc_dma_ch_t, BUF[DC_DMA_CH_BUF_COUNT - 1U]) == "
-        "DC_DMA_CH_BUF_OFFSET + (DC_DMA_CH_BUF_COUNT - 1U) * DC_DMA_CH_BUF_STRIDE, "
+        "REGFORGE_STATIC_ASSERT(offsetof(dc_dma_ch_t, BUF) + (DC_DMA_CH_BUF_COUNT - 1U) * "
+        "sizeof(((dc_dma_ch_t *)0)->BUF[0]) == DC_DMA_CH_BUF_OFFSET + "
+        "(DC_DMA_CH_BUF_COUNT - 1U) * DC_DMA_CH_BUF_STRIDE, "
         'DC_DMA_CH_BUF_LAST_CHECK, "DMA.CH.BUF[3] offset via the struct");' in output
     )
 

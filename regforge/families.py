@@ -85,6 +85,7 @@ def _register_signature(register: Register) -> tuple:
         register.size,
         register.access,
         _shape(register.dim),
+        register.alternates,
     )
 
 

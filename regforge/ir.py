@@ -179,6 +179,12 @@ class Register:
         expanded_from: The ``<dim>`` template this element was expanded from
             (``UART%s``), so a report can point at the one declaration behind
             several copies; ``None`` when written out by hand.
+        alternate_register: The register this one is another view of, as
+            declared (SVD ``<alternateRegister>``; an ``<alternateGroup>`` is
+            read as the same thing, the view renamed ``NAME_GROUP``).
+        alternates: Every name in this register's alternate set, the primary
+            first, once ``resolve_alternates`` has linked them; empty for a
+            register that is the only view of its word.
     """
 
     name: str
@@ -191,6 +197,8 @@ class Register:
     fields: list[Field] = field(default_factory=list)
     dim: Dim | None = None
     expanded_from: str | None = None
+    alternate_register: str | None = None
+    alternates: tuple[str, ...] = ()
 
 
 @dataclass

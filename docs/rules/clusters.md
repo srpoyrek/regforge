@@ -116,5 +116,6 @@ clusters match too: name, offset, shape and contents
 | `CH%s` | Copies `CH0`, `CH1`, ... `dimIncrement` apart, one shared type named after the stem. |
 | A register array inside a cluster array | Both indices in the flat macro, outermost first, each named for its array: `DMA_CH_BUF(ch_index, buf_index)`. |
 | A single cluster ending mid-word | Its C type is padded to its alignment, so the slot and `_SIZE` are the padded extent; a register placed in that padding is a `LayoutError`. |
+| An `alternateRegister` pair inside a cluster | One union member of the cluster's type, exactly as in a peripheral ([alternates.md](alternates.md)). |
 | `alternateCluster` | Not read. |
 | Interrupts, address blocks or fields written inside a cluster | Ignored: the schema puts them on the peripheral and the register. |

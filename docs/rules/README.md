@@ -33,6 +33,7 @@ rewritten.
 | [address-math.md](address-math.md) | Address units, bus width, member offsets |
 | [arrays.md](arrays.md) | `dim`: copies, arrays, strides |
 | [clusters.md](clusters.md) | Register groups as nested types |
+| [alternates.md](alternates.md) | Two layouts of one word: `alternateRegister` as a union |
 
 ## Input formats
 

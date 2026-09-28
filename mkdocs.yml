@@ -45,6 +45,7 @@ nav:
       - Address math: rules/address-math.md
       - Arrays: rules/arrays.md
       - Clusters: rules/clusters.md
+      - Alternate registers: rules/alternates.md
   - Input formats:
       - CMSIS-SVD: rules/formats/svd.md
   - Output targets:

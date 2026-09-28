@@ -210,6 +210,48 @@ def _c_layout(
                 }
             )
             pad_index += 1
+        elif slot.views:
+            union = slot.union or ""
+            member = slot.name or union
+            suffix = _count_suffix(spf, union, slot.count)
+            views = [
+                {
+                    "type": _member_type(view),
+                    "field": f"{name};",
+                    "name": name,
+                    "desc": _short_desc(view.description),
+                }
+                for view, name in zip(slot.views, slot.view_names)
+            ]
+            type_width = max(len(view["type"]) for view in views)
+            field_width = max(len(view["field"]) for view in views)
+            lines = ["    union {"]
+            for view in views:
+                note = f"0x{slot.offset:02X}" + (f"  {view['desc']}" if view["desc"] else "")
+                lines.append(
+                    f"        {view['type']:<{type_width}} "
+                    f"{view['field']:<{field_width}}  /* {note} */"
+                )
+            lines.append(
+                f"    }} {member}{suffix};  /* 0x{slot.offset:02X}  one register, "
+                f"{len(views)} views */"
+            )
+            entries_out.append(
+                {
+                    "offset": slot.offset,
+                    "type": "union",
+                    "field": f"{member}{suffix};",
+                    "desc": None,
+                    "member": member,
+                    "elements": slot.count,
+                    "bytes": slot.size_bytes,
+                    "stem": union if slot.index is not None else None,
+                    "index": slot.index,
+                    "union": True,
+                    "views": views,
+                    "block": "\n".join(lines),
+                }
+            )
         elif slot.cluster is not None:
             cluster = slot.cluster
             entries_out.append(
@@ -352,6 +394,7 @@ def _constants(
     buffer_index = 0
     pad_index = 0
     seen: set[int] = set()
+    seen_unions: set[str] = set()
     for slot in entries:
         if slot.buffer:
             stem = f"{spf}_BUFFER{buffer_index}"
@@ -364,6 +407,23 @@ def _constants(
             stem = f"{spf}_RESERVED{pad_index}"
             constants.append({"name": f"{stem}_SIZE", "value": f"{_hex32(slot.gap_bytes)}UL"})
             pad_index += 1
+        elif slot.views:
+            union = slot.union or ""
+            if union in seen_unions:
+                continue  # an unpacked union array is several slots but one set
+            seen_unions.add(union)
+            stem = f"{spf}_{union.upper()}"
+            primary = slot.views[0]
+            offset = units_to_bytes(primary.address_offset, address_unit_bits)
+            constants.append({"name": f"{stem}_OFFSET", "value": f"{_hex32(offset)}UL"})
+            if primary.dim is not None:
+                stride = units_to_bytes(primary.dim.stride, address_unit_bits)
+                constants.append({"name": f"{stem}_STRIDE", "value": f"{_hex32(stride)}UL"})
+                constants.append({"name": f"{stem}_COUNT", "value": f"{primary.dim.length}U"})
+            else:
+                constants.append(
+                    {"name": f"{stem}_SIZE", "value": f"{_hex32(slot.element_bytes)}UL"}
+                )
         elif slot.register is not None:
             register = slot.register
             if id(register) in seen:
@@ -418,14 +478,30 @@ def _unpacked_registers(entries: list[LayoutEntry]) -> set[int]:
     """Ids of the registers the layout split into one member per element."""
     found: set[int] = set()
     for slot in entries:
-        if slot.index is not None and slot.register is not None:
-            found.add(id(slot.register))
+        if slot.index is not None:
+            if slot.register is not None:
+                found.add(id(slot.register))
+            found.update(id(view) for view in slot.views)
         found |= _unpacked_registers(slot.members)
     return found
 
 
+def _union_views(entries: list[LayoutEntry]) -> dict[int, tuple[str, str]]:
+    """Per view register id: the union member holding it and its name inside."""
+    found: dict[int, tuple[str, str]] = {}
+    for slot in entries:
+        for view, name in zip(slot.views, slot.view_names):
+            found[id(view)] = (slot.union or "", name)
+        found.update(_union_views(slot.members))
+    return found
+
+
 def _accessors(
-    peripheral: Peripheral, spf: str, cluster_tags: dict[int, str], unpacked: set[int]
+    peripheral: Peripheral,
+    spf: str,
+    cluster_tags: dict[int, str],
+    unpacked: set[int],
+    unions: dict[int, tuple[str, str]],
 ) -> list[dict]:
     """Every register reachable from ``peripheral`` as a flat macro.
 
@@ -439,6 +515,10 @@ def _accessors(
     wider than the element, so the members are ``CH0``, ``CH1``, ...) has no
     member to index, so its macro is the address as a sum of the layout
     constants instead, ``BASE + OFFSET + (ch_index) * STRIDE``.
+
+    A view of an ``alternateRegister`` set is reached through its union
+    (``DC_TIM1->CCMR1.Input``); the union carries the layout constants, and
+    every view's macro names the other views so a reader finds them.
     """
     result: list[dict] = []
 
@@ -452,13 +532,18 @@ def _accessors(
         type_stem: str,
     ) -> None:
         params = list(params)
-        stem = f"{type_stem}_{register.name.upper()}"
-        terms = [*terms, f"{stem}_OFFSET"]
         member = register.name
+        view = unions.get(id(register))
+        if view is not None:
+            member = view[0]  # the union member, indexed like an array register
+        stem = f"{type_stem}_{member.upper()}"
+        terms = [*terms, f"{stem}_OFFSET"]
         if register.dim is not None:
-            index = _index_name(register.name, params)
+            index = _index_name(member, params)
             terms.append(f"({index}) * {stem}_STRIDE")
-            member = f"{register.name}[({index})]"
+            member = f"{member}[({index})]"
+        if view is not None:
+            member = f"{member}.{view[1]}"
         result.append(
             {
                 "name": "_".join([*names, register.name]),
@@ -469,6 +554,7 @@ def _accessors(
                 "unpacked": id(register) in unpacked,
                 "register": register,
                 "count": f"{stem}_COUNT" if register.dim is not None else None,
+                "alternates": [n for n in register.alternates if n != register.name],
             }
         )
 
@@ -664,7 +750,7 @@ class CWriter(Writer):
             constants[id(family)] = family_constants
             # Instances of a family share its layout, so one accessor list serves all.
             accessors[id(family)] = _accessors(
-                source, spf, cluster_tags, _unpacked_registers(entries)
+                source, spf, cluster_tags, _unpacked_registers(entries), _union_views(entries)
             )
         array_indices = {id(p): _array_indices(p) for p in device.peripherals}
 

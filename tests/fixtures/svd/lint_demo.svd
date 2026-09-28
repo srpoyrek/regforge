@@ -316,5 +316,26 @@
         <register><name>CR</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access></register>
       </registers>
     </peripheral>
+    <!-- alternateRegister flaws: views that disagree on their reset value, an
+         alternate declared at another offset, a self-reference, a common prefix
+         that collides with a sibling register, a target that does not exist,
+         and array views of different shape. -->
+    <peripheral>
+      <name>ALTX</name>
+      <baseAddress>0x40070000</baseAddress>
+      <addressBlock><offset>0</offset><size>0x40</size><usage>registers</usage></addressBlock>
+      <registers>
+        <register><name>A_Out</name><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access><resetValue>0x0</resetValue></register>
+        <register><name>A_In</name><alternateRegister>A_Out</alternateRegister><addressOffset>0x0</addressOffset><size>32</size><access>read-write</access><resetValue>0xFF</resetValue></register>
+        <register><name>B</name><alternateRegister>A_Out</alternateRegister><addressOffset>0x8</addressOffset><size>32</size><access>read-write</access></register>
+        <register><name>C</name><alternateRegister>C</alternateRegister><addressOffset>0x10</addressOffset><size>32</size><access>read-write</access></register>
+        <register><name>CCR</name><addressOffset>0x14</addressOffset><size>32</size><access>read-write</access></register>
+        <register><name>CCR_X</name><addressOffset>0x18</addressOffset><size>32</size><access>read-write</access></register>
+        <register><name>CCR_Y</name><alternateRegister>CCR_X</alternateRegister><addressOffset>0x18</addressOffset><size>32</size><access>read-write</access></register>
+        <register><name>D</name><alternateRegister>NOPE</alternateRegister><addressOffset>0x20</addressOffset><size>32</size><access>read-write</access></register>
+        <register><dim>2</dim><dimIncrement>4</dimIncrement><name>F[%s]</name><addressOffset>0x28</addressOffset><size>32</size><access>read-write</access></register>
+        <register><dim>3</dim><dimIncrement>4</dimIncrement><name>G[%s]</name><alternateRegister>F[%s]</alternateRegister><addressOffset>0x30</addressOffset><size>32</size><access>read-write</access></register>
+      </registers>
+    </peripheral>
   </peripherals>
 </device>

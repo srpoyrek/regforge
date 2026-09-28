@@ -72,6 +72,7 @@ The spelling of the placeholder decides the shape:
 | `DATA[%s]` | one register `DATA` that keeps its `dim` | `volatile uint32_t DATA[8];` and `DATA(data_index)` |
 | `CH%s` (cluster) | eight clusters `CH0`..`CH7` sharing one type | eight members of `dma_ch_t` |
 | `CH[%s]` (cluster) | one cluster `CH` that keeps its `dim` | `dma_ch_t CH[8];` and `CH_CTRL(ch_index)` |
+| `CCI[%s]` alternate of `CC[%s]` | one array of unions, see [alternates.md](alternates.md) | `union { CC; CCI; } CC[4];` and `CCI(cc_index)` |
 | `MODE%s` (field) | sixteen fields, `dimIncrement` **bits** apart | sixteen `_Pos` / `_Msk` pairs |
 | `MODE[%s]` (field) | one field `MODE` that keeps its `dim` | `MODE_Pos(mode_index)` / `MODE_Msk(mode_index)` |
 | `UART[%s]` (peripheral) | treated as `UART%s`, with a warning | separate instances |

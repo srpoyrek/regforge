@@ -170,7 +170,7 @@ typedef enum {
 {% set bw = nvic_banks|map(attribute='name')|map('length')|max %}
 {% set cw = nvic_banks|map(attribute='purpose')|map('length')|max %}
 {% for bank in nvic_banks %}
-#define {{ ns|upper }}NVIC_{{ "%-*s"|format(bw, bank.name) }} ((volatile uint32_t *)0x{{ "%08X"|format(bank.address) }}UL)  /* {{ "%-*s"|format(cw, bank.purpose) }} */
+#define {{ ns|upper }}NVIC_{{ "%-*s"|format(bw, bank.name) }} ((volatile uint32_t *)(uintptr_t)0x{{ "%08X"|format(bank.address) }}UL)  /* {{ "%-*s"|format(cw, bank.purpose) }} */
 {% endfor %}
 
 REGFORGE_INLINE void {{ ns|lower }}nvic_enable({{ prefix|lower }}irqn_e irq)
@@ -272,7 +272,11 @@ REGFORGE_INLINE uint8_t {{ ns|lower }}nvic_get_priority({{ prefix|lower }}irqn_e
 /* {{ ct.label }}{% if ct.desc %} -- {{ ct.desc }}{% endif %}{% if ct.count %} ({{ ct.count }} elements, 0x{{ "%X"|format(ct.element_bytes) }} bytes apart){% endif %} */
 typedef struct {
 {% for m in ct.members %}
+{% if m.union %}
+{{ m.block }}
+{% else %}
     {{ "%-*s"|format(ctw, m.type) }} {{ "%-*s"|format(cfw, m.field) }}  /* 0x{{ "%02X"|format(m.offset) }}{% if m.desc %}  {{ m.desc }}{% endif %} */
+{% endif %}
 {% endfor %}
 } {{ ct.tname }};
 {% for m in ct.members if m.member %}
@@ -280,7 +284,19 @@ REGFORGE_STATIC_ASSERT(offsetof({{ ct.tname }}, {{ m.member }}) == {% if m.index
 {% endfor %}
 {% for m in ct.members if m.member and m.elements > 1 %}
 REGFORGE_STATIC_ASSERT(sizeof((({{ ct.tname }} *)0)->{{ m.member }}) == {{ ct.spf }}_{{ m.member|upper }}_COUNT * {{ ct.spf }}_{{ m.member|upper }}_STRIDE, {{ ct.spf }}_{{ m.member|upper }}_ARRAY_CHECK, "{{ ct.label }}.{{ m.member }} array size");
-REGFORGE_STATIC_ASSERT(offsetof({{ ct.tname }}, {{ m.member }}[{{ ct.spf }}_{{ m.member|upper }}_COUNT - 1U]) == {{ ct.spf }}_{{ m.member|upper }}_OFFSET + ({{ ct.spf }}_{{ m.member|upper }}_COUNT - 1U) * {{ ct.spf }}_{{ m.member|upper }}_STRIDE, {{ ct.spf }}_{{ m.member|upper }}_LAST_CHECK, "{{ ct.label }}.{{ m.member }}[{{ m.elements - 1 }}] offset via the struct");
+REGFORGE_STATIC_ASSERT(offsetof({{ ct.tname }}, {{ m.member }}) + ({{ ct.spf }}_{{ m.member|upper }}_COUNT - 1U) * sizeof((({{ ct.tname }} *)0)->{{ m.member }}[0]) == {{ ct.spf }}_{{ m.member|upper }}_OFFSET + ({{ ct.spf }}_{{ m.member|upper }}_COUNT - 1U) * {{ ct.spf }}_{{ m.member|upper }}_STRIDE, {{ ct.spf }}_{{ m.member|upper }}_LAST_CHECK, "{{ ct.label }}.{{ m.member }}[{{ m.elements - 1 }}] offset via the struct");
+{% endfor %}
+{% for m in ct.members if m.union %}
+{% if m.elements > 1 %}
+REGFORGE_STATIC_ASSERT(sizeof((({{ ct.tname }} *)0)->{{ m.member }}[0]) == {{ ct.spf }}_{{ m.member|upper }}_STRIDE, {{ ct.spf }}_{{ m.member|upper }}_SIZE_CHECK, "{{ ct.label }}.{{ m.member }} union size vs dimIncrement");
+{% elif m.index is none %}
+REGFORGE_STATIC_ASSERT(sizeof((({{ ct.tname }} *)0)->{{ m.member }}) == {{ ct.spf }}_{{ m.member|upper }}_SIZE, {{ ct.spf }}_{{ m.member|upper }}_SIZE_CHECK, "{{ ct.label }}.{{ m.member }} union size");
+{% endif %}
+{% if m.elements == 1 %}
+{% for v in m.views %}
+REGFORGE_STATIC_ASSERT(offsetof({{ ct.tname }}, {{ m.member }}.{{ v.name }}) == {% if m.index is not none %}{{ ct.spf }}_{{ m.stem|upper }}_OFFSET + {{ m.index }}U * {{ ct.spf }}_{{ m.stem|upper }}_STRIDE{% else %}{{ ct.spf }}_{{ m.member|upper }}_OFFSET{% endif %}, {{ ct.spf }}_{{ m.member|upper }}_{{ v.name|upper }}_OFFSET_CHECK, "{{ ct.label }}.{{ m.member }}.{{ v.name }} offset");
+{% endfor %}
+{% endif %}
 {% endfor %}
 {% if ct.count %}
 REGFORGE_STATIC_ASSERT(sizeof({{ ct.tname }}) == {{ ct.own }}_STRIDE, {{ ct.spf }}_SIZE_CHECK, "{{ ct.label }} element size vs dimIncrement");
@@ -291,7 +307,11 @@ REGFORGE_STATIC_ASSERT(sizeof({{ ct.tname }}) == {{ ct.own }}_SIZE, {{ ct.spf }}
 
 typedef struct {
 {% for m in members %}
+{% if m.union %}
+{{ m.block }}
+{% else %}
     {{ "%-*s"|format(tw, m.type) }} {{ "%-*s"|format(fw, m.field) }}  /* 0x{{ "%02X"|format(m.offset) }}{% if m.desc %}  {{ m.desc }}{% endif %} */
+{% endif %}
 {% endfor %}
 } {{ tname }};
 {% for m in members if m.member %}
@@ -299,7 +319,19 @@ REGFORGE_STATIC_ASSERT(offsetof({{ tname }}, {{ m.member }}) == {% if m.index is
 {% endfor %}
 {% for m in members if m.member and m.elements > 1 %}
 REGFORGE_STATIC_ASSERT(sizeof((({{ tname }} *)0)->{{ m.member }}) == {{ spf }}_{{ m.member|upper }}_COUNT * {{ spf }}_{{ m.member|upper }}_STRIDE, {{ spf }}_{{ m.member|upper }}_ARRAY_CHECK, "{{ family.name }}.{{ m.member }} array size");
-REGFORGE_STATIC_ASSERT(offsetof({{ tname }}, {{ m.member }}[{{ spf }}_{{ m.member|upper }}_COUNT - 1U]) == {{ spf }}_{{ m.member|upper }}_OFFSET + ({{ spf }}_{{ m.member|upper }}_COUNT - 1U) * {{ spf }}_{{ m.member|upper }}_STRIDE, {{ spf }}_{{ m.member|upper }}_LAST_CHECK, "{{ family.name }}.{{ m.member }}[{{ m.elements - 1 }}] offset via the struct");
+REGFORGE_STATIC_ASSERT(offsetof({{ tname }}, {{ m.member }}) + ({{ spf }}_{{ m.member|upper }}_COUNT - 1U) * sizeof((({{ tname }} *)0)->{{ m.member }}[0]) == {{ spf }}_{{ m.member|upper }}_OFFSET + ({{ spf }}_{{ m.member|upper }}_COUNT - 1U) * {{ spf }}_{{ m.member|upper }}_STRIDE, {{ spf }}_{{ m.member|upper }}_LAST_CHECK, "{{ family.name }}.{{ m.member }}[{{ m.elements - 1 }}] offset via the struct");
+{% endfor %}
+{% for m in members if m.union %}
+{% if m.elements > 1 %}
+REGFORGE_STATIC_ASSERT(sizeof((({{ tname }} *)0)->{{ m.member }}[0]) == {{ spf }}_{{ m.member|upper }}_STRIDE, {{ spf }}_{{ m.member|upper }}_SIZE_CHECK, "{{ family.name }}.{{ m.member }} union size vs dimIncrement");
+{% elif m.index is none %}
+REGFORGE_STATIC_ASSERT(sizeof((({{ tname }} *)0)->{{ m.member }}) == {{ spf }}_{{ m.member|upper }}_SIZE, {{ spf }}_{{ m.member|upper }}_SIZE_CHECK, "{{ family.name }}.{{ m.member }} union size");
+{% endif %}
+{% if m.elements == 1 %}
+{% for v in m.views %}
+REGFORGE_STATIC_ASSERT(offsetof({{ tname }}, {{ m.member }}.{{ v.name }}) == {% if m.index is not none %}{{ spf }}_{{ m.stem|upper }}_OFFSET + {{ m.index }}U * {{ spf }}_{{ m.stem|upper }}_STRIDE{% else %}{{ spf }}_{{ m.member|upper }}_OFFSET{% endif %}, {{ spf }}_{{ m.member|upper }}_{{ v.name|upper }}_OFFSET_CHECK, "{{ family.name }}.{{ m.member }}.{{ v.name }} offset");
+{% endfor %}
+{% endif %}
 {% endfor %}
 {% set ssize = struct_size(src) %}
 {% if ssize is not none %}
@@ -336,7 +368,7 @@ REGFORGE_MAYBE_UNUSED static {{ tname }} *const {{ pf }} = ({{ tname }} *){{ pf 
 {% set reg = acc.register %}
 {% set rn = pf ~ "_" ~ acc.name|upper %}
 
-/* {{ periph.name }}.{{ acc.label }}{% if reg.description %} - {{ reg.description }}{% endif %} */
+/* {{ periph.name }}.{{ acc.label }}{% if reg.description %} - {{ reg.description }}{% endif %}{% if acc.alternates %}  [alternate: {{ acc.alternates|join(', ') }}]{% endif %} */
 {% if acc.count and pf != spf %}
 #define {{ rn }}_COUNT {{ acc.count }}
 {% endif %}

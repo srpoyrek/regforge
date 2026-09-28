@@ -136,3 +136,34 @@ def test_header_matches_golden(lint_demo_device, lint_demo_svd_path, lint_demo_g
 
     # Note: the demo header is compiled across the full toolchain matrix by
     # tests/writers/c/test_compiles.py::test_lint_demo_header_compiles.
+
+
+def test_alternate_register_findings_are_locked(lint_demo_svd_path):
+    from regforge.resolve import resolve_alternates
+
+    device = SvdReader().read(lint_demo_svd_path)
+    expand_dim(device)
+    resolve_derived(device)
+    findings = resolve_alternates(device)
+    assert sorted(f.message for f in findings if f.severity is Severity.ERROR) == [
+        "ALTX.D: alternateRegister 'NOPE' -- no register of that name in ALTX; treated as an "
+        "ordinary register"
+    ]
+    assert sorted(f.message for f in findings if f.severity is Severity.WARNING) == [
+        "ALTX.B: alternateRegister 'A_Out' is at offset 0x0, not 0x8 -- an alternate view must "
+        "share the offset; left unrelated",
+        "ALTX.C: alternateRegister names itself -- ignored",
+        "ALTX.G: alternateRegister 'F' has a different <dim> shape -- left unrelated",
+    ]
+
+
+def test_alternate_register_check_findings_are_locked(lint_demo_device):
+    warnings = [f.message for f in run_checks(lint_demo_device) if f.severity is Severity.WARNING]
+    assert (
+        "ALTX.A_Out: alternate views disagree on resetValue (A_Out=0x0, A_In=0xFF) -- one "
+        "register has one reset"
+    ) in warnings
+    assert (
+        "ALTX.CCR_X: the common prefix 'CCR' is already a member of the block -- the union is "
+        "named CCR_X and its views keep their full names"
+    ) in warnings

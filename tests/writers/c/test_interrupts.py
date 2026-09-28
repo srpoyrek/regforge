@@ -152,7 +152,7 @@ def test_cortex_m_emits_nvic_helpers_and_capability_macro():
         assert f"dc_nvic_{name}(dc_irqn_e irq)" in output
     assert "dc_nvic_set_priority(dc_irqn_e irq, uint8_t priority)" in output
     assert "dc_nvic_get_priority(dc_irqn_e irq)" in output
-    assert "#define DC_NVIC_ISER ((volatile uint32_t *)0xE000E100UL)" in output
+    assert "#define DC_NVIC_ISER ((volatile uint32_t *)(uintptr_t)0xE000E100UL)" in output
     assert "assert((uint32_t)irq < CHIP_NUM_IRQS)" in output  # bounds against the count
     assert "dc_irq_prio(priority)" in output  # set_priority routes through the shift helper
     # The word/bit geometry is named in the CPU block and used by name in every helper.

@@ -21,6 +21,8 @@ convert differently -- which is exactly why it is a function, not a hardcode).
 
 from __future__ import annotations
 
+import os.path
+import re
 from dataclasses import dataclass, field
 
 from .ir import AddressBlock, Cluster, Peripheral, Register
@@ -72,6 +74,12 @@ class LayoutEntry:
         index: That element's position in its array; ``None`` otherwise.
         members: A cluster's own layout, padded to ``element_bytes``; empty for
             every other kind of slot.
+        views: The registers a union slot holds -- one word the source
+            describes twice (``alternateRegister``) -- primary first; empty
+            for every other kind of slot.
+        view_names: What each view is called inside the union.
+        union: The union member's name; ``name`` is one element of an
+            unpacked union array, as for a register.
     """
 
     offset: int
@@ -85,17 +93,22 @@ class LayoutEntry:
     name: str | None = None
     index: int | None = None
     members: list[LayoutEntry] = field(default_factory=list)
+    views: tuple[Register, ...] = ()
+    view_names: tuple[str, ...] = ()
+    union: str | None = None
 
     @property
     def is_reserved(self) -> bool:
         """Whether this slot is reserved padding rather than a member or a window."""
-        return self.register is None and self.cluster is None and not self.buffer
+        return self.register is None and self.cluster is None and not self.buffer and not self.views
 
     @property
     def label(self) -> str:
         """What to call the slot in a message: the member name, or what it holds."""
         if self.register is not None:
             return self.name or self.register.name
+        if self.views:
+            return self.name or self.union or ""
         if self.cluster is not None:
             return self.cluster.name
         return "buffer" if self.buffer else "reserved"
@@ -280,9 +293,105 @@ def _alignment_bytes(entries: list[LayoutEntry]) -> int:
     for slot in entries:
         if slot.register is not None:
             widest = max(widest, min((slot.register.size or 0) // BITS_PER_BYTE, 8))
-        elif slot.members:
+        for view in slot.views:
+            widest = max(widest, min((view.size or 0) // BITS_PER_BYTE, 8))
+        if slot.members:
             widest = max(widest, _alignment_bytes(slot.members))
     return widest
+
+
+_IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+def union_naming(
+    views: list[Register], siblings: set[str]
+) -> tuple[str, tuple[str, ...], str | None]:
+    """The union member's name, its views' names inside it, and why a fallback was taken.
+
+    Rule 1: the views' longest common prefix, ``_`` trimmed, names the union
+    and each view keeps its remainder (``CCMR1_Output`` / ``CCMR1_Input`` ->
+    ``CCMR1 { Output; Input; }``), provided the prefix is an identifier no
+    sibling member of the block uses and every remainder is a distinct
+    identifier. Rule 2 otherwise: the primary's name, the views keeping their
+    full names (``DR { DR; RXD; }``). The third value says when rule 1 was
+    blocked only by a sibling, so a check can warn; ``None`` when rule 1
+    applied or simply had nothing to offer.
+    """
+    names = [view.name for view in views]
+    prefix = os.path.commonprefix(names).rstrip("_")
+    remainders = tuple(name[len(prefix) :].lstrip("_") for name in names)
+    usable = bool(prefix) and _IDENTIFIER.fullmatch(prefix) is not None
+    distinct = all(_IDENTIFIER.fullmatch(part) for part in remainders) and len(
+        set(remainders)
+    ) == len(remainders)
+    if usable and distinct and prefix not in siblings:
+        return prefix, remainders, None
+    reason = None
+    if usable and distinct:
+        reason = f"the common prefix '{prefix}' is already a member of the block"
+    return names[0], tuple(names), reason
+
+
+def _union_slots(
+    where: str, views: list[Register], address_unit_bits: int, siblings: set[str]
+) -> list[LayoutEntry]:
+    """One union slot for the views of one word, or one per element when unpacked.
+
+    The union is as wide as its widest view. The views share one ``dim``
+    (the resolve pass only links equal shapes), so an array of unions follows
+    the register-array rule: packed when the stride is the width, one member
+    per element when the stride is wider, refused when it is narrower.
+    """
+    name, members, _ = union_naming(views, siblings)
+    element = max(_element_bytes(view) for view in views)
+    primary = views[0]
+    offset = units_to_bytes(primary.address_offset, address_unit_bits)
+    if primary.dim is None:
+        return [
+            LayoutEntry(
+                offset=offset,
+                register=None,
+                element_bytes=element,
+                size_bytes=element,
+                views=tuple(views),
+                view_names=members,
+                union=name,
+            )
+        ]
+    count = primary.dim.length
+    stride = units_to_bytes(primary.dim.stride, address_unit_bits)
+    if stride < element:
+        raise LayoutError(
+            f"{where}.{name}[{count}]: stride {stride} byte(s) is smaller than the widest "
+            f"view ({element}) -- the elements overlap"
+        )
+    if stride == element:
+        return [
+            LayoutEntry(
+                offset=offset,
+                register=None,
+                element_bytes=element,
+                size_bytes=element * count,
+                count=count,
+                views=tuple(views),
+                view_names=members,
+                union=name,
+            )
+        ]
+    return [
+        LayoutEntry(
+            offset=offset + index * stride,
+            register=None,
+            element_bytes=element,
+            size_bytes=element,
+            name=f"{name}{index}",
+            index=index,
+            views=tuple(views),
+            view_names=members,
+            union=name,
+        )
+        for index in range(count)
+    ]
 
 
 def _cluster_slot(where: str, cluster: Cluster, address_unit_bits: int) -> LayoutEntry:
@@ -315,8 +424,26 @@ def _block_layout(
     pad_to_bytes: int | None,
 ) -> list[LayoutEntry]:
     slots: list[LayoutEntry] = []
+    # Declared alternate views of one word become one union slot, emitted where
+    # the first view stands; every other register is a slot of its own.
+    unions: dict[str, list[Register]] = {}
     for register in registers:
-        slots += _register_slots(where, register, address_unit_bits)
+        if register.alternates:
+            unions.setdefault(register.alternates[0], []).append(register)
+    for views in unions.values():
+        views.sort(key=lambda view: view.name != view.alternates[0])  # primary first
+    plain = {register.name for register in registers if not register.alternates}
+    for register in registers:
+        if not register.alternates:
+            slots += _register_slots(where, register, address_unit_bits)
+            continue
+        views = unions[register.alternates[0]]
+        if register is views[0]:
+            siblings = plain | {cluster.name for cluster in clusters}
+            siblings |= {
+                other.name for group in unions.values() if group is not views for other in group
+            }
+            slots += _union_slots(where, views, address_unit_bits, siblings)
     slots += [_cluster_slot(where, cluster, address_unit_bits) for cluster in clusters]
     for block in buffers:
         size = units_to_bytes(block.size, address_unit_bits)
@@ -338,13 +465,15 @@ def _block_layout(
         if slot.offset < cursor:
             if slot.register is not None:
                 what = f"{where}.{slot.label}: register"
+            elif slot.views:
+                what = f"{where}.{slot.label}: union"
             elif slot.cluster is not None:
                 what = f"{where}.{slot.label}: cluster"
             else:
                 what = f"{where}: buffer addressBlock"
             raise LayoutError(
                 f"{what} at offset 0x{slot.offset:X} overlaps the preceding member "
-                "(overlapping / alternateRegister layouts are not yet supported)"
+                "(add <alternateRegister> if these are views of one register)"
             )
         if slot.offset > cursor:
             gap = slot.offset - cursor

@@ -141,7 +141,7 @@ def test_fixture_emits_cortex_m_nvic_helpers(demo_device):
     output = CWriter().render(demo_device)
     # CM0PLUS is detected as Cortex-M -> capability macro + the typed NVIC API.
     assert "#define DEMOMCU_HAS_NVIC 1" in output
-    assert "#define DC_NVIC_ISER ((volatile uint32_t *)0xE000E100UL)" in output
+    assert "#define DC_NVIC_ISER ((volatile uint32_t *)(uintptr_t)0xE000E100UL)" in output
     assert "REGFORGE_INLINE void dc_nvic_enable(dc_irqn_e irq)" in output
     assert "REGFORGE_INLINE void dc_nvic_set_priority(dc_irqn_e irq, uint8_t priority)" in output
     assert "assert((uint32_t)irq < DEMOMCU_NUM_IRQS)" in output  # bounds vs the count
@@ -274,14 +274,16 @@ def test_fixture_peripheral_array_is_one_family_with_labelled_instances(demo_dev
 def test_fixture_register_array_and_separate_copies(demo_device):
     output = CWriter().render(demo_device)
     squashed = _squash(output)
-    assert "volatile uint32_t CC[DC_PWM_CC_COUNT];" in squashed  # CC[%s]: one packed array
+    assert "} CC[DC_PWM_CC_COUNT]; /* 0x10 one register, 2 views */" in squashed  # CC[%s] + CCI
     assert (
         "#define DC_PWMA_CC_COUNT DC_PWM_CC_COUNT" in output
     )  # the family count, by instance name
-    assert "#define DC_PWMA_CC(cc_index) (DC_PWMA->CC[(cc_index)])" in output
+    assert "#define DC_PWMA_CC(cc_index) (DC_PWMA->CC[(cc_index)].CC)" in output
+    assert "#define DC_PWMA_CCI(cc_index) (DC_PWMA->CC[(cc_index)].CCI)" in output
     assert output.count("DC_PWMA_CC_RESET_VALUE") == 1  # once per array
     assert "volatile uint32_t DT0;" in squashed and "volatile uint32_t DT1;" in squashed  # DT%s
-    assert "#define DC_PWMB_DT1 (DC_PWMB->DT1)" in output
+    assert "#define DC_PWMB_DT1 (DC_PWMB->DT1.DT1)" in output  # DT1 alt DTR1: a union
+    assert "#define DC_PWMB_DTR1 (DC_PWMB->DT1.DTR1)" in output
 
 
 def test_fixture_field_array_and_separate_copies(demo_device):
@@ -313,3 +315,30 @@ def test_fixture_cluster_array_and_single_cluster(demo_device):
     assert "#define DC_DMA_CH_DST(ch_index) (DC_DMA->CH[(ch_index)].DST)" in output
     assert "#define DC_DMA_CH_CTRL_EN_Pos (0U)" in output
     assert "#define DC_DMA_STAT_ERR (DC_DMA->STAT.ERR)" in output
+
+
+def test_fixture_alternate_registers_become_unions(demo_device):
+    output = CWriter().render(demo_device)
+    squashed = _squash(output)
+    # TIM1: the common prefix names the union, the views keep their remainders.
+    assert "} CCMR1; /* 0x0C one register, 2 views */" in squashed
+    assert "#define DC_TIM1_CCMR1_SIZE (0x00000004UL)" in squashed
+    assert (
+        "REGFORGE_STATIC_ASSERT(offsetof(dc_tim1_t, CCMR1.Output) == DC_TIM1_CCMR1_OFFSET, "
+        'DC_TIM1_CCMR1_OUTPUT_OFFSET_CHECK, "TIM1.CCMR1.Output offset");' in output
+    )
+    assert "#define DC_TIM1_CCMR1_INPUT (DC_TIM1->CCMR1.Input)" in output
+    assert "#define DC_TIM1_CCMR1_INPUT_IC1F_Pos (4U)" in output  # fields stay per view
+    assert "#define DC_TIM1_CCMR1_OUTPUT_OC1M_Pos (4U)" in output
+    # SPI: no usable prefix, so the union is named after the primary; RXD is const.
+    assert "volatile const uint32_t RXD;" in squashed
+    assert "#define DC_SPI1_RXD (DC_SPI1->DR.RXD)" in output
+    # CRC: three widths, one union as wide as the widest.
+    assert "volatile uint8_t DR8;" in squashed and "volatile uint16_t DR16;" in squashed
+    assert "/* CRC.DR - Data register  [alternate: DR8, DR16] */" in output
+    # ADC: alternateGroup, inherited by ADC1 through derivedFrom.
+    assert "#define DC_ADC1_DR_CAL (DC_ADC1->DR.DR_Cal)" in output
+    # DMA: a union inside the channel element leaves it fully used.
+    assert "} XFER; /* 0x0C one register, 2 views */" in squashed
+    assert "DC_DMA_CH_RESERVED0_SIZE" not in output
+    assert "#define DC_DMA_CH_XFER_PERIPH(ch_index) (DC_DMA->CH[(ch_index)].XFER.Periph)" in output

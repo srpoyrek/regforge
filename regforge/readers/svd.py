@@ -260,8 +260,17 @@ def _build_register(register_element: ET.Element, warnings: list[str]) -> Regist
     # Register-property values are stored raw (None when silent); the defaults
     # resolution pass fills them from the inheritance chain.
     name = _text(register_element, "name") or ""
+    alternate = _text(register_element, "alternateRegister")
+    group = _text(register_element, "alternateGroup")
+    if group:
+        # <alternateGroup>: the same register name reused in another group is
+        # the spec's other spelling of an alternate view. Spelled NAME_GROUP so
+        # it is an identifier, and linked to the plainly named register.
+        alternate = alternate or name
+        name = f"{name}_{group}"
     return Register(
         name=name,
+        alternate_register=alternate,
         address_offset=_int(register_element, "addressOffset", 0),
         size=_int(register_element, "size"),
         reset_value=_int(register_element, "resetValue"),

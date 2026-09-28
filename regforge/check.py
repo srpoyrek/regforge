@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from .families import first_divergence, layout_signature
-from .ir import Cluster, Device, Peripheral, Register
+from .ir import Cluster, Device, Peripheral, Register, walk_clusters
 from .layout import (
     LayoutError,
     cluster_element_units,
@@ -23,6 +23,7 @@ from .layout import (
     peripheral_layout,
     register_span_units,
     registers_end,
+    union_naming,
     units_to_bytes,
 )
 
@@ -588,6 +589,58 @@ def _overlap_origin(first: Peripheral, second: Peripheral) -> str:
     return f" -- {'; '.join(notes)}" if notes else ""
 
 
+def check_alternate_registers(device: Device) -> list[Finding]:
+    """Declared views of one register must agree where a register has one truth.
+
+    Two ``alternateRegister`` views describe one word, so they cannot reset
+    to two values: differing ``resetValue`` is the file contradicting itself
+    (``WARNING``; the header emits each view's own). And the union that
+    holds the views is named after their common prefix unless a sibling
+    member already carries that name, in which case the fallback naming is
+    reported so the odder spelling is not a surprise.
+    """
+    findings: list[Finding] = []
+    for peripheral in device.peripherals:
+        blocks = [(peripheral.name, peripheral.registers, peripheral.clusters)]
+        blocks += [
+            (path, cluster.registers, cluster.clusters)
+            for path, cluster in walk_clusters(peripheral.clusters, peripheral.name)
+        ]
+        for where, registers, clusters in blocks:
+            groups: dict[str, list[Register]] = {}
+            for register in registers:
+                if register.alternates:
+                    groups.setdefault(register.alternates[0], []).append(register)
+            for primary, views in groups.items():
+                views.sort(key=lambda view: view.name != primary)
+                resets = {v.name: v.reset_value for v in views if v.reset_value is not None}
+                if len(set(resets.values())) > 1:
+                    listed = ", ".join(f"{name}=0x{value:X}" for name, value in resets.items())
+                    findings.append(
+                        Finding(
+                            Severity.WARNING,
+                            f"{where}.{primary}: alternate views disagree on resetValue "
+                            f"({listed}) -- one register has one reset",
+                        )
+                    )
+                siblings = {r.name for r in registers if not r.alternates} | {
+                    c.name for c in clusters
+                }
+                siblings |= {
+                    r.name for r in registers if r.alternates and r.alternates[0] != primary
+                }
+                name, _, collision = union_naming(views, siblings)
+                if collision is not None:
+                    findings.append(
+                        Finding(
+                            Severity.WARNING,
+                            f"{where}.{primary}: {collision} -- the union is named {name} "
+                            "and its views keep their full names",
+                        )
+                    )
+    return findings
+
+
 #: Every consistency check, run in order by :func:`run_checks`. Add a new check
 #: here and it is picked up by the CLI and any other caller automatically.
 ALL_CHECKS = (
@@ -598,6 +651,7 @@ ALL_CHECKS = (
     check_derived_chains,
     check_derived_interrupts,
     check_group_divergence,
+    check_alternate_registers,
 )
 
 

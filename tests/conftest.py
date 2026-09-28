@@ -11,7 +11,7 @@ import pytest
 
 from regforge.ir import Device
 from regforge.readers.svd import SvdReader
-from regforge.resolve import expand_dim, resolve_defaults, resolve_derived
+from regforge.resolve import expand_dim, resolve_alternates, resolve_defaults, resolve_derived
 
 TESTS_DIR = Path(__file__).parent
 MINIMAL_SVD = TESTS_DIR / "fixtures" / "svd" / "minimal.svd"
@@ -38,6 +38,7 @@ def demo_device() -> Device:
     device = SvdReader().read(MINIMAL_SVD)
     expand_dim(device)
     resolve_derived(device)
+    resolve_alternates(device)
     resolve_defaults(device)
     return device
 
@@ -60,5 +61,6 @@ def lint_demo_device() -> Device:
     device = SvdReader().read(LINT_DEMO_SVD)
     expand_dim(device)
     resolve_derived(device)
+    resolve_alternates(device)
     resolve_defaults(device)
     return device

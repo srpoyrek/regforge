@@ -168,6 +168,10 @@ Licensed under the Apache License, Version 2.0.
       <registers>
         <register><name>CR</name><description>Control register</description><addressOffset>0x00</addressOffset></register>
         <register><name>DR</name><description>Data register</description><addressOffset>0x04</addressOffset></register>
+        <!-- alternateRegister with no usable common prefix: the union takes the
+             primary's name and the views keep theirs, DR { DR; RXD; }. RXD is
+             read-only, so its view is const while DR's is not. -->
+        <register><name>RXD</name><alternateRegister>DR</alternateRegister><description>Receive data (read view of DR)</description><addressOffset>0x04</addressOffset><access>read-only</access></register>
       </registers>
     </peripheral>
     <peripheral>
@@ -189,6 +193,10 @@ Licensed under the Apache License, Version 2.0.
       <registers>
         <register><name>CR</name><description>Control register</description><addressOffset>0x00</addressOffset></register>
         <register><name>DR</name><description>Data register</description><addressOffset>0x04</addressOffset></register>
+        <!-- alternateRegister with no usable common prefix: the union takes the
+             primary's name and the views keep theirs, DR { DR; RXD; }. RXD is
+             read-only, so its view is const while DR's is not. -->
+        <register><name>RXD</name><alternateRegister>DR</alternateRegister><description>Receive data (read view of DR)</description><addressOffset>0x04</addressOffset><access>read-only</access></register>
       </registers>
     </peripheral>
     <peripheral>
@@ -221,6 +229,24 @@ Licensed under the Apache License, Version 2.0.
         <register><name>CR1</name><description>Control register 1</description><addressOffset>0x00</addressOffset></register>
         <register><name>ARR</name><description>Auto-reload register</description><addressOffset>0x04</addressOffset></register>
         <register><name>RCR</name><description>Repetition counter (advanced only)</description><addressOffset>0x08</addressOffset></register>
+        <!-- alternateRegister: two layouts of the one word at 0x0C. CC1S decides
+             whether the other bits mean output-compare or input-capture, so the
+             file declares both; regforge emits one union CCMR1 whose members
+             are named by the views' common prefix, and field macros per view. -->
+        <register>
+          <name>CCMR1_Output</name><description>Capture/compare mode (output)</description><addressOffset>0x0C</addressOffset>
+          <fields>
+            <field><name>CC1S</name><description>Capture/compare 1 selection</description><bitOffset>0</bitOffset><bitWidth>2</bitWidth></field>
+            <field><name>OC1M</name><description>Output compare 1 mode</description><bitOffset>4</bitOffset><bitWidth>3</bitWidth></field>
+          </fields>
+        </register>
+        <register>
+          <name>CCMR1_Input</name><alternateRegister>CCMR1_Output</alternateRegister><description>Capture/compare mode (input)</description><addressOffset>0x0C</addressOffset>
+          <fields>
+            <field><name>CC1S</name><description>Capture/compare 1 selection</description><bitOffset>0</bitOffset><bitWidth>2</bitWidth></field>
+            <field><name>IC1F</name><description>Input capture 1 filter</description><bitOffset>4</bitOffset><bitWidth>4</bitWidth></field>
+          </fields>
+        </register>
       </registers>
     </peripheral>
     <peripheral>
@@ -284,6 +310,10 @@ Licensed under the Apache License, Version 2.0.
       <registers>
         <register><name>CR</name><description>Control register</description><addressOffset>0x00</addressOffset></register>
         <register><name>DR</name><description>Data register</description><addressOffset>0x04</addressOffset><access>read-only</access></register>
+        <!-- alternateGroup: the same name in another group is the spec's other
+             spelling of an alternate view. It is read as DR_Cal, an alternate of
+             DR, and ADC1 inherits the pair through derivedFrom. -->
+        <register><name>DR</name><alternateGroup>Cal</alternateGroup><description>Calibrated data (alternate group of DR)</description><addressOffset>0x04</addressOffset><access>read-only</access></register>
       </registers>
     </peripheral>
     <peripheral derivedFrom="ADC0">
@@ -348,6 +378,12 @@ Licensed under the Apache License, Version 2.0.
       <addressBlock><offset>0</offset><size>0x8</size><usage>registers</usage></addressBlock>
       <registers>
         <register><name>DR</name><description>Data register</description><addressOffset>0x00</addressOffset></register>
+        <!-- Three views of one word at different widths: the union is as wide
+             as the widest view, and the narrow views sit at its start. The
+             remainders after the common prefix (8, 16) are not identifiers, so
+             the union takes the primary's name and the views keep theirs. -->
+        <register><name>DR8</name><alternateRegister>DR</alternateRegister><description>Byte-wide view of DR</description><addressOffset>0x00</addressOffset><size>8</size></register>
+        <register><name>DR16</name><alternateRegister>DR</alternateRegister><description>Half-word view of DR</description><addressOffset>0x00</addressOffset><size>16</size></register>
       </registers>
     </peripheral>
     <!-- Peripheral array (<dim> on a peripheral): one template, two instances
@@ -375,6 +411,17 @@ Licensed under the Apache License, Version 2.0.
           <addressOffset>0x10</addressOffset>
           <resetValue>0x00000000</resetValue>
         </register>
+        <!-- An alternate view of a register array: same dim and dimIncrement,
+             so the array becomes an array of unions, CC[4], indexed as before. -->
+        <register>
+          <dim>4</dim>
+          <dimIncrement>4</dimIncrement>
+          <name>CCI[%s]</name>
+          <alternateRegister>CC[%s]</alternateRegister>
+          <description>Capture/compare channel (input capture view)</description>
+          <addressOffset>0x10</addressOffset>
+          <resetValue>0x00000000</resetValue>
+        </register>
         <register>
           <dim>2</dim>
           <dimIncrement>8</dimIncrement>
@@ -382,12 +429,22 @@ Licensed under the Apache License, Version 2.0.
           <description>Dead time</description>
           <addressOffset>0x20</addressOffset>
         </register>
+        <!-- An alternate of a %s template pairs copy with copy: DTR0 with DT0,
+             DTR1 with DT1, each pair one union named after its primary. -->
+        <register>
+          <dim>2</dim>
+          <dimIncrement>8</dimIncrement>
+          <name>DTR%s</name>
+          <alternateRegister>DT%s</alternateRegister>
+          <description>Dead time (raw view)</description>
+          <addressOffset>0x20</addressOffset>
+        </register>
       </registers>
     </peripheral>
     <!-- Clusters: CH[%s] is an array of four channel blocks 0x10 apart (a
          nested dc_dma_ch_t, padded to the stride and size-asserted, used as one
          member CH[4]), and STAT is a single cluster: its own type, one member,
-         no size assert because the source declares no stride for it. -->
+         its size asserted against its own extent. -->
     <peripheral>
       <name>DMA</name>
       <description>Direct memory access</description>
@@ -409,6 +466,10 @@ Licensed under the Apache License, Version 2.0.
           </register>
           <register><name>SRC</name><description>Source address</description><addressOffset>0x4</addressOffset></register>
           <register><name>DST</name><description>Destination address</description><addressOffset>0x8</addressOffset></register>
+          <!-- A union inside a cluster element: two views of the word at 0xC,
+               so the element is fully used and needs no padding. -->
+          <register><name>XFER_Mem</name><description>Transfer control (memory side)</description><addressOffset>0xC</addressOffset></register>
+          <register><name>XFER_Periph</name><alternateRegister>XFER_Mem</alternateRegister><description>Transfer control (peripheral side)</description><addressOffset>0xC</addressOffset></register>
         </cluster>
         <cluster>
           <name>STAT</name>
