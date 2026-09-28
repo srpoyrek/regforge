@@ -24,7 +24,8 @@ def test_byte_addressable_emits_byte_offsets():
     output = CWriter().render(device)
     # At 8 bits/unit the conversion is a no-op: offsets stay as written.
     assert "#define P_BASE (0x00001000UL)" in output
-    assert "P_BASE + 0x00000014UL" in output
+    assert "_OFFSET (0x00000014UL)" in output  # the offset, once, as a named constant
+    assert "P_BASE + P_" in output  # and the accessor refers to it by name
     # The unit is emitted as a macro and self-checked against the compiler.
     # Tie the expected value to the input so the two can't drift apart.
     assert f"#define CHIP_ADDRESS_UNIT_BITS {unit_bits}" in output

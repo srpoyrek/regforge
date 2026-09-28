@@ -70,7 +70,7 @@ typedef struct {
     volatile uint32_t SRC;           /* 0x04 */
     uint8_t           RESERVED0[8];  /* 0x08  (reserved) */
 } dma_ch_t;
-REGFORGE_STATIC_ASSERT(sizeof(dma_ch_t) == 0x10, DMA_CH_SIZE, "DMA.CH element size vs dimIncrement");
+REGFORGE_STATIC_ASSERT(sizeof(dma_ch_t) == DMA_CH_STRIDE, DMA_CH_SIZE_CHECK, "DMA.CH element size vs dimIncrement");
 
     dma_ch_t          CH[4];          /* 0x10 */
 ```

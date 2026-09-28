@@ -48,7 +48,7 @@ The header also checks the assumption when it is compiled — see
 
 ```c
 #define DEMOMCU_ADDRESS_UNIT_BITS 8
-REGFORGE_STATIC_ASSERT(CHAR_BIT == DEMOMCU_ADDRESS_UNIT_BITS, DEMOMCU_address_unit_bits,
+REGFORGE_STATIC_ASSERT(CHAR_BIT == DEMOMCU_ADDRESS_UNIT_BITS, DEMOMCU_ADDRESS_UNIT_BITS_CHECK,
     "regforge: this header targets 8-bit address units; the compiler's CHAR_BIT disagrees.");
 ```
 
@@ -106,7 +106,7 @@ typedef struct {
     uint8_t           RESERVED0[12];   /* 0x04  (reserved) */
     volatile uint32_t IDR;             /* 0x10 */
 } dc_gpioa_t;
-REGFORGE_STATIC_ASSERT(offsetof(dc_gpioa_t, IDR) == 0x10, DC_GPIOA_IDR_offset, "GPIOA.IDR offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_gpioa_t, IDR) == DC_GPIOA_IDR_OFFSET, DC_GPIOA_IDR_OFFSET_CHECK, "GPIOA.IDR offset");
 ```
 
 ### Corner cases

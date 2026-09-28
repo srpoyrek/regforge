@@ -1,9 +1,10 @@
 """C writer.
 
 Renders the intermediate representation into a C header of CMSIS-style
-preprocessor definitions: a base-address macro per peripheral, a volatile
-pointer accessor per register, position and mask macros per field, and a
-constant per enumerated value. A cluster becomes a nested struct type; an
+preprocessor definitions: a base-address macro per peripheral, one named
+constant per member offset, stride and count, a volatile pointer accessor per
+register built from those constants, position and mask macros per field, and
+a constant per enumerated value. A cluster becomes a nested struct type; an
 array (a register, cluster or field that kept its ``dim``) becomes one array
 member with indexed accessor macros.
 
@@ -187,6 +188,8 @@ def _c_layout(
                     "member": name,
                     "elements": 1,
                     "bytes": slot.size_bytes,
+                    "stem": None,
+                    "index": None,
                 }
             )
             buffer_index += 1
@@ -200,6 +203,8 @@ def _c_layout(
                     "member": None,
                     "elements": 1,
                     "bytes": slot.size_bytes,
+                    "stem": None,
+                    "index": None,
                 }
             )
             pad_index += 1
@@ -214,6 +219,8 @@ def _c_layout(
                     "member": cluster.name,
                     "elements": slot.count,
                     "bytes": slot.size_bytes,
+                    "stem": None,
+                    "index": None,
                 }
             )
         else:
@@ -229,6 +236,8 @@ def _c_layout(
                     "member": name,
                     "elements": slot.count,
                     "bytes": slot.size_bytes,
+                    "stem": register.name if slot.index is not None else None,
+                    "index": slot.index,
                 }
             )
     return entries_out
@@ -256,7 +265,8 @@ def _cluster_types(
     type_base: str,
     taken: set[str],
     cluster_names: dict[int, str],
-    shared: dict[tuple, str],
+    cluster_tags: dict[int, str],
+    shared: dict[tuple, tuple[str, str]],
     bus_width: int,
 ) -> list[dict]:
     """The cluster struct types a block uses, innermost first, each emitted once.
@@ -268,7 +278,9 @@ def _cluster_types(
     contents -- the copies expanded from ``CH%s``, or one vendor block placed
     twice -- share a single type. Two that want the same name with different
     contents fall back to the cluster's own name, then to a numeric suffix.
-    Nested types come first in the list so each is defined before its user.
+    The assert tags and the layout constants of a type follow the name that
+    was actually chosen, so a fallback never reuses another type's. Nested
+    types come first in the list so each is defined before its user.
     """
     types: list[dict] = []
     for slot in entries:
@@ -276,13 +288,20 @@ def _cluster_types(
         if cluster is None:
             continue
         wanted = cluster.header_struct_name or cluster.name
-        inner_label = f"{label}.{wanted}"
-        inner_tag = f"{tag_prefix}_{wanted.upper()}"
-        inner_base = f"{type_base}_{wanted.lower()}"
-        key = (inner_base, cluster_signature(cluster)[2:])
+        key = (f"{type_base}_{wanted.lower()}", cluster_signature(cluster)[2:])
         if key in shared:
-            cluster_names[id(cluster)] = shared[key]
+            cluster_names[id(cluster)], cluster_tags[id(cluster)] = shared[key]
             continue
+        candidates = [f"{type_base}_{wanted.lower()}_t"]
+        if wanted.lower() != cluster.name.lower():
+            candidates.append(f"{type_base}_{cluster.name.lower()}_t")
+        type_name = _unique_type_name(candidates, taken)
+        inner_base = type_name[: -len("_t")]
+        inner_tag = f"{tag_prefix}{inner_base[len(type_base):].upper()}"
+        inner_label = f"{label}.{wanted}"
+        shared[key] = (type_name, inner_tag)
+        cluster_names[id(cluster)] = type_name
+        cluster_tags[id(cluster)] = inner_tag
         types += _cluster_types(
             slot.members,
             inner_label,
@@ -290,19 +309,15 @@ def _cluster_types(
             inner_base,
             taken,
             cluster_names,
+            cluster_tags,
             shared,
             bus_width,
         )
-        candidates = [f"{inner_base}_t"]
-        if wanted.lower() != cluster.name.lower():
-            candidates.append(f"{type_base}_{cluster.name.lower()}_t")
-        type_name = _unique_type_name(candidates, taken)
-        shared[key] = type_name
-        cluster_names[id(cluster)] = type_name
         types.append(
             {
                 "tname": type_name,
                 "spf": inner_tag,
+                "own": f"{tag_prefix}_{cluster.name.upper()}",
                 "label": inner_label,
                 "desc": cluster.description,
                 "members": _c_layout(slot.members, cluster_names, bus_width),
@@ -313,43 +328,97 @@ def _cluster_types(
     return types
 
 
-def _accessors(peripheral: Peripheral, address_unit_bits: int) -> list[dict]:
+def _constants(
+    spf: str,
+    entries: list[LayoutEntry],
+    address_unit_bits: int,
+    cluster_tags: dict[int, str],
+    emitted: set[str],
+) -> list[dict]:
+    """The named numbers of one struct type, in member order.
+
+    Every member gets ``<TYPE>_<MEMBER>_OFFSET``; an array adds ``_STRIDE`` and
+    ``_COUNT``. A cluster's own offset (and stride) is named after the cluster,
+    and its members after the cluster's *type*, relative to one element, so
+    copies of one type share one set, emitted once. Every assert and accessor
+    the header emits refers to these, so each number is written exactly once.
+    """
+    constants: list[dict] = []
+    buffer_index = 0
+    seen: set[int] = set()
+    for slot in entries:
+        if slot.buffer:
+            constants.append(
+                {"name": f"{spf}_BUFFER{buffer_index}_OFFSET", "value": f"{_hex32(slot.offset)}UL"}
+            )
+            buffer_index += 1
+        elif slot.register is not None:
+            register = slot.register
+            if id(register) in seen:
+                continue  # an unpacked array is several slots but one set of constants
+            seen.add(id(register))
+            stem = f"{spf}_{register.name.upper()}"
+            offset = units_to_bytes(register.address_offset, address_unit_bits)
+            constants.append({"name": f"{stem}_OFFSET", "value": f"{_hex32(offset)}UL"})
+            if register.dim is not None:
+                stride = units_to_bytes(register.dim.stride, address_unit_bits)
+                constants.append({"name": f"{stem}_STRIDE", "value": f"{_hex32(stride)}UL"})
+                constants.append({"name": f"{stem}_COUNT", "value": f"{register.dim.length}U"})
+        elif slot.cluster is not None:
+            cluster = slot.cluster
+            own = f"{spf}_{cluster.name.upper()}"
+            constants.append({"name": f"{own}_OFFSET", "value": f"{_hex32(slot.offset)}UL"})
+            if cluster.dim is not None:
+                constants.append(
+                    {"name": f"{own}_STRIDE", "value": f"{_hex32(slot.element_bytes)}UL"}
+                )
+                constants.append({"name": f"{own}_COUNT", "value": f"{slot.count}U"})
+            type_stem = cluster_tags[id(cluster)]
+            if type_stem not in emitted:
+                emitted.add(type_stem)
+                constants += _constants(
+                    type_stem, slot.members, address_unit_bits, cluster_tags, emitted
+                )
+    return constants
+
+
+def _accessors(peripheral: Peripheral, spf: str, cluster_tags: dict[int, str]) -> list[dict]:
     """Every register reachable from ``peripheral`` as a flat macro: name, indices, address.
 
     A register inside a cluster is reached through the cluster's name
     (``CH_CTRL``); every array on the path adds one macro parameter, outermost
-    first (``(i, j)``), and one ``(index) * stride`` term to the address. The
-    constant offsets along the path are folded into one literal, so a plain
-    register keeps the ``BASE + 0x00000010UL`` shape.
+    first (``(i, j)``), and one ``(index) * <STEM>_STRIDE`` term. The address
+    is a sum of the family's layout constants, never a literal, so a plain
+    register reads ``BASE + DC_UART_DR_OFFSET``.
     """
     result: list[dict] = []
 
-    def stride_term(dim: Dim, params: list[str]) -> str:
+    def stride_term(stem: str, params: list[str]) -> str:
         index = _INDEX_NAMES[len(params)]
         params.append(index)
-        return f"({index}) * {_hex32(units_to_bytes(dim.stride, address_unit_bits))}UL"
+        return f"({index}) * {stem}_STRIDE"
 
     def visit(
         register: Register,
         names: list[str],
         labels: list[str],
         params: list[str],
-        constant: int,
         terms: list[str],
+        type_stem: str,
     ) -> None:
         params = list(params)
-        terms = list(terms)
-        constant += units_to_bytes(register.address_offset, address_unit_bits)
+        stem = f"{type_stem}_{register.name.upper()}"
+        terms = [*terms, f"{stem}_OFFSET"]
         if register.dim is not None:
-            terms.append(stride_term(register.dim, params))
+            terms.append(stride_term(stem, params))
         result.append(
             {
                 "name": "_".join([*names, register.name]),
                 "label": ".".join([*labels, register.name + _array_suffix(register.dim)]),
                 "params": f"({', '.join(params)})" if params else "",
-                "address": " + ".join([f"{_hex32(constant)}UL", *terms]),
+                "address": " + ".join(terms),
                 "register": register,
-                "count": register.dim.length if register.dim is not None else None,
+                "count": f"{stem}_COUNT" if register.dim is not None else None,
             }
         )
 
@@ -358,24 +427,25 @@ def _accessors(peripheral: Peripheral, address_unit_bits: int) -> list[dict]:
         names: list[str],
         labels: list[str],
         params: list[str],
-        constant: int,
         terms: list[str],
+        type_stem: str,
     ) -> None:
         for cluster in clusters:
+            own = f"{type_stem}_{cluster.name.upper()}"
             inner_params = list(params)
-            inner_terms = list(terms)
-            offset = constant + units_to_bytes(cluster.address_offset, address_unit_bits)
+            inner_terms = [*terms, f"{own}_OFFSET"]
             if cluster.dim is not None:
-                inner_terms.append(stride_term(cluster.dim, inner_params))
+                inner_terms.append(stride_term(own, inner_params))
+            inner_type = cluster_tags[id(cluster)]
             inner_names = [*names, cluster.name]
             inner_labels = [*labels, cluster.name + _array_suffix(cluster.dim)]
             for register in cluster.registers:
-                visit(register, inner_names, inner_labels, inner_params, offset, inner_terms)
-            walk(cluster.clusters, inner_names, inner_labels, inner_params, offset, inner_terms)
+                visit(register, inner_names, inner_labels, inner_params, inner_terms, inner_type)
+            walk(cluster.clusters, inner_names, inner_labels, inner_params, inner_terms, inner_type)
 
     for register in peripheral.registers:
-        visit(register, [], [], [], 0, [])
-    walk(peripheral.clusters, [], [], [], 0, [])
+        visit(register, [], [], [], [], spf)
+    walk(peripheral.clusters, [], [], [], [], spf)
     return result
 
 
@@ -489,11 +559,15 @@ class CWriter(Writer):
             for instance in chosen
         }
         cluster_names: dict[int, str] = {}
-        shared_clusters: dict[tuple, str] = {}
+        cluster_tags: dict[int, str] = {}
+        shared_clusters: dict[tuple, tuple[str, str]] = {}
         cluster_types: dict[int, list[dict]] = {}
         layouts: dict[int, list[dict]] = {}
+        constants: dict[int, list[dict]] = {}
+        accessors: dict[int, list[dict]] = {}
         for family in families:
             source = family.type_source
+            spf = f"{prefix}{family.name.upper()}"
             try:
                 size = asserted_struct_size(source, unit_bits)
                 entries = peripheral_layout(source, unit_bits, pad_to_bytes=size)
@@ -502,15 +576,21 @@ class CWriter(Writer):
             cluster_types[id(family)] = _cluster_types(
                 entries,
                 family.name,
-                f"{prefix}{family.name.upper()}",
+                spf,
                 f"{prefix.lower()}{family.name.lower()}",
                 taken_types,
                 cluster_names,
+                cluster_tags,
                 shared_clusters,
                 device.bus_width,
             )
             layouts[id(source)] = _c_layout(entries, cluster_names, device.bus_width)
-        accessors = {id(p): _accessors(p, unit_bits) for p in device.peripherals}
+            family_constants = _constants(spf, entries, unit_bits, cluster_tags, set())
+            if size is not None:
+                family_constants.append({"name": f"{spf}_SIZE", "value": f"{_hex32(size)}UL"})
+            constants[id(family)] = family_constants
+            # Instances of a family share its layout, so one accessor list serves all.
+            accessors[id(family)] = _accessors(source, spf, cluster_tags)
         array_indices = {id(p): _array_indices(p) for p in device.peripherals}
 
         template = self._env.get_template("header.h.j2")
@@ -523,7 +603,8 @@ class CWriter(Writer):
             full_mask=lambda size: (1 << size) - 1,
             layout=lambda peripheral: layouts[id(peripheral)],
             cluster_types=lambda family: cluster_types[id(family)],
-            accessors=lambda peripheral: accessors[id(peripheral)],
+            constants=lambda family: constants[id(family)],
+            accessors=lambda family: accessors[id(family)],
             array_indices=lambda peripheral: array_indices[id(peripheral)],
             struct_size=lambda peripheral: asserted_struct_size(peripheral, unit_bits),
             families=families,

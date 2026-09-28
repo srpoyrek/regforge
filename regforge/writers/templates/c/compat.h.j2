@@ -15,7 +15,7 @@
 
 /* REGFORGE_STATIC_ASSERT(cond, tag, msg) -- compile-time check.
  * C++11+ and C11/C23 have a language construct; older dialects fall back to a
- * negative-array typedef named REGFORGE_assert_<tag>. `tag` must be unique per
+ * negative-array typedef named REGFORGE_ASSERT_<tag>. `tag` must be unique per
  * translation unit -- regforge passes a device-namespaced tag. */
 #if defined(__cplusplus) && (__cplusplus >= 201103L)
 #  define REGFORGE_STATIC_ASSERT(cond, tag, msg) static_assert(cond, msg)
@@ -23,7 +23,7 @@
 #  define REGFORGE_STATIC_ASSERT(cond, tag, msg) _Static_assert(cond, msg)
 #else
 #  define REGFORGE_STATIC_ASSERT(cond, tag, msg) \
-       typedef char REGFORGE_assert_##tag[(cond) ? 1 : -1]
+       typedef char REGFORGE_ASSERT_##tag[(cond) ? 1 : -1]
 #endif
 
 /* REGFORGE_INLINE -- inline with internal linkage.

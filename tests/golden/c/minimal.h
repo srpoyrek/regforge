@@ -41,7 +41,7 @@
 
 /* REGFORGE_STATIC_ASSERT(cond, tag, msg) -- compile-time check.
  * C++11+ and C11/C23 have a language construct; older dialects fall back to a
- * negative-array typedef named REGFORGE_assert_<tag>. `tag` must be unique per
+ * negative-array typedef named REGFORGE_ASSERT_<tag>. `tag` must be unique per
  * translation unit -- regforge passes a device-namespaced tag. */
 #if defined(__cplusplus) && (__cplusplus >= 201103L)
 #  define REGFORGE_STATIC_ASSERT(cond, tag, msg) static_assert(cond, msg)
@@ -49,7 +49,7 @@
 #  define REGFORGE_STATIC_ASSERT(cond, tag, msg) _Static_assert(cond, msg)
 #else
 #  define REGFORGE_STATIC_ASSERT(cond, tag, msg) \
-       typedef char REGFORGE_assert_##tag[(cond) ? 1 : -1]
+       typedef char REGFORGE_ASSERT_##tag[(cond) ? 1 : -1]
 #endif
 
 /* REGFORGE_INLINE -- inline with internal linkage.
@@ -84,7 +84,7 @@
 /* Device */
 /* ========================================================================== */
 #define DEMOMCU_ADDRESS_UNIT_BITS 8
-REGFORGE_STATIC_ASSERT(CHAR_BIT == DEMOMCU_ADDRESS_UNIT_BITS, DEMOMCU_address_unit_bits,
+REGFORGE_STATIC_ASSERT(CHAR_BIT == DEMOMCU_ADDRESS_UNIT_BITS, DEMOMCU_ADDRESS_UNIT_BITS_CHECK,
     "regforge: this header targets 8-bit address units; "
     "the compiler's CHAR_BIT disagrees -- regenerate with a matching emitter mode.");
 
@@ -213,6 +213,14 @@ REGFORGE_INLINE uint8_t dc_nvic_get_priority(dc_irqn_e irq)
 /* -------------------------------------------------------------------------- */
 /* GPIOA -- General purpose I/O port A */
 
+/* Layout constants: byte offsets from an instance's base; a cluster's members
+ * are relative to one element of that cluster. Every assert and accessor below
+ * refers to these, so each number is written once. */
+#define DC_GPIOA_MODER_OFFSET (0x00000000UL)
+#define DC_GPIOA_IDR_OFFSET   (0x00000010UL)
+#define DC_GPIOA_ODR_OFFSET   (0x00000014UL)
+#define DC_GPIOA_SIZE         (0x00000020UL)
+
 typedef struct {
     volatile uint32_t       MODER;          /* 0x00  Mode register */
     uint8_t                 RESERVED0[12];  /* 0x04  (reserved) */
@@ -220,17 +228,17 @@ typedef struct {
     volatile uint32_t       ODR;            /* 0x14  Output data register */
     uint8_t                 RESERVED1[8];   /* 0x18  (reserved) */
 } dc_gpioa_t;
-REGFORGE_STATIC_ASSERT(offsetof(dc_gpioa_t, MODER) == 0x00, DC_GPIOA_MODER_offset, "GPIOA.MODER offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_gpioa_t, IDR) == 0x10, DC_GPIOA_IDR_offset, "GPIOA.IDR offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_gpioa_t, ODR) == 0x14, DC_GPIOA_ODR_offset, "GPIOA.ODR offset");
-REGFORGE_STATIC_ASSERT(sizeof(dc_gpioa_t) == 0x20, DC_GPIOA_SIZE, "GPIOA struct size vs addressBlock");
+REGFORGE_STATIC_ASSERT(offsetof(dc_gpioa_t, MODER) == DC_GPIOA_MODER_OFFSET, DC_GPIOA_MODER_OFFSET_CHECK, "GPIOA.MODER offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_gpioa_t, IDR) == DC_GPIOA_IDR_OFFSET, DC_GPIOA_IDR_OFFSET_CHECK, "GPIOA.IDR offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_gpioa_t, ODR) == DC_GPIOA_ODR_OFFSET, DC_GPIOA_ODR_OFFSET_CHECK, "GPIOA.ODR offset");
+REGFORGE_STATIC_ASSERT(sizeof(dc_gpioa_t) == DC_GPIOA_SIZE, DC_GPIOA_SIZE_CHECK, "GPIOA struct size vs addressBlock");
 
 /* GPIOA @ 0x40020000 */
 #define DC_GPIOA_BASE (0x40020000UL)
 REGFORGE_MAYBE_UNUSED static dc_gpioa_t *const DC_GPIOA = (dc_gpioa_t *)DC_GPIOA_BASE;
 
 /* GPIOA.MODER - Mode register */
-#define DC_GPIOA_MODER (*(volatile uint32_t *)(DC_GPIOA_BASE + 0x00000000UL))
+#define DC_GPIOA_MODER (*(volatile uint32_t *)(DC_GPIOA_BASE + DC_GPIOA_MODER_OFFSET))
 #define DC_GPIOA_MODER_RESET_VALUE (0x00000000UL)
 #define DC_GPIOA_MODER_MODE0_Pos (0U)
 #define DC_GPIOA_MODER_MODE0_Msk (0x00000003UL)
@@ -246,10 +254,10 @@ REGFORGE_MAYBE_UNUSED static dc_gpioa_t *const DC_GPIOA = (dc_gpioa_t *)DC_GPIOA
 #define DC_GPIOA_MODER_MODE1_ANALOG (3U)
 
 /* GPIOA.IDR - Input data register */
-#define DC_GPIOA_IDR (*(volatile const uint32_t *)(DC_GPIOA_BASE + 0x00000010UL))
+#define DC_GPIOA_IDR (*(volatile const uint32_t *)(DC_GPIOA_BASE + DC_GPIOA_IDR_OFFSET))
 
 /* GPIOA.ODR - Output data register */
-#define DC_GPIOA_ODR (*(volatile uint32_t *)(DC_GPIOA_BASE + 0x00000014UL))
+#define DC_GPIOA_ODR (*(volatile uint32_t *)(DC_GPIOA_BASE + DC_GPIOA_ODR_OFFSET))
 #define DC_GPIOA_ODR_RESET_VALUE (0x00000000UL)
 #define DC_GPIOA_ODR_RESET_MASK (0x0000FFFFUL)
 #define DC_GPIOA_ODR_OD_COUNT (16U)
@@ -260,15 +268,23 @@ REGFORGE_MAYBE_UNUSED static dc_gpioa_t *const DC_GPIOA = (dc_gpioa_t *)DC_GPIOA
 /* -------------------------------------------------------------------------- */
 /* UART -- Universal async receiver/transmitter (family: UART0, UART1) */
 
+/* Layout constants: byte offsets from an instance's base; a cluster's members
+ * are relative to one element of that cluster. Every assert and accessor below
+ * refers to these, so each number is written once. */
+#define DC_UART_DR_OFFSET      (0x00000000UL)
+#define DC_UART_SR_OFFSET      (0x00000004UL)
+#define DC_UART_BUFFER0_OFFSET (0x00000008UL)
+#define DC_UART_SIZE           (0x00000028UL)
+
 typedef struct {
     volatile uint32_t       DR;          /* 0x00  Data register */
     volatile const uint32_t SR;          /* 0x04  Status register */
     volatile uint32_t       BUFFER0[8];  /* 0x08  (buffer) */
 } dc_uart_t;
-REGFORGE_STATIC_ASSERT(offsetof(dc_uart_t, DR) == 0x00, DC_UART_DR_offset, "UART.DR offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_uart_t, SR) == 0x04, DC_UART_SR_offset, "UART.SR offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_uart_t, BUFFER0) == 0x08, DC_UART_BUFFER0_offset, "UART.BUFFER0 offset");
-REGFORGE_STATIC_ASSERT(sizeof(dc_uart_t) == 0x28, DC_UART_SIZE, "UART struct size vs addressBlock");
+REGFORGE_STATIC_ASSERT(offsetof(dc_uart_t, DR) == DC_UART_DR_OFFSET, DC_UART_DR_OFFSET_CHECK, "UART.DR offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_uart_t, SR) == DC_UART_SR_OFFSET, DC_UART_SR_OFFSET_CHECK, "UART.SR offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_uart_t, BUFFER0) == DC_UART_BUFFER0_OFFSET, DC_UART_BUFFER0_OFFSET_CHECK, "UART.BUFFER0 offset");
+REGFORGE_STATIC_ASSERT(sizeof(dc_uart_t) == DC_UART_SIZE, DC_UART_SIZE_CHECK, "UART struct size vs addressBlock");
 
 /* Per-instance names for the shared type, so a signature never has to know
  * which instances share a layout. Aliases, not distinct types: a function
@@ -282,10 +298,10 @@ REGFORGE_MAYBE_UNUSED static dc_uart_t *const DC_UART0 = (dc_uart_t *)DC_UART0_B
 #define DC_UART0_IRQ DC_UART0_IRQn  /* UART0 global interrupt, vector 20 */
 
 /* UART0.DR - Data register */
-#define DC_UART0_DR (*(volatile uint32_t *)(DC_UART0_BASE + 0x00000000UL))
+#define DC_UART0_DR (*(volatile uint32_t *)(DC_UART0_BASE + DC_UART_DR_OFFSET))
 
 /* UART0.SR - Status register */
-#define DC_UART0_SR (*(volatile const uint32_t *)(DC_UART0_BASE + 0x00000004UL))
+#define DC_UART0_SR (*(volatile const uint32_t *)(DC_UART0_BASE + DC_UART_SR_OFFSET))
 
 /* UART1 @ 0x40004400 */
 #define DC_UART1_BASE (0x40004400UL)
@@ -293,23 +309,30 @@ REGFORGE_MAYBE_UNUSED static dc_uart_t *const DC_UART1 = (dc_uart_t *)DC_UART1_B
 #define DC_UART1_IRQ DC_UART1_IRQn  /* UART1 global interrupt, vector 21 */
 
 /* UART1.DR - Data register */
-#define DC_UART1_DR (*(volatile uint32_t *)(DC_UART1_BASE + 0x00000000UL))
+#define DC_UART1_DR (*(volatile uint32_t *)(DC_UART1_BASE + DC_UART_DR_OFFSET))
 
 /* UART1.SR - Status register */
-#define DC_UART1_SR (*(volatile const uint32_t *)(DC_UART1_BASE + 0x00000004UL))
+#define DC_UART1_SR (*(volatile const uint32_t *)(DC_UART1_BASE + DC_UART_SR_OFFSET))
 
 
 /* -------------------------------------------------------------------------- */
 /* SPI -- Serial peripheral interface (family: SPI0, SPI1) */
+
+/* Layout constants: byte offsets from an instance's base; a cluster's members
+ * are relative to one element of that cluster. Every assert and accessor below
+ * refers to these, so each number is written once. */
+#define DC_SPI_CR_OFFSET (0x00000000UL)
+#define DC_SPI_DR_OFFSET (0x00000004UL)
+#define DC_SPI_SIZE      (0x00000400UL)
 
 typedef struct {
     volatile uint32_t CR;               /* 0x00  Control register */
     volatile uint32_t DR;               /* 0x04  Data register */
     uint8_t           RESERVED0[1016];  /* 0x08  (reserved) */
 } dc_spi_t;
-REGFORGE_STATIC_ASSERT(offsetof(dc_spi_t, CR) == 0x00, DC_SPI_CR_offset, "SPI.CR offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_spi_t, DR) == 0x04, DC_SPI_DR_offset, "SPI.DR offset");
-REGFORGE_STATIC_ASSERT(sizeof(dc_spi_t) == 0x400, DC_SPI_SIZE, "SPI struct size vs addressBlock");
+REGFORGE_STATIC_ASSERT(offsetof(dc_spi_t, CR) == DC_SPI_CR_OFFSET, DC_SPI_CR_OFFSET_CHECK, "SPI.CR offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_spi_t, DR) == DC_SPI_DR_OFFSET, DC_SPI_DR_OFFSET_CHECK, "SPI.DR offset");
+REGFORGE_STATIC_ASSERT(sizeof(dc_spi_t) == DC_SPI_SIZE, DC_SPI_SIZE_CHECK, "SPI struct size vs addressBlock");
 
 /* Per-instance names for the shared type, so a signature never has to know
  * which instances share a layout. Aliases, not distinct types: a function
@@ -323,10 +346,10 @@ REGFORGE_MAYBE_UNUSED static dc_spi_t *const DC_SPI0 = (dc_spi_t *)DC_SPI0_BASE;
 #define DC_SPI0_IRQ DC_SPI0_IRQn  /* SPI0 interrupt, vector 30 -- shared with DC_SPI1; demux in ISR */
 
 /* SPI0.CR - Control register */
-#define DC_SPI0_CR (*(volatile uint32_t *)(DC_SPI0_BASE + 0x00000000UL))
+#define DC_SPI0_CR (*(volatile uint32_t *)(DC_SPI0_BASE + DC_SPI_CR_OFFSET))
 
 /* SPI0.DR - Data register */
-#define DC_SPI0_DR (*(volatile uint32_t *)(DC_SPI0_BASE + 0x00000004UL))
+#define DC_SPI0_DR (*(volatile uint32_t *)(DC_SPI0_BASE + DC_SPI_DR_OFFSET))
 
 /* SPI1 @ 0x40008400 */
 #define DC_SPI1_BASE (0x40008400UL)
@@ -334,14 +357,22 @@ REGFORGE_MAYBE_UNUSED static dc_spi_t *const DC_SPI1 = (dc_spi_t *)DC_SPI1_BASE;
 #define DC_SPI1_IRQ DC_SPI1_IRQn  /* SPI1 interrupt, vector 30 -- shared with DC_SPI0; demux in ISR */
 
 /* SPI1.CR - Control register */
-#define DC_SPI1_CR (*(volatile uint32_t *)(DC_SPI1_BASE + 0x00000000UL))
+#define DC_SPI1_CR (*(volatile uint32_t *)(DC_SPI1_BASE + DC_SPI_CR_OFFSET))
 
 /* SPI1.DR - Data register */
-#define DC_SPI1_DR (*(volatile uint32_t *)(DC_SPI1_BASE + 0x00000004UL))
+#define DC_SPI1_DR (*(volatile uint32_t *)(DC_SPI1_BASE + DC_SPI_DR_OFFSET))
 
 
 /* -------------------------------------------------------------------------- */
 /* TIM1 -- Advanced timer */
+
+/* Layout constants: byte offsets from an instance's base; a cluster's members
+ * are relative to one element of that cluster. Every assert and accessor below
+ * refers to these, so each number is written once. */
+#define DC_TIM1_CR1_OFFSET (0x00000000UL)
+#define DC_TIM1_ARR_OFFSET (0x00000004UL)
+#define DC_TIM1_RCR_OFFSET (0x00000008UL)
+#define DC_TIM1_SIZE       (0x00000020UL)
 
 typedef struct {
     volatile uint32_t CR1;            /* 0x00  Control register 1 */
@@ -349,10 +380,10 @@ typedef struct {
     volatile uint32_t RCR;            /* 0x08  Repetition counter (advanced only) */
     uint8_t           RESERVED0[20];  /* 0x0C  (reserved) */
 } dc_tim1_t;
-REGFORGE_STATIC_ASSERT(offsetof(dc_tim1_t, CR1) == 0x00, DC_TIM1_CR1_offset, "TIM1.CR1 offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_tim1_t, ARR) == 0x04, DC_TIM1_ARR_offset, "TIM1.ARR offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_tim1_t, RCR) == 0x08, DC_TIM1_RCR_offset, "TIM1.RCR offset");
-REGFORGE_STATIC_ASSERT(sizeof(dc_tim1_t) == 0x20, DC_TIM1_SIZE, "TIM1 struct size vs addressBlock");
+REGFORGE_STATIC_ASSERT(offsetof(dc_tim1_t, CR1) == DC_TIM1_CR1_OFFSET, DC_TIM1_CR1_OFFSET_CHECK, "TIM1.CR1 offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_tim1_t, ARR) == DC_TIM1_ARR_OFFSET, DC_TIM1_ARR_OFFSET_CHECK, "TIM1.ARR offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_tim1_t, RCR) == DC_TIM1_RCR_OFFSET, DC_TIM1_RCR_OFFSET_CHECK, "TIM1.RCR offset");
+REGFORGE_STATIC_ASSERT(sizeof(dc_tim1_t) == DC_TIM1_SIZE, DC_TIM1_SIZE_CHECK, "TIM1 struct size vs addressBlock");
 
 /* TIM1 @ 0x40010000 */
 #define DC_TIM1_BASE (0x40010000UL)
@@ -361,26 +392,33 @@ REGFORGE_MAYBE_UNUSED static dc_tim1_t *const DC_TIM1 = (dc_tim1_t *)DC_TIM1_BAS
 #define DC_TIM1_BRK_IRQ DC_TIM1_BRK_IRQn  /* TIM1 break, vector 26 */
 
 /* TIM1.CR1 - Control register 1 */
-#define DC_TIM1_CR1 (*(volatile uint32_t *)(DC_TIM1_BASE + 0x00000000UL))
+#define DC_TIM1_CR1 (*(volatile uint32_t *)(DC_TIM1_BASE + DC_TIM1_CR1_OFFSET))
 
 /* TIM1.ARR - Auto-reload register */
-#define DC_TIM1_ARR (*(volatile uint32_t *)(DC_TIM1_BASE + 0x00000004UL))
+#define DC_TIM1_ARR (*(volatile uint32_t *)(DC_TIM1_BASE + DC_TIM1_ARR_OFFSET))
 
 /* TIM1.RCR - Repetition counter (advanced only) */
-#define DC_TIM1_RCR (*(volatile uint32_t *)(DC_TIM1_BASE + 0x00000008UL))
+#define DC_TIM1_RCR (*(volatile uint32_t *)(DC_TIM1_BASE + DC_TIM1_RCR_OFFSET))
 
 
 /* -------------------------------------------------------------------------- */
 /* TIM -- General-purpose timer (family: TIM2, TIM3) */
+
+/* Layout constants: byte offsets from an instance's base; a cluster's members
+ * are relative to one element of that cluster. Every assert and accessor below
+ * refers to these, so each number is written once. */
+#define DC_TIM_CR1_OFFSET (0x00000000UL)
+#define DC_TIM_ARR_OFFSET (0x00000004UL)
+#define DC_TIM_SIZE       (0x00000020UL)
 
 typedef struct {
     volatile uint32_t CR1;            /* 0x00  Control register 1 */
     volatile uint32_t ARR;            /* 0x04  Auto-reload register */
     uint8_t           RESERVED0[24];  /* 0x08  (reserved) */
 } dc_tim_t;
-REGFORGE_STATIC_ASSERT(offsetof(dc_tim_t, CR1) == 0x00, DC_TIM_CR1_offset, "TIM.CR1 offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_tim_t, ARR) == 0x04, DC_TIM_ARR_offset, "TIM.ARR offset");
-REGFORGE_STATIC_ASSERT(sizeof(dc_tim_t) == 0x20, DC_TIM_SIZE, "TIM struct size vs addressBlock");
+REGFORGE_STATIC_ASSERT(offsetof(dc_tim_t, CR1) == DC_TIM_CR1_OFFSET, DC_TIM_CR1_OFFSET_CHECK, "TIM.CR1 offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_tim_t, ARR) == DC_TIM_ARR_OFFSET, DC_TIM_ARR_OFFSET_CHECK, "TIM.ARR offset");
+REGFORGE_STATIC_ASSERT(sizeof(dc_tim_t) == DC_TIM_SIZE, DC_TIM_SIZE_CHECK, "TIM struct size vs addressBlock");
 
 /* Per-instance names for the shared type, so a signature never has to know
  * which instances share a layout. Aliases, not distinct types: a function
@@ -393,33 +431,40 @@ typedef dc_tim_t dc_tim3_t;
 REGFORGE_MAYBE_UNUSED static dc_tim_t *const DC_TIM2 = (dc_tim_t *)DC_TIM2_BASE;
 
 /* TIM2.CR1 - Control register 1 */
-#define DC_TIM2_CR1 (*(volatile uint32_t *)(DC_TIM2_BASE + 0x00000000UL))
+#define DC_TIM2_CR1 (*(volatile uint32_t *)(DC_TIM2_BASE + DC_TIM_CR1_OFFSET))
 
 /* TIM2.ARR - Auto-reload register */
-#define DC_TIM2_ARR (*(volatile uint32_t *)(DC_TIM2_BASE + 0x00000004UL))
+#define DC_TIM2_ARR (*(volatile uint32_t *)(DC_TIM2_BASE + DC_TIM_ARR_OFFSET))
 
 /* TIM3 @ 0x40000400 */
 #define DC_TIM3_BASE (0x40000400UL)
 REGFORGE_MAYBE_UNUSED static dc_tim_t *const DC_TIM3 = (dc_tim_t *)DC_TIM3_BASE;
 
 /* TIM3.CR1 - Control register 1 */
-#define DC_TIM3_CR1 (*(volatile uint32_t *)(DC_TIM3_BASE + 0x00000000UL))
+#define DC_TIM3_CR1 (*(volatile uint32_t *)(DC_TIM3_BASE + DC_TIM_CR1_OFFSET))
 
 /* TIM3.ARR - Auto-reload register */
-#define DC_TIM3_ARR (*(volatile uint32_t *)(DC_TIM3_BASE + 0x00000004UL))
+#define DC_TIM3_ARR (*(volatile uint32_t *)(DC_TIM3_BASE + DC_TIM_ARR_OFFSET))
 
 
 /* -------------------------------------------------------------------------- */
 /* ADC -- Analog-to-digital converter (family: ADC0, ADC1) */
+
+/* Layout constants: byte offsets from an instance's base; a cluster's members
+ * are relative to one element of that cluster. Every assert and accessor below
+ * refers to these, so each number is written once. */
+#define DC_ADC_CR_OFFSET (0x00000000UL)
+#define DC_ADC_DR_OFFSET (0x00000004UL)
+#define DC_ADC_SIZE      (0x00000010UL)
 
 typedef struct {
     volatile uint32_t       CR;            /* 0x00  Control register */
     volatile const uint32_t DR;            /* 0x04  Data register */
     uint8_t                 RESERVED0[8];  /* 0x08  (reserved) */
 } dc_adc_t;
-REGFORGE_STATIC_ASSERT(offsetof(dc_adc_t, CR) == 0x00, DC_ADC_CR_offset, "ADC.CR offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_adc_t, DR) == 0x04, DC_ADC_DR_offset, "ADC.DR offset");
-REGFORGE_STATIC_ASSERT(sizeof(dc_adc_t) == 0x10, DC_ADC_SIZE, "ADC struct size vs addressBlock");
+REGFORGE_STATIC_ASSERT(offsetof(dc_adc_t, CR) == DC_ADC_CR_OFFSET, DC_ADC_CR_OFFSET_CHECK, "ADC.CR offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_adc_t, DR) == DC_ADC_DR_OFFSET, DC_ADC_DR_OFFSET_CHECK, "ADC.DR offset");
+REGFORGE_STATIC_ASSERT(sizeof(dc_adc_t) == DC_ADC_SIZE, DC_ADC_SIZE_CHECK, "ADC struct size vs addressBlock");
 
 /* Per-instance names for the shared type, so a signature never has to know
  * which instances share a layout. Aliases, not distinct types: a function
@@ -433,10 +478,10 @@ REGFORGE_MAYBE_UNUSED static dc_adc_t *const DC_ADC0 = (dc_adc_t *)DC_ADC0_BASE;
 #define DC_ADC0_IRQ DC_ADC0_IRQn  /* ADC0 conversion complete, vector 27 */
 
 /* ADC0.CR - Control register */
-#define DC_ADC0_CR (*(volatile uint32_t *)(DC_ADC0_BASE + 0x00000000UL))
+#define DC_ADC0_CR (*(volatile uint32_t *)(DC_ADC0_BASE + DC_ADC_CR_OFFSET))
 
 /* ADC0.DR - Data register */
-#define DC_ADC0_DR (*(volatile const uint32_t *)(DC_ADC0_BASE + 0x00000004UL))
+#define DC_ADC0_DR (*(volatile const uint32_t *)(DC_ADC0_BASE + DC_ADC_DR_OFFSET))
 
 /* ADC1 @ 0x40012400 */
 #define DC_ADC1_BASE (0x40012400UL)
@@ -444,74 +489,104 @@ REGFORGE_MAYBE_UNUSED static dc_adc_t *const DC_ADC1 = (dc_adc_t *)DC_ADC1_BASE;
 #define DC_ADC1_IRQ DC_ADC1_IRQn  /* ADC1 conversion complete, vector 28 */
 
 /* ADC1.CR - Control register */
-#define DC_ADC1_CR (*(volatile uint32_t *)(DC_ADC1_BASE + 0x00000000UL))
+#define DC_ADC1_CR (*(volatile uint32_t *)(DC_ADC1_BASE + DC_ADC_CR_OFFSET))
 
 /* ADC1.DR - Data register */
-#define DC_ADC1_DR (*(volatile const uint32_t *)(DC_ADC1_BASE + 0x00000004UL))
+#define DC_ADC1_DR (*(volatile const uint32_t *)(DC_ADC1_BASE + DC_ADC_DR_OFFSET))
 
 
 /* -------------------------------------------------------------------------- */
 /* WDT0 -- Watchdog timer */
 /* family WDT0: split 2 ways by layout (WDT0 | WDT1); first differs at RELOAD */
 
+/* Layout constants: byte offsets from an instance's base; a cluster's members
+ * are relative to one element of that cluster. Every assert and accessor below
+ * refers to these, so each number is written once. */
+#define DC_WDT0_CR_OFFSET (0x00000000UL)
+#define DC_WDT0_SIZE      (0x00000010UL)
+
 typedef struct {
     volatile uint32_t CR;             /* 0x00  Control register */
     uint8_t           RESERVED0[12];  /* 0x04  (reserved) */
 } dc_wdt0_t;
-REGFORGE_STATIC_ASSERT(offsetof(dc_wdt0_t, CR) == 0x00, DC_WDT0_CR_offset, "WDT0.CR offset");
-REGFORGE_STATIC_ASSERT(sizeof(dc_wdt0_t) == 0x10, DC_WDT0_SIZE, "WDT0 struct size vs addressBlock");
+REGFORGE_STATIC_ASSERT(offsetof(dc_wdt0_t, CR) == DC_WDT0_CR_OFFSET, DC_WDT0_CR_OFFSET_CHECK, "WDT0.CR offset");
+REGFORGE_STATIC_ASSERT(sizeof(dc_wdt0_t) == DC_WDT0_SIZE, DC_WDT0_SIZE_CHECK, "WDT0 struct size vs addressBlock");
 
 /* WDT0 @ 0x40013000 */
 #define DC_WDT0_BASE (0x40013000UL)
 REGFORGE_MAYBE_UNUSED static dc_wdt0_t *const DC_WDT0 = (dc_wdt0_t *)DC_WDT0_BASE;
 
 /* WDT0.CR - Control register */
-#define DC_WDT0_CR (*(volatile uint32_t *)(DC_WDT0_BASE + 0x00000000UL))
+#define DC_WDT0_CR (*(volatile uint32_t *)(DC_WDT0_BASE + DC_WDT0_CR_OFFSET))
 
 
 /* -------------------------------------------------------------------------- */
 /* WDT1 -- Watchdog, instance 1 (adds a reload register) */
+
+/* Layout constants: byte offsets from an instance's base; a cluster's members
+ * are relative to one element of that cluster. Every assert and accessor below
+ * refers to these, so each number is written once. */
+#define DC_WDT1_CR_OFFSET     (0x00000000UL)
+#define DC_WDT1_RELOAD_OFFSET (0x00000004UL)
+#define DC_WDT1_SIZE          (0x00000010UL)
 
 typedef struct {
     volatile uint32_t CR;            /* 0x00  Control register */
     volatile uint32_t RELOAD;        /* 0x04  Reload value */
     uint8_t           RESERVED0[8];  /* 0x08  (reserved) */
 } dc_wdt1_t;
-REGFORGE_STATIC_ASSERT(offsetof(dc_wdt1_t, CR) == 0x00, DC_WDT1_CR_offset, "WDT1.CR offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_wdt1_t, RELOAD) == 0x04, DC_WDT1_RELOAD_offset, "WDT1.RELOAD offset");
-REGFORGE_STATIC_ASSERT(sizeof(dc_wdt1_t) == 0x10, DC_WDT1_SIZE, "WDT1 struct size vs addressBlock");
+REGFORGE_STATIC_ASSERT(offsetof(dc_wdt1_t, CR) == DC_WDT1_CR_OFFSET, DC_WDT1_CR_OFFSET_CHECK, "WDT1.CR offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_wdt1_t, RELOAD) == DC_WDT1_RELOAD_OFFSET, DC_WDT1_RELOAD_OFFSET_CHECK, "WDT1.RELOAD offset");
+REGFORGE_STATIC_ASSERT(sizeof(dc_wdt1_t) == DC_WDT1_SIZE, DC_WDT1_SIZE_CHECK, "WDT1 struct size vs addressBlock");
 
 /* WDT1 @ 0x40013400 */
 #define DC_WDT1_BASE (0x40013400UL)
 REGFORGE_MAYBE_UNUSED static dc_wdt1_t *const DC_WDT1 = (dc_wdt1_t *)DC_WDT1_BASE;
 
 /* WDT1.CR - Control register */
-#define DC_WDT1_CR (*(volatile uint32_t *)(DC_WDT1_BASE + 0x00000000UL))
+#define DC_WDT1_CR (*(volatile uint32_t *)(DC_WDT1_BASE + DC_WDT1_CR_OFFSET))
 
 /* WDT1.RELOAD - Reload value */
-#define DC_WDT1_RELOAD (*(volatile uint32_t *)(DC_WDT1_BASE + 0x00000004UL))
+#define DC_WDT1_RELOAD (*(volatile uint32_t *)(DC_WDT1_BASE + DC_WDT1_RELOAD_OFFSET))
 
 
 /* -------------------------------------------------------------------------- */
 /* CRC -- Cyclic redundancy check */
 
+/* Layout constants: byte offsets from an instance's base; a cluster's members
+ * are relative to one element of that cluster. Every assert and accessor below
+ * refers to these, so each number is written once. */
+#define DC_CRC_DR_OFFSET (0x00000000UL)
+#define DC_CRC_SIZE      (0x00000008UL)
+
 typedef struct {
     volatile uint32_t DR;            /* 0x00  Data register */
     uint8_t           RESERVED0[4];  /* 0x04  (reserved) */
 } dc_crc_t;
-REGFORGE_STATIC_ASSERT(offsetof(dc_crc_t, DR) == 0x00, DC_CRC_DR_offset, "CRC.DR offset");
-REGFORGE_STATIC_ASSERT(sizeof(dc_crc_t) == 0x8, DC_CRC_SIZE, "CRC struct size vs addressBlock");
+REGFORGE_STATIC_ASSERT(offsetof(dc_crc_t, DR) == DC_CRC_DR_OFFSET, DC_CRC_DR_OFFSET_CHECK, "CRC.DR offset");
+REGFORGE_STATIC_ASSERT(sizeof(dc_crc_t) == DC_CRC_SIZE, DC_CRC_SIZE_CHECK, "CRC struct size vs addressBlock");
 
 /* CRC @ 0x40014000 */
 #define DC_CRC_BASE (0x40014000UL)
 REGFORGE_MAYBE_UNUSED static dc_crc_t *const DC_CRC = (dc_crc_t *)DC_CRC_BASE;
 
 /* CRC.DR - Data register */
-#define DC_CRC_DR (*(volatile uint32_t *)(DC_CRC_BASE + 0x00000000UL))
+#define DC_CRC_DR (*(volatile uint32_t *)(DC_CRC_BASE + DC_CRC_DR_OFFSET))
 
 
 /* -------------------------------------------------------------------------- */
 /* PWM -- Pulse-width modulator (family: PWMA, PWMB) */
+
+/* Layout constants: byte offsets from an instance's base; a cluster's members
+ * are relative to one element of that cluster. Every assert and accessor below
+ * refers to these, so each number is written once. */
+#define DC_PWM_CTRL_OFFSET (0x00000000UL)
+#define DC_PWM_CC_OFFSET   (0x00000010UL)
+#define DC_PWM_CC_STRIDE   (0x00000004UL)
+#define DC_PWM_CC_COUNT    (4U)
+#define DC_PWM_DT0_OFFSET  (0x00000020UL)
+#define DC_PWM_DT1_OFFSET  (0x00000028UL)
+#define DC_PWM_SIZE        (0x00000100UL)
 
 typedef struct {
     volatile uint32_t CTRL;            /* 0x00  Control register */
@@ -522,12 +597,12 @@ typedef struct {
     volatile uint32_t DT1;             /* 0x28  Dead time */
     uint8_t           RESERVED2[212];  /* 0x2C  (reserved) */
 } dc_pwm_t;
-REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, CTRL) == 0x00, DC_PWM_CTRL_offset, "PWM.CTRL offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, CC) == 0x10, DC_PWM_CC_offset, "PWM.CC offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, DT0) == 0x20, DC_PWM_DT0_offset, "PWM.DT0 offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, DT1) == 0x28, DC_PWM_DT1_offset, "PWM.DT1 offset");
-REGFORGE_STATIC_ASSERT(sizeof(((dc_pwm_t *)0)->CC) == 0x10, DC_PWM_CC_size, "PWM.CC array size");
-REGFORGE_STATIC_ASSERT(sizeof(dc_pwm_t) == 0x100, DC_PWM_SIZE, "PWM struct size vs addressBlock");
+REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, CTRL) == DC_PWM_CTRL_OFFSET, DC_PWM_CTRL_OFFSET_CHECK, "PWM.CTRL offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, CC) == DC_PWM_CC_OFFSET, DC_PWM_CC_OFFSET_CHECK, "PWM.CC offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, DT0) == DC_PWM_DT0_OFFSET, DC_PWM_DT0_OFFSET_CHECK, "PWM.DT0 offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, DT1) == DC_PWM_DT1_OFFSET, DC_PWM_DT1_OFFSET_CHECK, "PWM.DT1 offset");
+REGFORGE_STATIC_ASSERT(sizeof(((dc_pwm_t *)0)->CC) == DC_PWM_CC_COUNT * DC_PWM_CC_STRIDE, DC_PWM_CC_ARRAY_CHECK, "PWM.CC array size");
+REGFORGE_STATIC_ASSERT(sizeof(dc_pwm_t) == DC_PWM_SIZE, DC_PWM_SIZE_CHECK, "PWM struct size vs addressBlock");
 
 /* Per-instance names for the shared type, so a signature never has to know
  * which instances share a layout. Aliases, not distinct types: a function
@@ -540,40 +615,55 @@ typedef dc_pwm_t dc_pwmb_t;
 REGFORGE_MAYBE_UNUSED static dc_pwm_t *const DC_PWMA = (dc_pwm_t *)DC_PWMA_BASE;
 
 /* PWMA.CTRL - Control register */
-#define DC_PWMA_CTRL (*(volatile uint32_t *)(DC_PWMA_BASE + 0x00000000UL))
+#define DC_PWMA_CTRL (*(volatile uint32_t *)(DC_PWMA_BASE + DC_PWM_CTRL_OFFSET))
 
 /* PWMA.CC[4] - Capture/compare channel */
-#define DC_PWMA_CC_COUNT (4U)
-#define DC_PWMA_CC(i) (*(volatile uint32_t *)(DC_PWMA_BASE + 0x00000010UL + (i) * 0x00000004UL))
+#define DC_PWMA_CC_COUNT DC_PWM_CC_COUNT
+#define DC_PWMA_CC(i) (*(volatile uint32_t *)(DC_PWMA_BASE + DC_PWM_CC_OFFSET + (i) * DC_PWM_CC_STRIDE))
 #define DC_PWMA_CC_RESET_VALUE (0x00000000UL)
 
 /* PWMA.DT0 - Dead time */
-#define DC_PWMA_DT0 (*(volatile uint32_t *)(DC_PWMA_BASE + 0x00000020UL))
+#define DC_PWMA_DT0 (*(volatile uint32_t *)(DC_PWMA_BASE + DC_PWM_DT0_OFFSET))
 
 /* PWMA.DT1 - Dead time */
-#define DC_PWMA_DT1 (*(volatile uint32_t *)(DC_PWMA_BASE + 0x00000028UL))
+#define DC_PWMA_DT1 (*(volatile uint32_t *)(DC_PWMA_BASE + DC_PWM_DT1_OFFSET))
 
 /* PWMB @ 0x40015100 */
 #define DC_PWMB_BASE (0x40015100UL)
 REGFORGE_MAYBE_UNUSED static dc_pwm_t *const DC_PWMB = (dc_pwm_t *)DC_PWMB_BASE;
 
 /* PWMB.CTRL - Control register */
-#define DC_PWMB_CTRL (*(volatile uint32_t *)(DC_PWMB_BASE + 0x00000000UL))
+#define DC_PWMB_CTRL (*(volatile uint32_t *)(DC_PWMB_BASE + DC_PWM_CTRL_OFFSET))
 
 /* PWMB.CC[4] - Capture/compare channel */
-#define DC_PWMB_CC_COUNT (4U)
-#define DC_PWMB_CC(i) (*(volatile uint32_t *)(DC_PWMB_BASE + 0x00000010UL + (i) * 0x00000004UL))
+#define DC_PWMB_CC_COUNT DC_PWM_CC_COUNT
+#define DC_PWMB_CC(i) (*(volatile uint32_t *)(DC_PWMB_BASE + DC_PWM_CC_OFFSET + (i) * DC_PWM_CC_STRIDE))
 #define DC_PWMB_CC_RESET_VALUE (0x00000000UL)
 
 /* PWMB.DT0 - Dead time */
-#define DC_PWMB_DT0 (*(volatile uint32_t *)(DC_PWMB_BASE + 0x00000020UL))
+#define DC_PWMB_DT0 (*(volatile uint32_t *)(DC_PWMB_BASE + DC_PWM_DT0_OFFSET))
 
 /* PWMB.DT1 - Dead time */
-#define DC_PWMB_DT1 (*(volatile uint32_t *)(DC_PWMB_BASE + 0x00000028UL))
+#define DC_PWMB_DT1 (*(volatile uint32_t *)(DC_PWMB_BASE + DC_PWM_DT1_OFFSET))
 
 
 /* -------------------------------------------------------------------------- */
 /* DMA -- Direct memory access */
+
+/* Layout constants: byte offsets from an instance's base; a cluster's members
+ * are relative to one element of that cluster. Every assert and accessor below
+ * refers to these, so each number is written once. */
+#define DC_DMA_CFG_OFFSET        (0x00000000UL)
+#define DC_DMA_CH_OFFSET         (0x00000010UL)
+#define DC_DMA_CH_STRIDE         (0x00000010UL)
+#define DC_DMA_CH_COUNT          (4U)
+#define DC_DMA_CH_CTRL_OFFSET    (0x00000000UL)
+#define DC_DMA_CH_SRC_OFFSET     (0x00000004UL)
+#define DC_DMA_CH_DST_OFFSET     (0x00000008UL)
+#define DC_DMA_STAT_OFFSET       (0x00000050UL)
+#define DC_DMA_STAT_FLAGS_OFFSET (0x00000000UL)
+#define DC_DMA_STAT_ERR_OFFSET   (0x00000004UL)
+#define DC_DMA_SIZE              (0x00000100UL)
 
 /* DMA.CH -- DMA channel (4 elements, 0x10 bytes apart) */
 typedef struct {
@@ -582,18 +672,18 @@ typedef struct {
     volatile uint32_t DST;           /* 0x08  Destination address */
     uint8_t           RESERVED0[4];  /* 0x0C  (reserved) */
 } dc_dma_ch_t;
-REGFORGE_STATIC_ASSERT(offsetof(dc_dma_ch_t, CTRL) == 0x00, DC_DMA_CH_CTRL_offset, "DMA.CH.CTRL offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_dma_ch_t, SRC) == 0x04, DC_DMA_CH_SRC_offset, "DMA.CH.SRC offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_dma_ch_t, DST) == 0x08, DC_DMA_CH_DST_offset, "DMA.CH.DST offset");
-REGFORGE_STATIC_ASSERT(sizeof(dc_dma_ch_t) == 0x10, DC_DMA_CH_SIZE, "DMA.CH element size vs dimIncrement");
+REGFORGE_STATIC_ASSERT(offsetof(dc_dma_ch_t, CTRL) == DC_DMA_CH_CTRL_OFFSET, DC_DMA_CH_CTRL_OFFSET_CHECK, "DMA.CH.CTRL offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_dma_ch_t, SRC) == DC_DMA_CH_SRC_OFFSET, DC_DMA_CH_SRC_OFFSET_CHECK, "DMA.CH.SRC offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_dma_ch_t, DST) == DC_DMA_CH_DST_OFFSET, DC_DMA_CH_DST_OFFSET_CHECK, "DMA.CH.DST offset");
+REGFORGE_STATIC_ASSERT(sizeof(dc_dma_ch_t) == DC_DMA_CH_STRIDE, DC_DMA_CH_SIZE_CHECK, "DMA.CH element size vs dimIncrement");
 
 /* DMA.STAT -- Status block */
 typedef struct {
     volatile const uint32_t FLAGS;  /* 0x00  Channel flags */
     volatile const uint32_t ERR;    /* 0x04  Error flags */
 } dc_dma_stat_t;
-REGFORGE_STATIC_ASSERT(offsetof(dc_dma_stat_t, FLAGS) == 0x00, DC_DMA_STAT_FLAGS_offset, "DMA.STAT.FLAGS offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_dma_stat_t, ERR) == 0x04, DC_DMA_STAT_ERR_offset, "DMA.STAT.ERR offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_dma_stat_t, FLAGS) == DC_DMA_STAT_FLAGS_OFFSET, DC_DMA_STAT_FLAGS_OFFSET_CHECK, "DMA.STAT.FLAGS offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_dma_stat_t, ERR) == DC_DMA_STAT_ERR_OFFSET, DC_DMA_STAT_ERR_OFFSET_CHECK, "DMA.STAT.ERR offset");
 
 typedef struct {
     volatile uint32_t CFG;             /* 0x00  Global configuration */
@@ -602,34 +692,34 @@ typedef struct {
     dc_dma_stat_t     STAT;            /* 0x50  Status block */
     uint8_t           RESERVED1[168];  /* 0x58  (reserved) */
 } dc_dma_t;
-REGFORGE_STATIC_ASSERT(offsetof(dc_dma_t, CFG) == 0x00, DC_DMA_CFG_offset, "DMA.CFG offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_dma_t, CH) == 0x10, DC_DMA_CH_offset, "DMA.CH offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_dma_t, STAT) == 0x50, DC_DMA_STAT_offset, "DMA.STAT offset");
-REGFORGE_STATIC_ASSERT(sizeof(((dc_dma_t *)0)->CH) == 0x40, DC_DMA_CH_size, "DMA.CH array size");
-REGFORGE_STATIC_ASSERT(sizeof(dc_dma_t) == 0x100, DC_DMA_SIZE, "DMA struct size vs addressBlock");
+REGFORGE_STATIC_ASSERT(offsetof(dc_dma_t, CFG) == DC_DMA_CFG_OFFSET, DC_DMA_CFG_OFFSET_CHECK, "DMA.CFG offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_dma_t, CH) == DC_DMA_CH_OFFSET, DC_DMA_CH_OFFSET_CHECK, "DMA.CH offset");
+REGFORGE_STATIC_ASSERT(offsetof(dc_dma_t, STAT) == DC_DMA_STAT_OFFSET, DC_DMA_STAT_OFFSET_CHECK, "DMA.STAT offset");
+REGFORGE_STATIC_ASSERT(sizeof(((dc_dma_t *)0)->CH) == DC_DMA_CH_COUNT * DC_DMA_CH_STRIDE, DC_DMA_CH_ARRAY_CHECK, "DMA.CH array size");
+REGFORGE_STATIC_ASSERT(sizeof(dc_dma_t) == DC_DMA_SIZE, DC_DMA_SIZE_CHECK, "DMA struct size vs addressBlock");
 
 /* DMA @ 0x40016000 */
 #define DC_DMA_BASE (0x40016000UL)
 REGFORGE_MAYBE_UNUSED static dc_dma_t *const DC_DMA = (dc_dma_t *)DC_DMA_BASE;
 
 /* DMA.CFG - Global configuration */
-#define DC_DMA_CFG (*(volatile uint32_t *)(DC_DMA_BASE + 0x00000000UL))
+#define DC_DMA_CFG (*(volatile uint32_t *)(DC_DMA_BASE + DC_DMA_CFG_OFFSET))
 
 /* DMA.CH[4].CTRL - Channel control */
-#define DC_DMA_CH_CTRL(i) (*(volatile uint32_t *)(DC_DMA_BASE + 0x00000010UL + (i) * 0x00000010UL))
+#define DC_DMA_CH_CTRL(i) (*(volatile uint32_t *)(DC_DMA_BASE + DC_DMA_CH_OFFSET + (i) * DC_DMA_CH_STRIDE + DC_DMA_CH_CTRL_OFFSET))
 #define DC_DMA_CH_CTRL_EN_Pos (0U)
 #define DC_DMA_CH_CTRL_EN_Msk (0x00000001UL)
 
 /* DMA.CH[4].SRC - Source address */
-#define DC_DMA_CH_SRC(i) (*(volatile uint32_t *)(DC_DMA_BASE + 0x00000014UL + (i) * 0x00000010UL))
+#define DC_DMA_CH_SRC(i) (*(volatile uint32_t *)(DC_DMA_BASE + DC_DMA_CH_OFFSET + (i) * DC_DMA_CH_STRIDE + DC_DMA_CH_SRC_OFFSET))
 
 /* DMA.CH[4].DST - Destination address */
-#define DC_DMA_CH_DST(i) (*(volatile uint32_t *)(DC_DMA_BASE + 0x00000018UL + (i) * 0x00000010UL))
+#define DC_DMA_CH_DST(i) (*(volatile uint32_t *)(DC_DMA_BASE + DC_DMA_CH_OFFSET + (i) * DC_DMA_CH_STRIDE + DC_DMA_CH_DST_OFFSET))
 
 /* DMA.STAT.FLAGS - Channel flags */
-#define DC_DMA_STAT_FLAGS (*(volatile const uint32_t *)(DC_DMA_BASE + 0x00000050UL))
+#define DC_DMA_STAT_FLAGS (*(volatile const uint32_t *)(DC_DMA_BASE + DC_DMA_STAT_OFFSET + DC_DMA_STAT_FLAGS_OFFSET))
 
 /* DMA.STAT.ERR - Error flags */
-#define DC_DMA_STAT_ERR (*(volatile const uint32_t *)(DC_DMA_BASE + 0x00000054UL))
+#define DC_DMA_STAT_ERR (*(volatile const uint32_t *)(DC_DMA_BASE + DC_DMA_STAT_OFFSET + DC_DMA_STAT_ERR_OFFSET))
 
 #endif /* REGFORGE_DEMOMCU_H */

@@ -92,7 +92,7 @@ Output — emitted as [C](targets/c.md#array-members):
 ```c
 volatile uint32_t DATA[8];   /* 0x10 */
 #define FIFO_DATA_COUNT (8U)
-#define FIFO_DATA(i) (*(volatile uint32_t *)(FIFO_BASE + 0x00000010UL + (i) * 0x00000004UL))
+#define FIFO_DATA(i) (*(volatile uint32_t *)(FIFO_BASE + FIFO_DATA_OFFSET + (i) * FIFO_DATA_STRIDE))
 ```
 
 Complete versions: [the whole SVD](formats/svd.md#a-peripheral-array-with-a-register-array)

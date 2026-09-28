@@ -155,13 +155,13 @@ def test_fixture_asserts_struct_size_from_address_block(demo_device):
     # GPIOA block (0x20) exceeds the last register end (0x18) -> padded + asserted.
     assert "RESERVED1[8];" in output  # trailing pad to 0x20
     assert (
-        "REGFORGE_STATIC_ASSERT(sizeof(dc_gpioa_t) == 0x20, DC_GPIOA_SIZE, "
+        "REGFORGE_STATIC_ASSERT(sizeof(dc_gpioa_t) == DC_GPIOA_SIZE, DC_GPIOA_SIZE_CHECK, "
         '"GPIOA struct size vs addressBlock");' in output
     )
     # UART registers block (0x8) exactly fits the registers; its buffer window
     # (0x8..0x28) is a member too, so the contract reaches 0x28.
     assert (
-        "REGFORGE_STATIC_ASSERT(sizeof(dc_uart_t) == 0x28, DC_UART_SIZE, "
+        "REGFORGE_STATIC_ASSERT(sizeof(dc_uart_t) == DC_UART_SIZE, DC_UART_SIZE_CHECK, "
         '"UART struct size vs addressBlock");' in output
     )
 
@@ -173,8 +173,8 @@ def test_fixture_buffer_block_emits_one_raw_window(demo_device):
     assert "volatile uint32_t       BUFFER0[8];" in output
     # Its position is locked as tightly as a register's.
     assert (
-        "REGFORGE_STATIC_ASSERT(offsetof(dc_uart_t, BUFFER0) == 0x08, "
-        'DC_UART_BUFFER0_offset, "UART.BUFFER0 offset");' in output
+        "REGFORGE_STATIC_ASSERT(offsetof(dc_uart_t, BUFFER0) == DC_UART_BUFFER0_OFFSET, "
+        'DC_UART_BUFFER0_OFFSET_CHECK, "UART.BUFFER0 offset");' in output
     )
     # It is a window, not padding -- no RESERVED member covers that range.
     assert "RESERVED0[32];" not in output
@@ -265,14 +265,18 @@ def test_fixture_register_array_and_separate_copies(demo_device):
     output = CWriter().render(demo_device)
     squashed = _squash(output)
     assert "volatile uint32_t CC[4];" in squashed  # CC[%s]: one packed array member
-    assert "#define DC_PWMA_CC_COUNT (4U)" in output
+    assert (
+        "#define DC_PWMA_CC_COUNT DC_PWM_CC_COUNT" in output
+    )  # the family count, by instance name
     assert (
         "#define DC_PWMA_CC(i) (*(volatile uint32_t *)"
-        "(DC_PWMA_BASE + 0x00000010UL + (i) * 0x00000004UL))" in output
+        "(DC_PWMA_BASE + DC_PWM_CC_OFFSET + (i) * DC_PWM_CC_STRIDE))" in output
     )
     assert output.count("DC_PWMA_CC_RESET_VALUE") == 1  # once per array
     assert "volatile uint32_t DT0;" in squashed and "volatile uint32_t DT1;" in squashed  # DT%s
-    assert "#define DC_PWMB_DT1 (*(volatile uint32_t *)(DC_PWMB_BASE + 0x00000028UL))" in output
+    assert (
+        "#define DC_PWMB_DT1 (*(volatile uint32_t *)(DC_PWMB_BASE + DC_PWM_DT1_OFFSET))" in output
+    )
 
 
 def test_fixture_field_array_and_separate_copies(demo_device):
@@ -293,17 +297,18 @@ def test_fixture_cluster_array_and_single_cluster(demo_device):
     assert output.index("} dc_dma_ch_t;") < output.index("} dc_dma_t;")
     assert output.index("} dc_dma_stat_t;") < output.index("} dc_dma_t;")
     assert (
-        "REGFORGE_STATIC_ASSERT(sizeof(dc_dma_ch_t) == 0x10, DC_DMA_CH_SIZE, "
+        "REGFORGE_STATIC_ASSERT(sizeof(dc_dma_ch_t) == DC_DMA_CH_STRIDE, DC_DMA_CH_SIZE_CHECK, "
         '"DMA.CH element size vs dimIncrement");' in output
     )
     assert "DC_DMA_STAT_SIZE" not in output  # a single cluster has no stride to assert
     assert "dc_dma_ch_t CH[4];" in squashed and "dc_dma_stat_t STAT;" in squashed
     assert (
         "#define DC_DMA_CH_DST(i) (*(volatile uint32_t *)"
-        "(DC_DMA_BASE + 0x00000018UL + (i) * 0x00000010UL))" in output
+        "(DC_DMA_BASE + DC_DMA_CH_OFFSET + (i) * DC_DMA_CH_STRIDE + DC_DMA_CH_DST_OFFSET))"
+        in output
     )
     assert "#define DC_DMA_CH_CTRL_EN_Pos (0U)" in output
     assert (
-        "#define DC_DMA_STAT_ERR (*(volatile const uint32_t *)(DC_DMA_BASE + 0x00000054UL))"
-        in output
+        "#define DC_DMA_STAT_ERR (*(volatile const uint32_t *)"
+        "(DC_DMA_BASE + DC_DMA_STAT_OFFSET + DC_DMA_STAT_ERR_OFFSET))" in output
     )

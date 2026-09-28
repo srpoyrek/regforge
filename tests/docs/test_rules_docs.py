@@ -91,6 +91,8 @@ def test_worked_examples_are_paired():
     svd = _worked_examples(RULES / "formats" / "svd.md", "xml")
     emitted = _worked_examples(RULES / "targets" / "c.md", "c")
     assert svd, "no worked examples found on the SVD page"
+    empty = [title for title, block in emitted.items() if not block.strip()]
+    assert not empty, f"empty C blocks on the C page: {empty}"
     assert set(svd) == set(emitted), (
         f"unpaired worked examples: only in SVD {sorted(set(svd) - set(emitted))}, "
         f"only in C {sorted(set(emitted) - set(svd))}"

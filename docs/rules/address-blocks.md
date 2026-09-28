@@ -45,8 +45,8 @@ typedef struct {
     volatile const uint32_t SR;          /* 0x04 */
     volatile uint32_t       BUFFER0[8];  /* 0x08  (buffer) */
 } dc_uart_t;
-REGFORGE_STATIC_ASSERT(offsetof(dc_uart_t, BUFFER0) == 0x08, DC_UART_BUFFER0_offset, "UART.BUFFER0 offset");
-REGFORGE_STATIC_ASSERT(sizeof(dc_uart_t) == 0x28, DC_UART_SIZE, "UART struct size vs addressBlock");
+REGFORGE_STATIC_ASSERT(offsetof(dc_uart_t, BUFFER0) == DC_UART_BUFFER0_OFFSET, DC_UART_BUFFER0_OFFSET_CHECK, "UART.BUFFER0 offset");
+REGFORGE_STATIC_ASSERT(sizeof(dc_uart_t) == DC_UART_SIZE, DC_UART_SIZE_CHECK, "UART struct size vs addressBlock");
 ```
 
 ### Corner cases

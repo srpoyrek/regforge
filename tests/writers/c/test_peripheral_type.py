@@ -42,9 +42,9 @@ def test_offset_static_asserts_prove_layout(demo_device):
     output = CWriter().render(demo_device)
     # Each register carries a compile-time proof it sits at its declared offset;
     # the compile matrix then makes a real compiler check them.
-    assert "offsetof(dc_gpioa_t, MODER) == 0x00" in output
-    assert "offsetof(dc_gpioa_t, IDR) == 0x10" in output
-    assert "offsetof(dc_gpioa_t, ODR) == 0x14" in output
+    assert "offsetof(dc_gpioa_t, MODER) == DC_GPIOA_MODER_OFFSET" in output
+    assert "offsetof(dc_gpioa_t, IDR) == DC_GPIOA_IDR_OFFSET" in output
+    assert "offsetof(dc_gpioa_t, ODR) == DC_GPIOA_ODR_OFFSET" in output
     # No assert on the reserved gap -- a register's offset proves the pad before it.
     assert "offsetof(dc_gpioa_t, RESERVED0)" not in output
 

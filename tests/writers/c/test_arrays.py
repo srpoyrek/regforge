@@ -57,18 +57,18 @@ def test_array_register_is_one_member_with_count_and_indexed_macro():
     squashed = _squash(output)
     assert "volatile uint32_t CC[4];" in squashed
     assert (
-        'REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, CC) == 0x10, DC_PWM_CC_offset, "PWM.CC offset");'
-        in output
+        "REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, CC) == DC_PWM_CC_OFFSET, "
+        'DC_PWM_CC_OFFSET_CHECK, "PWM.CC offset");' in output
     )
     assert "/* PWM.CC[4] - Capture/compare */" in output
-    assert "#define DC_PWM_CC_COUNT (4U)" in output
+    assert "#define DC_PWM_CC_COUNT (4U)" in squashed  # the family constant, aligned
     assert (  # the member holds exactly its elements
-        "REGFORGE_STATIC_ASSERT(sizeof(((dc_pwm_t *)0)->CC) == 0x10, DC_PWM_CC_size, "
-        '"PWM.CC array size");' in output
+        "REGFORGE_STATIC_ASSERT(sizeof(((dc_pwm_t *)0)->CC) == "
+        'DC_PWM_CC_COUNT * DC_PWM_CC_STRIDE, DC_PWM_CC_ARRAY_CHECK, "PWM.CC array size");' in output
     )
     assert (
         "#define DC_PWM_CC(i) (*(volatile uint32_t *)"
-        "(DC_PWM_BASE + 0x00000010UL + (i) * 0x00000004UL))" in output
+        "(DC_PWM_BASE + DC_PWM_CC_OFFSET + (i) * DC_PWM_CC_STRIDE))" in output
     )
     assert output.count("DC_PWM_CC_RESET_VALUE") == 1  # once per array, not per element
     assert "#define DC_PWM_CC_V_Pos (0U)" in output  # fields once, index-free
@@ -81,8 +81,8 @@ def test_separate_copies_are_ordinary_registers():
     squashed = _squash(output)
     assert "volatile uint32_t DT0;" in squashed and "volatile uint32_t DT1;" in squashed
     assert "uint8_t RESERVED1[4];" in squashed  # the hole between the copies is padding
-    assert "#define DC_PWM_DT0 (*(volatile uint32_t *)(DC_PWM_BASE + 0x00000020UL))" in output
-    assert "#define DC_PWM_DT1 (*(volatile uint32_t *)(DC_PWM_BASE + 0x00000028UL))" in output
+    assert "#define DC_PWM_DT0 (*(volatile uint32_t *)(DC_PWM_BASE + DC_PWM_DT0_OFFSET))" in output
+    assert "#define DC_PWM_DT1 (*(volatile uint32_t *)(DC_PWM_BASE + DC_PWM_DT1_OFFSET))" in output
     assert "_COUNT" not in output
 
 
@@ -107,13 +107,16 @@ def test_unpacked_array_is_flat_members_with_an_indexed_macro():
     assert "volatile uint32_t CH0;" in squashed and "volatile uint32_t CH3;" in squashed
     assert "uint8_t RESERVED0[4];" in squashed  # the hole after CH0
     assert (
-        "REGFORGE_STATIC_ASSERT(offsetof(dc_pwmx_t, CH1) == 0x08, DC_PWMX_CH1_offset, "
+        "REGFORGE_STATIC_ASSERT(offsetof(dc_pwmx_t, CH1) == "
+        "DC_PWMX_CH_OFFSET + 1U * DC_PWMX_CH_STRIDE, DC_PWMX_CH1_OFFSET_CHECK, "
         '"PWMX.CH1 offset");' in output
     )
-    assert "#define DC_PWMX_CH_COUNT (4U)" in output  # the indexed macro still steps by the stride
+    assert (
+        "#define DC_PWMX_CH_COUNT (4U)" in squashed
+    )  # the indexed macro still steps by the stride
     assert (
         "#define DC_PWMX_CH(i) (*(volatile uint32_t *)"
-        "(DC_PWMX_BASE + 0x00000000UL + (i) * 0x00000008UL))" in output
+        "(DC_PWMX_BASE + DC_PWMX_CH_OFFSET + (i) * DC_PWMX_CH_STRIDE))" in output
     )
 
 

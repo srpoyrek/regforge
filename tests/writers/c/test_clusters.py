@@ -48,19 +48,19 @@ def test_cluster_becomes_a_nested_type_and_member():
     assert "/* DMA.STAT -- Status block */" in output
     assert "volatile const uint32_t ERR;" in squashed
     assert (
-        "REGFORGE_STATIC_ASSERT(offsetof(dc_dma_stat_t, ERR) == 0x04, DC_DMA_STAT_ERR_offset, "
-        '"DMA.STAT.ERR offset");' in output
+        "REGFORGE_STATIC_ASSERT(offsetof(dc_dma_stat_t, ERR) == DC_DMA_STAT_ERR_OFFSET, "
+        'DC_DMA_STAT_ERR_OFFSET_CHECK, "DMA.STAT.ERR offset");' in output
     )
     assert "dc_dma_stat_t STAT;" in squashed
     assert (
-        "REGFORGE_STATIC_ASSERT(offsetof(dc_dma_t, STAT) == 0x10, DC_DMA_STAT_offset, "
-        '"DMA.STAT offset");' in output
+        "REGFORGE_STATIC_ASSERT(offsetof(dc_dma_t, STAT) == DC_DMA_STAT_OFFSET, "
+        'DC_DMA_STAT_OFFSET_CHECK, "DMA.STAT offset");' in output
     )
     assert "DC_DMA_STAT_SIZE" not in output  # no stride to assert a single cluster against
     assert "/* DMA.STAT.ERR */" in output
     assert (
-        "#define DC_DMA_STAT_ERR (*(volatile const uint32_t *)(DC_DMA_BASE + 0x00000014UL))"
-        in output
+        "#define DC_DMA_STAT_ERR (*(volatile const uint32_t *)"
+        "(DC_DMA_BASE + DC_DMA_STAT_OFFSET + DC_DMA_STAT_ERR_OFFSET))" in output
     )
 
 
@@ -80,22 +80,24 @@ def test_array_cluster_is_padded_asserted_and_indexed():
     assert "/* DMA.CH -- DMA channel (4 elements, 0x10 bytes apart) */" in output
     assert "uint8_t RESERVED0[8];" in squashed  # the element is padded to the stride
     assert (
-        "REGFORGE_STATIC_ASSERT(sizeof(dc_dma_ch_t) == 0x10, DC_DMA_CH_SIZE, "
+        "REGFORGE_STATIC_ASSERT(sizeof(dc_dma_ch_t) == DC_DMA_CH_STRIDE, DC_DMA_CH_SIZE_CHECK, "
         '"DMA.CH element size vs dimIncrement");' in output
     )
     assert "dc_dma_ch_t CH[4];" in squashed
     assert (
-        "REGFORGE_STATIC_ASSERT(sizeof(((dc_dma_t *)0)->CH) == 0x40, DC_DMA_CH_size, "
-        '"DMA.CH array size");' in output
+        "REGFORGE_STATIC_ASSERT(sizeof(((dc_dma_t *)0)->CH) == "
+        'DC_DMA_CH_COUNT * DC_DMA_CH_STRIDE, DC_DMA_CH_ARRAY_CHECK, "DMA.CH array size");' in output
     )
     assert "/* DMA.CH[4].CTRL */" in output
     assert (
         "#define DC_DMA_CH_CTRL(i) (*(volatile uint32_t *)"
-        "(DC_DMA_BASE + 0x00000010UL + (i) * 0x00000010UL))" in output
+        "(DC_DMA_BASE + DC_DMA_CH_OFFSET + (i) * DC_DMA_CH_STRIDE + DC_DMA_CH_CTRL_OFFSET))"
+        in output
     )
     assert (
         "#define DC_DMA_CH_SRC(i) (*(volatile uint32_t *)"
-        "(DC_DMA_BASE + 0x00000014UL + (i) * 0x00000010UL))" in output
+        "(DC_DMA_BASE + DC_DMA_CH_OFFSET + (i) * DC_DMA_CH_STRIDE + DC_DMA_CH_SRC_OFFSET))"
+        in output
     )
     assert "#define DC_DMA_CH_CTRL_EN_Pos (0U)" in output  # fields are index-free
 
@@ -108,10 +110,10 @@ def test_array_register_inside_array_cluster_takes_two_indices():
         registers=[Register("BUF[%s]", 0x0, size=32, dim=Dim(4, 4))],
     )
     output = _render(_dma(cluster))
-    assert "#define DC_DMA_CH_BUF_COUNT (4U)" in output
+    assert "#define DC_DMA_CH_BUF_COUNT (4U)" in _squash(output)
     assert (
-        "#define DC_DMA_CH_BUF(i, j) (*(volatile uint32_t *)(DC_DMA_BASE + 0x00000010UL + "
-        "(i) * 0x00000020UL + (j) * 0x00000004UL))" in output
+        "#define DC_DMA_CH_BUF(i, j) (*(volatile uint32_t *)(DC_DMA_BASE + DC_DMA_CH_OFFSET + "
+        "(i) * DC_DMA_CH_STRIDE + DC_DMA_CH_BUF_OFFSET + (j) * DC_DMA_CH_BUF_STRIDE))" in output
     )
 
 
@@ -121,7 +123,10 @@ def test_copies_of_a_cluster_share_one_type():
     squashed = _squash(output)
     assert output.count("} dc_dma_ch_t;") == 1
     assert all(f"dc_dma_ch_t CH{index};" in squashed for index in range(3))
-    assert "#define DC_DMA_CH1_CTRL (*(volatile uint32_t *)(DC_DMA_BASE + 0x00000020UL))" in output
+    assert (
+        "#define DC_DMA_CH1_CTRL (*(volatile uint32_t *)"
+        "(DC_DMA_BASE + DC_DMA_CH1_OFFSET + DC_DMA_CH_CTRL_OFFSET))" in output
+    )
 
 
 def test_nested_cluster_types_are_defined_innermost_first():
@@ -134,7 +139,11 @@ def test_nested_cluster_types_are_defined_innermost_first():
         < output.index("} dc_dma_t;")
     )
     assert "dc_dma_ch_sub_t SUB;" in _squash(output)
-    assert "#define DC_DMA_CH_SUB_R (*(volatile uint32_t *)(DC_DMA_BASE + 0x00000018UL))" in output
+    assert (
+        "#define DC_DMA_CH_SUB_R (*(volatile uint32_t *)"
+        "(DC_DMA_BASE + DC_DMA_CH_OFFSET + DC_DMA_CH_SUB_OFFSET + DC_DMA_CH_SUB_R_OFFSET))"
+        in output
+    )
 
 
 def test_header_struct_name_names_the_cluster_type():

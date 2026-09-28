@@ -58,7 +58,7 @@
 
 {{ area("Device") }}
 #define {{ dev }}_ADDRESS_UNIT_BITS {{ device.address_unit_bits }}
-REGFORGE_STATIC_ASSERT(CHAR_BIT == {{ dev }}_ADDRESS_UNIT_BITS, {{ dev }}_address_unit_bits,
+REGFORGE_STATIC_ASSERT(CHAR_BIT == {{ dev }}_ADDRESS_UNIT_BITS, {{ dev }}_ADDRESS_UNIT_BITS_CHECK,
     "regforge: this header targets {{ device.address_unit_bits }}-bit address units; "
     "the compiler's CHAR_BIT disagrees -- regenerate with a matching emitter mode.");
 
@@ -233,6 +233,17 @@ REGFORGE_INLINE uint8_t {{ ns|lower }}nvic_get_priority({{ prefix|lower }}irqn_e
 {% if family.note %}
 /* {{ family.note }} */
 {% endif %}
+{% set consts = constants(family) %}
+{% if consts %}
+{% set cw = consts|map(attribute='name')|map('length')|max %}
+
+/* Layout constants: byte offsets from an instance's base; a cluster's members
+ * are relative to one element of that cluster. Every assert and accessor below
+ * refers to these, so each number is written once. */
+{% for c in consts %}
+#define {{ "%-*s"|format(cw, c.name) }} ({{ c.value }})
+{% endfor %}
+{% endif %}
 {% for ct in cluster_types(family) %}
 {% set ctw = ct.members|map(attribute='type')|map('length')|max %}
 {% set cfw = ct.members|map(attribute='field')|map('length')|max %}
@@ -244,13 +255,13 @@ typedef struct {
 {% endfor %}
 } {{ ct.tname }};
 {% for m in ct.members if m.member %}
-REGFORGE_STATIC_ASSERT(offsetof({{ ct.tname }}, {{ m.member }}) == 0x{{ "%02X"|format(m.offset) }}, {{ ct.spf }}_{{ m.member|upper }}_offset, "{{ ct.label }}.{{ m.member }} offset");
+REGFORGE_STATIC_ASSERT(offsetof({{ ct.tname }}, {{ m.member }}) == {% if m.index is not none %}{{ ct.spf }}_{{ m.stem|upper }}_OFFSET + {{ m.index }}U * {{ ct.spf }}_{{ m.stem|upper }}_STRIDE{% else %}{{ ct.spf }}_{{ m.member|upper }}_OFFSET{% endif %}, {{ ct.spf }}_{{ m.member|upper }}_OFFSET_CHECK, "{{ ct.label }}.{{ m.member }} offset");
 {% endfor %}
 {% for m in ct.members if m.member and m.elements > 1 %}
-REGFORGE_STATIC_ASSERT(sizeof((({{ ct.tname }} *)0)->{{ m.member }}) == 0x{{ "%X"|format(m.bytes) }}, {{ ct.spf }}_{{ m.member|upper }}_size, "{{ ct.label }}.{{ m.member }} array size");
+REGFORGE_STATIC_ASSERT(sizeof((({{ ct.tname }} *)0)->{{ m.member }}) == {{ ct.spf }}_{{ m.member|upper }}_COUNT * {{ ct.spf }}_{{ m.member|upper }}_STRIDE, {{ ct.spf }}_{{ m.member|upper }}_ARRAY_CHECK, "{{ ct.label }}.{{ m.member }} array size");
 {% endfor %}
 {% if ct.count %}
-REGFORGE_STATIC_ASSERT(sizeof({{ ct.tname }}) == 0x{{ "%X"|format(ct.element_bytes) }}, {{ ct.spf }}_SIZE, "{{ ct.label }} element size vs dimIncrement");
+REGFORGE_STATIC_ASSERT(sizeof({{ ct.tname }}) == {{ ct.own }}_STRIDE, {{ ct.spf }}_SIZE_CHECK, "{{ ct.label }} element size vs dimIncrement");
 {% endif %}
 {% endfor %}
 
@@ -260,14 +271,14 @@ typedef struct {
 {% endfor %}
 } {{ tname }};
 {% for m in members if m.member %}
-REGFORGE_STATIC_ASSERT(offsetof({{ tname }}, {{ m.member }}) == 0x{{ "%02X"|format(m.offset) }}, {{ spf }}_{{ m.member|upper }}_offset, "{{ family.name }}.{{ m.member }} offset");
+REGFORGE_STATIC_ASSERT(offsetof({{ tname }}, {{ m.member }}) == {% if m.index is not none %}{{ spf }}_{{ m.stem|upper }}_OFFSET + {{ m.index }}U * {{ spf }}_{{ m.stem|upper }}_STRIDE{% else %}{{ spf }}_{{ m.member|upper }}_OFFSET{% endif %}, {{ spf }}_{{ m.member|upper }}_OFFSET_CHECK, "{{ family.name }}.{{ m.member }} offset");
 {% endfor %}
 {% for m in members if m.member and m.elements > 1 %}
-REGFORGE_STATIC_ASSERT(sizeof((({{ tname }} *)0)->{{ m.member }}) == 0x{{ "%X"|format(m.bytes) }}, {{ spf }}_{{ m.member|upper }}_size, "{{ family.name }}.{{ m.member }} array size");
+REGFORGE_STATIC_ASSERT(sizeof((({{ tname }} *)0)->{{ m.member }}) == {{ spf }}_{{ m.member|upper }}_COUNT * {{ spf }}_{{ m.member|upper }}_STRIDE, {{ spf }}_{{ m.member|upper }}_ARRAY_CHECK, "{{ family.name }}.{{ m.member }} array size");
 {% endfor %}
 {% set ssize = struct_size(src) %}
 {% if ssize is not none %}
-REGFORGE_STATIC_ASSERT(sizeof({{ tname }}) == 0x{{ "%X"|format(ssize) }}, {{ spf }}_SIZE, "{{ family.name }} struct size vs addressBlock");
+REGFORGE_STATIC_ASSERT(sizeof({{ tname }}) == {{ spf }}_SIZE, {{ spf }}_SIZE_CHECK, "{{ family.name }} struct size vs addressBlock");
 {% endif %}
 {% set aliases = type_aliases(family) %}
 {% if aliases %}
@@ -296,13 +307,13 @@ REGFORGE_MAYBE_UNUSED static {{ tname }} *const {{ pf }} = ({{ tname }} *){{ pf 
 #define {{ pf }}_{{ ai.name|upper }}_{{ ev.name|upper }} ({{ ev.value }}U){% if ev.description %}  /* {{ ev.description }} */{% endif +%}
 {% endfor %}
 {% endfor %}
-{% for acc in accessors(periph) %}
+{% for acc in accessors(family) %}
 {% set reg = acc.register %}
 {% set rn = pf ~ "_" ~ acc.name|upper %}
 
 /* {{ periph.name }}.{{ acc.label }}{% if reg.description %} - {{ reg.description }}{% endif %} */
-{% if acc.count %}
-#define {{ rn }}_COUNT ({{ acc.count }}U)
+{% if acc.count and pf != spf %}
+#define {{ rn }}_COUNT {{ acc.count }}
 {% endif %}
 #define {{ rn }}{{ acc.params }} (*({{ member_type(reg) }} *)({{ pf }}_BASE + {{ acc.address }}))
 {% if reg.reset_value is not none %}

@@ -69,6 +69,7 @@ class LayoutEntry:
         count: Elements in the slot: a packed array's ``dim`` count, else 1.
         name: The member's name when it differs from the register's -- one
             element of an unpacked array; ``None`` otherwise.
+        index: That element's position in its array; ``None`` otherwise.
         members: A cluster's own layout, padded to ``element_bytes``; empty for
             every other kind of slot.
     """
@@ -82,6 +83,7 @@ class LayoutEntry:
     size_bytes: int = 0
     count: int = 1
     name: str | None = None
+    index: int | None = None
     members: list[LayoutEntry] = field(default_factory=list)
 
     @property
@@ -266,6 +268,7 @@ def _register_slots(where: str, register: Register, address_unit_bits: int) -> l
             element_bytes=element,
             size_bytes=element,
             name=f"{register.name}{index}",
+            index=index,
         )
         for index in range(count)
     ]
