@@ -128,7 +128,8 @@ REGFORGE_STATIC_ASSERT(CHAR_BIT == DEMOMCU_ADDRESS_UNIT_BITS, DEMOMCU_ADDRESS_UN
 
 /* Align an interrupt priority to this core's implemented bits. NVIC priority
  * registers are MSB-aligned, so the value is shifted into the top
- * 2 bit(s); priorities >= the level count truncate in hardware. */
+ * 2 bit(s); priorities >= the level count truncate in hardware.
+ * The range check is an assert: with NDEBUG the helper is the shift alone. */
 REGFORGE_INLINE uint8_t dc_irq_prio(uint8_t priority)
 {
     assert(priority < DEMOMCU_IRQ_PRIO_LEVELS);
@@ -149,7 +150,7 @@ typedef enum {
     DC_ADC0_IRQn     = 27,  /* ADC0 conversion complete */
     DC_ADC1_IRQn     = 28,  /* ADC1 conversion complete */
     DC_SPI0_IRQn     = 30,  /* SPI0 interrupt */
-    DC_SPI1_IRQn     = 30  /* SPI1 interrupt */
+    DC_SPI1_IRQn     = 30   /* SPI1 interrupt */
 } dc_irqn_e;
 
 /* ========================================================================== */
@@ -607,6 +608,7 @@ REGFORGE_MAYBE_UNUSED static dc_wdt0_t *const DC_WDT0 = (dc_wdt0_t *)DC_WDT0_BAS
 
 /* -------------------------------------------------------------------------- */
 /* WDT1 -- Watchdog, instance 1 (adds a reload register) */
+/* family WDT0: split 2 ways by layout (WDT0 | WDT1); WDT1 first differs from WDT0 at RELOAD */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
  * are relative to one element of that cluster. Every assert below refers to
@@ -703,7 +705,7 @@ typedef struct {
     uint8_t           RESERVED0[DC_PWM_RESERVED0_SIZE];  /* 0x04  (reserved) */
     union {
         volatile uint32_t CC;   /* 0x10  Capture/compare channel */
-        volatile uint32_t CCI;  /* 0x10 */
+        volatile uint32_t CCI;  /* 0x10  Capture/compare channel (input... */
     } CC[DC_PWM_CC_COUNT];  /* 0x10  one register, 2 views */
     union {
         volatile uint32_t DT0;   /* 0x20  Dead time */

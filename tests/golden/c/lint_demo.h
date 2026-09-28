@@ -268,6 +268,7 @@ REGFORGE_MAYBE_UNUSED static ld_misc_t *const LD_MISC = (ld_misc_t *)LD_MISC_BAS
 
 /* -------------------------------------------------------------------------- */
 /* FPU_CPACR */
+/* family FPU: split 2 ways by layout (FPU_CPACR | FPU); FPU_CPACR first differs from FPU at CPACR */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
  * are relative to one element of that cluster. Every assert below refers to
@@ -347,6 +348,7 @@ REGFORGE_MAYBE_UNUSED static ld_tmr_t *const LD_TMR0 = (ld_tmr_t *)LD_TMR0_BASE;
 
 /* -------------------------------------------------------------------------- */
 /* TIMER_ADV */
+/* family TMR: split 2 ways by layout (TMR0 | TIMER_ADV); TIMER_ADV first differs from TMR0 at RCR */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
  * are relative to one element of that cluster. Every assert below refers to

@@ -63,10 +63,17 @@ def _hex32(value: int) -> str:
 
 
 def _short_desc(description: str | None) -> str:
-    """A description short enough to sit inline in the struct comment."""
-    if description and len(description) <= _MAX_INLINE_DESC:
+    """A description short enough to sit inline in the struct comment.
+
+    Longer text is cut at a word boundary and marked ``...``; the full
+    description is on the register's macro comment, one place to read it.
+    """
+    if not description:
+        return ""
+    if len(description) <= _MAX_INLINE_DESC:
         return description
-    return ""
+    head = description[: _MAX_INLINE_DESC - 3].rsplit(" ", 1)[0].rstrip()
+    return f"{head}..."
 
 
 def _member_type(register: Register) -> str:

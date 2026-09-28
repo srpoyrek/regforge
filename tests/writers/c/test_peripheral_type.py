@@ -199,3 +199,29 @@ def test_macro_rule_base_kept_identity_is_the_type(demo_device):
     assert "dc_gpioa_t *const DC_GPIOA" in output  # identity is the type + instance
     assert "DC_GPIOA_KIND" not in output
     assert "DC_GPIOA_TYPE" not in output
+
+
+def test_long_description_is_cut_in_the_struct_comment_not_dropped():
+    device = Device(
+        name="Chip",
+        peripherals=[
+            Peripheral(
+                name="P",
+                base_address=0x0,
+                registers=[
+                    Register(
+                        name="R",
+                        address_offset=0x0,
+                        size=32,
+                        description="Capture/compare channel (input capture view)",
+                    )
+                ],
+            )
+        ],
+    )
+    output = CWriter().render(device)
+    squashed = _squash(output)
+    # 44 characters: too long for the member line, so the head survives with a marker
+    # and the macro comment carries the whole text.
+    assert "volatile uint32_t R; /* 0x00 Capture/compare channel (input... */" in squashed
+    assert "/* P.R - Capture/compare channel (input capture view) */" in output

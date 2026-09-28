@@ -145,8 +145,10 @@ gets its own `_COUNT` name as an alias of the family's, `DC_PWMA_CC_COUNT` for
 
 ## Register members
 
-Each register becomes one member at its own offset, with the offset in a
-trailing comment:
+Each register becomes one member at its own offset, with the offset and the
+description in a trailing comment. A description longer than 40 characters
+is cut at a word and marked `...` there; the register's macro comment always
+carries the whole text:
 
 ```c
 typedef struct {
@@ -533,6 +535,7 @@ From [this SVD](../formats/svd.md#one-group-becoming-two-types):
 
 /* -------------------------------------------------------------------------- */
 /* FPU_CPACR */
+/* family FPU: split 2 ways by layout (FPU_CPACR | FPU); FPU_CPACR first differs from FPU at CPACR */
 
 /* Layout constants: byte offsets from an instance's base; a cluster's members
  * are relative to one element of that cluster. Every assert below refers to

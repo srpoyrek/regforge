@@ -123,7 +123,7 @@ def test_fixture_emits_irqn_enum_sorted_no_trailing_comma(demo_device):
         "DC_ADC0_IRQn     = 27,  /* ADC0 conversion complete */",
         "DC_ADC1_IRQn     = 28,  /* ADC1 conversion complete */",
         "DC_SPI0_IRQn     = 30,  /* SPI0 interrupt */",
-        "DC_SPI1_IRQn     = 30  /* SPI1 interrupt */",  # shared vector, last -> no comma
+        "DC_SPI1_IRQn     = 30   /* SPI1 interrupt */",  # last: no comma, comment aligned
     ]
     assert not members[-1].endswith(",")  # C89 -pedantic-errors rejects trailing comma
 
@@ -342,3 +342,22 @@ def test_fixture_alternate_registers_become_unions(demo_device):
     assert "} XFER; /* 0x0C one register, 2 views */" in squashed
     assert "DC_DMA_CH_RESERVED0_SIZE" not in output
     assert "#define DC_DMA_CH_XFER_PERIPH(ch_index) (DC_DMA->CH[(ch_index)].XFER.Periph)" in output
+
+
+def test_fixture_split_family_notes_appear_on_both_types(demo_device):
+    output = CWriter().render(demo_device)
+    # WDT0 keeps the name and records the split; WDT1 says what it parted from.
+    assert (
+        "/* family WDT0: split 2 ways by layout (WDT0 | WDT1); first differs at RELOAD */" in output
+    )
+    assert (
+        "/* family WDT0: split 2 ways by layout (WDT0 | WDT1); WDT1 first differs from WDT0 "
+        "at RELOAD */" in output
+    )
+
+
+def test_fixture_priority_helper_documents_its_debug_only_check(demo_device):
+    output = CWriter().render(demo_device)
+    assert (
+        " * The range check is an assert: with NDEBUG the helper is the shift alone. */" in output
+    )

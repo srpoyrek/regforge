@@ -108,8 +108,9 @@ instead, each sized from its own block.
 
 ## Rule 3: a split under a `groupName` is reported
 
-When a `groupName` covers different layouts, a warning is emitted and the kept
-family carries a note that appears in the header.
+When a `groupName` covers different layouts, a warning is emitted and every
+family the split produced carries a note in the header: the kept one records
+the split, each outlier says where it parts from the kept one.
 
 Warning:
 
@@ -118,10 +119,11 @@ warn: groupName 'TMR': members have differing layouts (first differs at RCR)
       -- the label is not one verified type; regforge emits separate types
 ```
 
-Recorded in the output — see [targets/c.md](targets/c.md#type-names):
+Recorded in the output, on both types — see [targets/c.md](targets/c.md#type-names):
 
 ```c
 /* family TMR: split 2 ways by layout (TMR0 | TIMER_ADV); first differs at RCR */
+/* family TMR: split 2 ways by layout (TMR0 | TIMER_ADV); TIMER_ADV first differs from TMR0 at RCR */
 ```
 
 The reported difference is the first of:

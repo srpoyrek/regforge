@@ -132,7 +132,8 @@ REGFORGE_STATIC_ASSERT(CHAR_BIT == {{ dev }}_ADDRESS_UNIT_BITS, {{ dev }}_ADDRES
 
 /* Align an interrupt priority to this core's implemented bits. NVIC priority
  * registers are MSB-aligned, so the value is shifted into the top
- * {{ cpu.nvic_prio_bits }} bit(s); priorities >= the level count truncate in hardware. */
+ * {{ cpu.nvic_prio_bits }} bit(s); priorities >= the level count truncate in hardware.
+ * The range check is an assert: with NDEBUG the helper is the shift alone. */
 REGFORGE_INLINE uint8_t {{ ns|lower }}irq_prio(uint8_t priority)
 {
     assert(priority < {{ dev }}_IRQ_PRIO_LEVELS);
@@ -149,7 +150,7 @@ REGFORGE_INLINE uint8_t {{ ns|lower }}irq_prio(uint8_t priority)
  * enum, so a raw int can't stand in for a vector number. */
 typedef enum {
 {% for irq in interrupts %}
-    {{ "%-*s"|format(ipad, prefix ~ irq.name ~ "_IRQn") }} = {{ irq.value }}{% if not loop.last %},{% endif %}{% if irq.description %}  /* {{ irq.description }} */{% endif +%}
+    {{ "%-*s"|format(ipad, prefix ~ irq.name ~ "_IRQn") }} = {{ irq.value }}{% if not loop.last %},{% elif irq.description %} {% endif %}{% if irq.description %}  /* {{ irq.description }} */{% endif +%}
 {% endfor %}
 } {{ prefix|lower }}irqn_e;
 {% if is_cortex_m %}

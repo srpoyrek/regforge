@@ -118,6 +118,11 @@ def test_divergent_group_largest_subgroup_keeps_name():
     assert main.note and "split 2 ways" in main.note and "RCR" in main.note
     outlier = next(f for f in families if f.name == "TIM1")
     assert [p.name for p in outlier.instances] == ["TIM1"]
+    # The outlier's own note points back at the kept family and names the difference.
+    assert outlier.note == (
+        "family TIM: split 2 ways by layout (TIM2,TIM3 | TIM1); TIM1 first differs from "
+        "TIM2 at RCR"
+    )
 
 
 def test_unrelated_peripherals_are_separate_families():

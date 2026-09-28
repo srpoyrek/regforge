@@ -165,7 +165,8 @@ def group_families(device: Device) -> list[Family]:
     Peripherals are grouped by family key; members are then bucketed by register
     layout. A single bucket is one clean family. Multiple buckets is a split: the
     largest bucket keeps the family name, outliers are named after themselves, and
-    the kept family carries a ``note`` recording the split.
+    every family the split produced carries a ``note``: the kept one records the
+    split, each outlier says where it parts from the kept one.
     """
     by_name = {peripheral.name: peripheral for peripheral in device.peripherals}
 
@@ -213,7 +214,17 @@ def group_families(device: Device) -> list[Family]:
             f"family {key}: split {len(subgroups)} ways by layout "
             f"({summary}); first differs at {differ_at}"
         )
+        kept = sources[keeper]
         for index, (group, source) in enumerate(zip(subgroups, sources)):
+            member_note = note
+            if index != keeper:
+                # An outlier's section says which member it parted from and
+                # where, so its reader need not hunt for the kept family's note.
+                own = first_divergence(layout_signature(kept), layout_signature(source))
+                member_note = (
+                    f"family {key}: split {len(subgroups)} ways by layout ({summary}); "
+                    f"{source.name} first differs from {kept.name} at {own}"
+                )
             families.append(
                 Family(
                     # Each subgroup takes the vendor's name when it has one; the
@@ -222,7 +233,7 @@ def group_families(device: Device) -> list[Family]:
                     name=family_name(source, key if index == keeper else source.name),
                     type_source=source,
                     instances=tuple(group),
-                    note=note if index == keeper else None,
+                    note=member_note,
                 )
             )
     return _uniquify(families)
