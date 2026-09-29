@@ -51,7 +51,7 @@ Each family ([families.md](families.md)) is one section, and within it:
 4. The family struct, then its asserts: member offsets, array sizes, last
    elements, union sizes and views, the struct size.
 5. Per-instance type aliases, when the family has several instances.
-6. One sub-section per instance: base address, typed instance pointer,
+6. One sub-section per instance: base address, typed instance macro,
    interrupt links, then a macro group per register in layout order (the
    accessor, reset value and mask, fields and their enumerated values), and
    the `dimArrayIndex` constants of its arrays.

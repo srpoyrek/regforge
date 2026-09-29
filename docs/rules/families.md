@@ -47,8 +47,8 @@ typedef struct {
 typedef uart_t uart0_t;
 typedef uart_t uart1_t;
 
-REGFORGE_MAYBE_UNUSED static uart_t *const UART0 = (uart_t *)(uintptr_t)UART0_BASE;
-REGFORGE_MAYBE_UNUSED static uart_t *const UART1 = (uart_t *)(uintptr_t)UART1_BASE;
+#define UART0 ((uart_t *)(uintptr_t)UART0_BASE)
+#define UART1 ((uart_t *)(uintptr_t)UART1_BASE)
 ```
 
 Complete versions: [the whole SVD](formats/svd.md#two-peripherals-sharing-one-type)

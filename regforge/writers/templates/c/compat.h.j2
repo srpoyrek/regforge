@@ -38,18 +38,4 @@
 #  define REGFORGE_INLINE static
 #endif
 
-/* REGFORGE_MAYBE_UNUSED -- suppress "defined but not used" on an entity a given
- * translation unit may legitimately not reference. Used as a *prefix* on the
- * declaration (required by [[maybe_unused]]; also valid for __attribute__). */
-#if defined(__cplusplus) && (__cplusplus >= 201703L)
-#  define REGFORGE_MAYBE_UNUSED [[maybe_unused]]
-#elif REGFORGE_STDC >= 202311L
-#  define REGFORGE_MAYBE_UNUSED [[maybe_unused]]              /* C23 */
-#elif defined(__GNUC__) || defined(__clang__) \
-   || defined(__CC_ARM) || defined(__ICCARM__)
-#  define REGFORGE_MAYBE_UNUSED __attribute__((unused))       /* GCC/Clang/armclang/armcc5/IAR8+ */
-#else
-#  define REGFORGE_MAYBE_UNUSED                                /* MSVC (no such warning) + exotic */
-#endif
-
 #endif /* REGFORGE_COMPAT_H */

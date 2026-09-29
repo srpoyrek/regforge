@@ -40,8 +40,8 @@ def test_fixture_derived_family_shares_one_type(demo_device):
     output = CWriter().render(demo_device)
     # UART0 + UART1 (derivedFrom, groupName "UART") -> ONE dc_uart_t, two instances.
     assert output.count("} dc_uart_t;") == 1
-    assert "static dc_uart_t *const DC_UART0" in output
-    assert "static dc_uart_t *const DC_UART1" in output
+    assert "#define DC_UART0 ((dc_uart_t *)" in output
+    assert "#define DC_UART1 ((dc_uart_t *)" in output
     assert "#define DC_UART1_DR" in output  # UART1 inherited UART0's registers
 
 
@@ -49,8 +49,8 @@ def test_fixture_groupname_only_family_merges(demo_device):
     output = CWriter().render(demo_device)
     # SPI0/SPI1 share groupName "SPI" (no derivedFrom), identical layout -> one type.
     assert output.count("} dc_spi_t;") == 1
-    assert "static dc_spi_t *const DC_SPI0" in output
-    assert "static dc_spi_t *const DC_SPI1" in output
+    assert "#define DC_SPI0 ((dc_spi_t *)" in output
+    assert "#define DC_SPI1 ((dc_spi_t *)" in output
 
 
 def test_lint_fixture_divergent_groupname_is_split(lint_demo_device):
@@ -60,8 +60,8 @@ def test_lint_fixture_divergent_groupname_is_split(lint_demo_device):
     # LD_TMR0->RCR is a compile error rather than a reserved-address write.
     assert output.count("} ld_tmr_t;") == 1
     assert output.count("} ld_timer_adv_t;") == 1
-    assert "static ld_tmr_t *const LD_TMR0" in output  # majority keeps the name
-    assert "static ld_timer_adv_t *const LD_TIMER_ADV" in output  # outlier, own type
+    assert "#define LD_TMR0 ((ld_tmr_t *)" in output  # majority keeps the name
+    assert "#define LD_TIMER_ADV ((ld_timer_adv_t *)" in output  # outlier, own type
     assert "split 2 ways" in output  # the split is recorded as a note
     assert "first differs at RCR" in output
 
@@ -74,8 +74,8 @@ def test_lint_fixture_namesake_keeps_the_plain_group_name(lint_demo_device):
     # typedefs collide (a redefinition the compiler rejects).
     assert output.count("} ld_fpu_t;") == 1
     assert output.count("} ld_fpu_cpacr_t;") == 1
-    assert "static ld_fpu_t *const LD_FPU" in output
-    assert "static ld_fpu_cpacr_t *const LD_FPU_CPACR" in output
+    assert "#define LD_FPU ((ld_fpu_t *)" in output
+    assert "#define LD_FPU_CPACR ((ld_fpu_cpacr_t *)" in output
 
 
 def test_clean_fixture_timer_group_does_not_diverge(demo_device):
@@ -95,8 +95,8 @@ def test_fixture_derivedfrom_without_groupname_merges(demo_device):
     # The type is named from ADC0's headerStructName; the bare root-name
     # fallback (no vendor name either) is covered in test_header_struct_name.
     assert output.count("} dc_adc_t;") == 1
-    assert "static dc_adc_t *const DC_ADC0" in output
-    assert "static dc_adc_t *const DC_ADC1" in output
+    assert "#define DC_ADC0 ((dc_adc_t *)" in output
+    assert "#define DC_ADC1 ((dc_adc_t *)" in output
 
 
 def test_fixture_derived_override_is_split(demo_device):
@@ -104,8 +104,8 @@ def test_fixture_derived_override_is_split(demo_device):
     # WDT1 derivesFrom WDT0 but adds RELOAD -> "same type" would be a lie -> split.
     assert "} dc_wdt0_t;" in output
     assert "} dc_wdt1_t;" in output
-    assert "static dc_wdt0_t *const DC_WDT0" in output
-    assert "static dc_wdt1_t *const DC_WDT1" in output
+    assert "#define DC_WDT0 ((dc_wdt0_t *)" in output
+    assert "#define DC_WDT1 ((dc_wdt1_t *)" in output
 
 
 def test_fixture_emits_irqn_enum_sorted_no_trailing_comma(demo_device):
@@ -256,8 +256,8 @@ def test_fixture_honors_header_struct_name(demo_device):
     assert "} dc_adc0_t;" not in output
     assert "typedef dc_adc_t dc_adc0_t;" in output
     assert "typedef dc_adc_t dc_adc1_t;" in output
-    assert "static dc_adc_t *const DC_ADC0" in output
-    assert "static dc_adc_t *const DC_ADC1" in output
+    assert "#define DC_ADC0 ((dc_adc_t *)" in output
+    assert "#define DC_ADC1 ((dc_adc_t *)" in output
 
 
 def test_fixture_peripheral_array_is_one_family_with_labelled_instances(demo_device):

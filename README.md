@@ -51,7 +51,7 @@ separately and does not affect regforge's own sources.
 Generated C headers target C89, C99, C11, and C23, and also compile as C++.
 Portability lives in a small self-contained `REGFORGE_*` prelude
 ([compat.h.j2](regforge/writers/templates/c/compat.h.j2)) that adapts
-`static_assert`, `inline`, and unused-suppression per compiler and standard.
+`static_assert` and `inline` per compiler and standard.
 Every generated header also satisfies the required rules of MISRA C:2012;
 `nox -s misra` runs cppcheck's MISRA addon over the goldens in CI, with the
 advisory deviations listed in

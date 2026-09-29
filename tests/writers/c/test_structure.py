@@ -80,7 +80,7 @@ def test_a_peripheral_section_comes_in_the_fixed_order(golden_header_path):
             "REGFORGE_STATIC_ASSERT(sizeof(dc_tim1_t) == DC_TIM1_SIZE",
             "/* TIM1 @ 0x40010000 */",
             "#define DC_TIM1_BASE",
-            "static dc_tim1_t *const DC_TIM1",
+            "#define DC_TIM1 ((dc_tim1_t *)",
             "#define DC_TIM1_UP_IRQ ",
             "#define DC_TIM1_CR1 (",
             "#define DC_TIM1_CCMR1_OUTPUT (",

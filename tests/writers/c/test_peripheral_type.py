@@ -30,11 +30,11 @@ def test_emits_struct_type_and_typed_instance(demo_device):
     # Reserved padding fills 0x04..0x10 (IDR sits at 0x10) so offsets stay true.
     assert "uint8_t RESERVED0[DC_GPIOA_RESERVED0_SIZE];" in squashed
     assert "#define DC_GPIOA_RESERVED0_SIZE (0x0000000CUL)" in squashed
-    # The instance is a typed, non-redefinable symbol -- not a cast-macro.
-    assert (
-        "REGFORGE_MAYBE_UNUSED static dc_gpioa_t *const DC_GPIOA = "
-        "(dc_gpioa_t *)(uintptr_t)DC_GPIOA_BASE;" in output
-    )
+    # The instance is a typed macro, not a file-scope pointer object: a variable
+    # would be emitted into rodata once per instance in a debug build, which
+    # tests/writers/c/test_sizes.py measures at -O0.
+    assert "#define DC_GPIOA ((dc_gpioa_t *)(uintptr_t)DC_GPIOA_BASE)" in output
+    assert "REGFORGE_MAYBE_UNUSED" not in output  # nothing left to suppress
     # The base-address define is kept for constant-expression contexts.
     assert "#define DC_GPIOA_BASE" in output
 
@@ -67,8 +67,8 @@ def test_derived_family_emits_one_type_and_two_instances():
     output = CWriter().render(device)
     # ONE shared type; both instances are of it -> one driver works for both.
     assert output.count("} uart0_t;") == 1
-    assert "static uart0_t *const UART0 " in output
-    assert "static uart0_t *const UART1 " in output
+    assert "#define UART0 ((uart0_t *)" in output
+    assert "#define UART1 ((uart0_t *)" in output
     # offsetof asserts emitted once per type, not per instance.
     assert output.count("offsetof(uart0_t, DR)") == 1
     # per-instance register macros, each at its own base.
@@ -96,8 +96,8 @@ def test_distinct_type_per_peripheral():
     # Two peripherals -> two distinct C types, so mixing them cannot compile.
     assert "} gpioa_t;" in output
     assert "} tim1_t;" in output
-    assert "static gpioa_t *const GPIOA " in output
-    assert "static tim1_t *const TIM1 " in output
+    assert "#define GPIOA ((gpioa_t *)" in output
+    assert "#define TIM1 ((tim1_t *)" in output
 
 
 def test_overlapping_registers_are_refused():
@@ -196,7 +196,7 @@ def test_macro_rule_base_kept_identity_is_the_type(demo_device):
     # enforced by the C type -> no macro (a _KIND macro would be dead weight).
     output = CWriter().render(demo_device)
     assert "#define DC_GPIOA_BASE" in output  # consumed value -> macro
-    assert "dc_gpioa_t *const DC_GPIOA" in output  # identity is the type + instance
+    assert "#define DC_GPIOA ((dc_gpioa_t *)" in output  # identity: the type + instance
     assert "DC_GPIOA_KIND" not in output
     assert "DC_GPIOA_TYPE" not in output
 

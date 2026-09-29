@@ -46,12 +46,42 @@ A peripheral produces three things, all upper-case with the same prefix:
 
 ```c
 #define DC_UART0_BASE (0x40004000UL)
-REGFORGE_MAYBE_UNUSED static dc_uart_t *const DC_UART0 = (dc_uart_t *)(uintptr_t)DC_UART0_BASE;
+#define DC_UART0 ((dc_uart_t *)(uintptr_t)DC_UART0_BASE)
 #define DC_UART0_DR (DC_UART0->DR)
 ```
 
-`REGFORGE_MAYBE_UNUSED` keeps the pointer from warning when a translation unit
-includes the header but does not use that peripheral.
+### Why the instance is a macro and not a variable
+
+A `static dc_uart_t *const DC_UART0 = (dc_uart_t *)(uintptr_t)DC_UART0_BASE;`
+reads identically at the call site, and GCC folds it to the address at every
+optimization level, `-O0` included, so the emitted instructions are the same.
+What differs is what the object file carries: a file-scope object is emitted
+once per instance in a debug build even when no code names it. Measured with
+GCC 13 on x86-64, for a translation unit that includes the minimal golden
+header and references nothing from it:
+
+| Translation unit | text + rodata, `-O0` |
+|---|---|
+| no header at all | 136 |
+| header with `static T *const` instances | 264 |
+| header with macro instances | 136 |
+
+That is sixteen instances at eight bytes each, or four on a 32-bit target, paid
+in exactly the builds people step through register writes in. At `-Os` all
+three are 116, which is why the cost went unnoticed:
+`tests/writers/c/test_sizes.py` now asserts the zero at `-O0` as well, and
+`nox -s sizes` prints the breakdown per compiler and level.
+
+Nothing the header relies on is lost. The macro is still typed, so passing
+`DC_UART0` where a `dc_spi_t *` is wanted is still a diagnostic; because no
+variable is read, every register macro built on it is a constant expression,
+usable in `#if`, in a static initializer and in an address table; and the cast
+is written once per instance instead of once per accessor.
+
+The cost is a debugger one. `p DC_UART0` needs `-g3`, which keeps macro
+information, where a variable is visible at plain `-g`, and a macro can be
+shadowed by a later `#define` where a variable would be a redefinition error.
+Both are judged smaller than fixed bytes in every debug build.
 
 ## Aliases
 
@@ -75,7 +105,7 @@ WDT   groupName=WDT   registers: CR
 ```
 ```c
 } wdt_t;
-static wdt_t *const WDT = (wdt_t *)(uintptr_t)WDT_BASE;
+#define WDT ((wdt_t *)(uintptr_t)WDT_BASE)
 ```
 
 The alias would read `typedef wdt_t wdt_t;`, declaring the same typedef name
@@ -106,7 +136,7 @@ typedef gpio_t gp0_t;
 typedef gpio_t gp1_t;
 
 } gpio_gcr_t;          /* GPIO -- no gpio_t alias */
-static gpio_gcr_t *const GPIO = (gpio_gcr_t *)(uintptr_t)GPIO_BASE;
+#define GPIO ((gpio_gcr_t *)(uintptr_t)GPIO_BASE)
 ```
 
 The alias would be `typedef gpio_gcr_t gpio_t;`, declaring `gpio_t` a second
@@ -230,7 +260,7 @@ so there is no vendor name to use, and `BUFFER0` follows the same numbering as
 ## Flat macros
 
 Alongside the struct, each register also gets a macro that names it directly.
-The macro is the register's path through the typed instance pointer:
+The macro is the register's path through the typed instance:
 
 ```c
 #define DC_GPIOA_IDR (DC_GPIOA->IDR)
@@ -546,7 +576,7 @@ typedef can_node_t can_node0_t;
 
 /* CAN_NODE0 @ 0x48014000 */
 #define CAN_NODE0_BASE (0x48014000UL)
-REGFORGE_MAYBE_UNUSED static can_node_t *const CAN_NODE0 = (can_node_t *)(uintptr_t)CAN_NODE0_BASE;
+#define CAN_NODE0 ((can_node_t *)(uintptr_t)CAN_NODE0_BASE)
 
 /* CAN_NODE0.NCR */
 #define CAN_NODE0_NCR (CAN_NODE0->NCR)
@@ -581,7 +611,7 @@ REGFORGE_STATIC_ASSERT(offsetof(fpu_cpacr_t, CPACR) == FPU_CPACR_CPACR_OFFSET, F
 
 /* FPU_CPACR @ 0xE000ED88 */
 #define FPU_CPACR_BASE (0xE000ED88UL)
-REGFORGE_MAYBE_UNUSED static fpu_cpacr_t *const FPU_CPACR = (fpu_cpacr_t *)(uintptr_t)FPU_CPACR_BASE;
+#define FPU_CPACR ((fpu_cpacr_t *)(uintptr_t)FPU_CPACR_BASE)
 
 /* FPU_CPACR.CPACR */
 #define FPU_CPACR_CPACR (FPU_CPACR->CPACR)
@@ -607,7 +637,7 @@ REGFORGE_STATIC_ASSERT(offsetof(fpu_t, FPCAR) == FPU_FPCAR_OFFSET, FPU_FPCAR_OFF
 
 /* FPU @ 0xE000EF34 */
 #define FPU_BASE (0xE000EF34UL)
-REGFORGE_MAYBE_UNUSED static fpu_t *const FPU = (fpu_t *)(uintptr_t)FPU_BASE;
+#define FPU ((fpu_t *)(uintptr_t)FPU_BASE)
 
 /* FPU.FPCCR */
 #define FPU_FPCCR (FPU->FPCCR)
@@ -650,7 +680,7 @@ typedef uart_t uart1_t;
 
 /* UART0 @ 0x40004000 */
 #define UART0_BASE (0x40004000UL)
-REGFORGE_MAYBE_UNUSED static uart_t *const UART0 = (uart_t *)(uintptr_t)UART0_BASE;
+#define UART0 ((uart_t *)(uintptr_t)UART0_BASE)
 
 /* UART0.DR */
 #define UART0_DR (UART0->DR)
@@ -660,7 +690,7 @@ REGFORGE_MAYBE_UNUSED static uart_t *const UART0 = (uart_t *)(uintptr_t)UART0_BA
 
 /* UART1 @ 0x40004400 */
 #define UART1_BASE (0x40004400UL)
-REGFORGE_MAYBE_UNUSED static uart_t *const UART1 = (uart_t *)(uintptr_t)UART1_BASE;
+#define UART1 ((uart_t *)(uintptr_t)UART1_BASE)
 
 /* UART1.DR */
 #define UART1_DR (UART1->DR)
@@ -703,7 +733,7 @@ REGFORGE_STATIC_ASSERT(sizeof(uart0_t) == UART0_SIZE, UART0_SIZE_CHECK, "UART0 s
 
 /* UART0 @ 0x40004000 */
 #define UART0_BASE (0x40004000UL)
-REGFORGE_MAYBE_UNUSED static uart0_t *const UART0 = (uart0_t *)(uintptr_t)UART0_BASE;
+#define UART0 ((uart0_t *)(uintptr_t)UART0_BASE)
 
 /* UART0.DR */
 #define UART0_DR (UART0->DR)
@@ -740,7 +770,7 @@ REGFORGE_STATIC_ASSERT(offsetof(misc_t, SR) == MISC_SR_OFFSET, MISC_SR_OFFSET_CH
 
 /* MISC @ 0x40030000 */
 #define MISC_BASE (0x40030000UL)
-REGFORGE_MAYBE_UNUSED static misc_t *const MISC = (misc_t *)(uintptr_t)MISC_BASE;
+#define MISC ((misc_t *)(uintptr_t)MISC_BASE)
 
 /* MISC.DR */
 #define MISC_DR (MISC->DR)
@@ -801,7 +831,7 @@ typedef pwm_t pwmb_t;
 
 /* PWMA @ 0x40015000 */
 #define PWMA_BASE (0x40015000UL)
-REGFORGE_MAYBE_UNUSED static pwm_t *const PWMA = (pwm_t *)(uintptr_t)PWMA_BASE;
+#define PWMA ((pwm_t *)(uintptr_t)PWMA_BASE)
 
 /* PWMA.CTRL */
 #define PWMA_CTRL (PWMA->CTRL)
@@ -818,7 +848,7 @@ REGFORGE_MAYBE_UNUSED static pwm_t *const PWMA = (pwm_t *)(uintptr_t)PWMA_BASE;
 
 /* PWMB @ 0x40015100 */
 #define PWMB_BASE (0x40015100UL)
-REGFORGE_MAYBE_UNUSED static pwm_t *const PWMB = (pwm_t *)(uintptr_t)PWMB_BASE;
+#define PWMB ((pwm_t *)(uintptr_t)PWMB_BASE)
 
 /* PWMB.CTRL */
 #define PWMB_CTRL (PWMB->CTRL)
@@ -883,7 +913,7 @@ REGFORGE_STATIC_ASSERT(sizeof(dma_t) == DMA_SIZE, DMA_SIZE_CHECK, "DMA struct si
 
 /* DMA @ 0x40016000 */
 #define DMA_BASE (0x40016000UL)
-REGFORGE_MAYBE_UNUSED static dma_t *const DMA = (dma_t *)(uintptr_t)DMA_BASE;
+#define DMA ((dma_t *)(uintptr_t)DMA_BASE)
 
 /* DMA.CFG */
 #define DMA_CFG (DMA->CFG)
@@ -932,7 +962,7 @@ REGFORGE_STATIC_ASSERT(sizeof(tim1_t) == TIM1_SIZE, TIM1_SIZE_CHECK, "TIM1 struc
 
 /* TIM1 @ 0x40010000 */
 #define TIM1_BASE (0x40010000UL)
-REGFORGE_MAYBE_UNUSED static tim1_t *const TIM1 = (tim1_t *)(uintptr_t)TIM1_BASE;
+#define TIM1 ((tim1_t *)(uintptr_t)TIM1_BASE)
 
 /* TIM1.CR1 */
 #define TIM1_CR1 (TIM1->CR1)

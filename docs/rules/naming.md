@@ -106,8 +106,8 @@ Output — emitted as [C](targets/c.md#aliases):
 } spim_t;
 typedef spim_t spim0_t;
 typedef spim_t spim1_t;
-REGFORGE_MAYBE_UNUSED static spim_t *const SPIM0 = (spim_t *)(uintptr_t)SPIM0_BASE;
-REGFORGE_MAYBE_UNUSED static spim_t *const SPIM1 = (spim_t *)(uintptr_t)SPIM1_BASE;
+#define SPIM0 ((spim_t *)(uintptr_t)SPIM0_BASE)
+#define SPIM1 ((spim_t *)(uintptr_t)SPIM1_BASE)
 ```
 
 **The derived peripheral declares `headerStructName` and the base does not.**

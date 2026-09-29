@@ -187,10 +187,7 @@ def test_peripheral_array_is_one_type_with_n_instances():
         base = 0x40000000 + index * 0x400
         assert f"#define DC_UART{index}_BASE (0x{base:08X}UL)" in output
         assert f"typedef dc_uart_t dc_uart{index}_t;" in output
-        assert (
-            f"static dc_uart_t *const DC_UART{index} = (dc_uart_t *)(uintptr_t)DC_UART{index}_BASE;"
-            in output
-        )
+        assert f"#define DC_UART{index} ((dc_uart_t *)(uintptr_t)DC_UART{index}_BASE)" in output
 
 
 def test_unexpanded_template_is_refused():

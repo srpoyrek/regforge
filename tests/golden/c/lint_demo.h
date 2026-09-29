@@ -61,20 +61,6 @@
 #  define REGFORGE_INLINE static
 #endif
 
-/* REGFORGE_MAYBE_UNUSED -- suppress "defined but not used" on an entity a given
- * translation unit may legitimately not reference. Used as a *prefix* on the
- * declaration (required by [[maybe_unused]]; also valid for __attribute__). */
-#if defined(__cplusplus) && (__cplusplus >= 201703L)
-#  define REGFORGE_MAYBE_UNUSED [[maybe_unused]]
-#elif REGFORGE_STDC >= 202311L
-#  define REGFORGE_MAYBE_UNUSED [[maybe_unused]]              /* C23 */
-#elif defined(__GNUC__) || defined(__clang__) \
-   || defined(__CC_ARM) || defined(__ICCARM__)
-#  define REGFORGE_MAYBE_UNUSED __attribute__((unused))       /* GCC/Clang/armclang/armcc5/IAR8+ */
-#else
-#  define REGFORGE_MAYBE_UNUSED                                /* MSVC (no such warning) + exotic */
-#endif
-
 #endif /* REGFORGE_COMPAT_H */
 
 /* ========================================================================== */
@@ -127,7 +113,7 @@ REGFORGE_STATIC_ASSERT(sizeof(ld_uart_t) == LD_UART_SIZE, LD_UART_SIZE_CHECK, "U
 
 /* UART @ 0x40004000 */
 #define LD_UART_BASE (0x40004000UL)
-REGFORGE_MAYBE_UNUSED static ld_uart_t *const LD_UART = (ld_uart_t *)(uintptr_t)LD_UART_BASE;
+#define LD_UART ((ld_uart_t *)(uintptr_t)LD_UART_BASE)
 
 /* UART.DR */
 #define LD_UART_DR (LD_UART->DR)
@@ -153,7 +139,7 @@ REGFORGE_STATIC_ASSERT(sizeof(ld_timer_t) == LD_TIMER_SIZE, LD_TIMER_SIZE_CHECK,
 
 /* TIMER @ 0x40004200 */
 #define LD_TIMER_BASE (0x40004200UL)
-REGFORGE_MAYBE_UNUSED static ld_timer_t *const LD_TIMER = (ld_timer_t *)(uintptr_t)LD_TIMER_BASE;
+#define LD_TIMER ((ld_timer_t *)(uintptr_t)LD_TIMER_BASE)
 
 /* TIMER.CR */
 #define LD_TIMER_CR (LD_TIMER->CR)
@@ -182,7 +168,7 @@ REGFORGE_STATIC_ASSERT(sizeof(ld_flash_t) == LD_FLASH_SIZE, LD_FLASH_SIZE_CHECK,
 
 /* FLASH @ 0x40010000 */
 #define LD_FLASH_BASE (0x40010000UL)
-REGFORGE_MAYBE_UNUSED static ld_flash_t *const LD_FLASH = (ld_flash_t *)(uintptr_t)LD_FLASH_BASE;
+#define LD_FLASH ((ld_flash_t *)(uintptr_t)LD_FLASH_BASE)
 
 /* FLASH.CR */
 #define LD_FLASH_CR (LD_FLASH->CR)
@@ -215,7 +201,7 @@ REGFORGE_STATIC_ASSERT(sizeof(ld_dma_t) == LD_DMA_SIZE, LD_DMA_SIZE_CHECK, "DMA 
 
 /* DMA @ 0x40020000 */
 #define LD_DMA_BASE (0x40020000UL)
-REGFORGE_MAYBE_UNUSED static ld_dma_t *const LD_DMA = (ld_dma_t *)(uintptr_t)LD_DMA_BASE;
+#define LD_DMA ((ld_dma_t *)(uintptr_t)LD_DMA_BASE)
 
 /* DMA.CR */
 #define LD_DMA_CR (LD_DMA->CR)
@@ -244,7 +230,7 @@ REGFORGE_STATIC_ASSERT(sizeof(ld_fifo_t) == LD_FIFO_SIZE, LD_FIFO_SIZE_CHECK, "F
 
 /* FIFO @ 0x40040000 */
 #define LD_FIFO_BASE (0x40040000UL)
-REGFORGE_MAYBE_UNUSED static ld_fifo_t *const LD_FIFO = (ld_fifo_t *)(uintptr_t)LD_FIFO_BASE;
+#define LD_FIFO ((ld_fifo_t *)(uintptr_t)LD_FIFO_BASE)
 
 /* FIFO.CR */
 #define LD_FIFO_CR (LD_FIFO->CR)
@@ -269,7 +255,7 @@ REGFORGE_STATIC_ASSERT(offsetof(ld_misc_t, REG) == LD_MISC_REG_OFFSET, LD_MISC_R
 
 /* MISC @ 0x40030000 */
 #define LD_MISC_BASE (0x40030000UL)
-REGFORGE_MAYBE_UNUSED static ld_misc_t *const LD_MISC = (ld_misc_t *)(uintptr_t)LD_MISC_BASE;
+#define LD_MISC ((ld_misc_t *)(uintptr_t)LD_MISC_BASE)
 
 /* MISC.REG */
 #define LD_MISC_REG (LD_MISC->REG)
@@ -292,7 +278,7 @@ REGFORGE_STATIC_ASSERT(offsetof(ld_fpu_cpacr_t, CPACR) == LD_FPU_CPACR_CPACR_OFF
 
 /* FPU_CPACR @ 0x40050000 */
 #define LD_FPU_CPACR_BASE (0x40050000UL)
-REGFORGE_MAYBE_UNUSED static ld_fpu_cpacr_t *const LD_FPU_CPACR = (ld_fpu_cpacr_t *)(uintptr_t)LD_FPU_CPACR_BASE;
+#define LD_FPU_CPACR ((ld_fpu_cpacr_t *)(uintptr_t)LD_FPU_CPACR_BASE)
 
 /* FPU_CPACR.CPACR */
 #define LD_FPU_CPACR_CPACR (LD_FPU_CPACR->CPACR)
@@ -318,7 +304,7 @@ REGFORGE_STATIC_ASSERT(offsetof(ld_fpu_t, FPCAR) == LD_FPU_FPCAR_OFFSET, LD_FPU_
 
 /* FPU @ 0x40051000 */
 #define LD_FPU_BASE (0x40051000UL)
-REGFORGE_MAYBE_UNUSED static ld_fpu_t *const LD_FPU = (ld_fpu_t *)(uintptr_t)LD_FPU_BASE;
+#define LD_FPU ((ld_fpu_t *)(uintptr_t)LD_FPU_BASE)
 
 /* FPU.FPCCR */
 #define LD_FPU_FPCCR (LD_FPU->FPCCR)
@@ -349,7 +335,7 @@ typedef ld_tmr_t ld_tmr0_t;
 
 /* TMR0 @ 0x40052000 */
 #define LD_TMR0_BASE (0x40052000UL)
-REGFORGE_MAYBE_UNUSED static ld_tmr_t *const LD_TMR0 = (ld_tmr_t *)(uintptr_t)LD_TMR0_BASE;
+#define LD_TMR0 ((ld_tmr_t *)(uintptr_t)LD_TMR0_BASE)
 
 /* TMR0.CR1 */
 #define LD_TMR0_CR1 (LD_TMR0->CR1)
@@ -375,7 +361,7 @@ REGFORGE_STATIC_ASSERT(offsetof(ld_timer_adv_t, RCR) == LD_TIMER_ADV_RCR_OFFSET,
 
 /* TIMER_ADV @ 0x40053000 */
 #define LD_TIMER_ADV_BASE (0x40053000UL)
-REGFORGE_MAYBE_UNUSED static ld_timer_adv_t *const LD_TIMER_ADV = (ld_timer_adv_t *)(uintptr_t)LD_TIMER_ADV_BASE;
+#define LD_TIMER_ADV ((ld_timer_adv_t *)(uintptr_t)LD_TIMER_ADV_BASE)
 
 /* TIMER_ADV.CR1 */
 #define LD_TIMER_ADV_CR1 (LD_TIMER_ADV->CR1)
@@ -405,7 +391,7 @@ typedef ld_adca_t ld_adcb_t;
 
 /* ADCA @ 0x40054000 */
 #define LD_ADCA_BASE (0x40054000UL)
-REGFORGE_MAYBE_UNUSED static ld_adca_t *const LD_ADCA = (ld_adca_t *)(uintptr_t)LD_ADCA_BASE;
+#define LD_ADCA ((ld_adca_t *)(uintptr_t)LD_ADCA_BASE)
 #define LD_ADCA_IRQ LD_ADCA_IRQn  /* vector 40 */
 
 /* ADCA.CR */
@@ -413,7 +399,7 @@ REGFORGE_MAYBE_UNUSED static ld_adca_t *const LD_ADCA = (ld_adca_t *)(uintptr_t)
 
 /* ADCB @ 0x40055000 */
 #define LD_ADCB_BASE (0x40055000UL)
-REGFORGE_MAYBE_UNUSED static ld_adca_t *const LD_ADCB = (ld_adca_t *)(uintptr_t)LD_ADCB_BASE;
+#define LD_ADCB ((ld_adca_t *)(uintptr_t)LD_ADCB_BASE)
 
 /* ADCB.CR */
 #define LD_ADCB_CR (LD_ADCB->CR)
@@ -442,7 +428,7 @@ typedef ld_tmrx_t ld_tmrv_t;
 
 /* TMRX0 @ 0x40056000 */
 #define LD_TMRX0_BASE (0x40056000UL)
-REGFORGE_MAYBE_UNUSED static ld_tmrx_t *const LD_TMRX0 = (ld_tmrx_t *)(uintptr_t)LD_TMRX0_BASE;
+#define LD_TMRX0 ((ld_tmrx_t *)(uintptr_t)LD_TMRX0_BASE)
 #define LD_TMRX0_IRQ LD_TMRX0_IRQn  /* vector 41 -- shared with LD_TMRX1; demux in ISR */
 
 /* TMRX0.CR */
@@ -450,7 +436,7 @@ REGFORGE_MAYBE_UNUSED static ld_tmrx_t *const LD_TMRX0 = (ld_tmrx_t *)(uintptr_t
 
 /* TMRX1 @ 0x40056100 */
 #define LD_TMRX1_BASE (0x40056100UL)
-REGFORGE_MAYBE_UNUSED static ld_tmrx_t *const LD_TMRX1 = (ld_tmrx_t *)(uintptr_t)LD_TMRX1_BASE;
+#define LD_TMRX1 ((ld_tmrx_t *)(uintptr_t)LD_TMRX1_BASE)
 #define LD_TMRX1_IRQ LD_TMRX1_IRQn  /* vector 41 -- shared with LD_TMRX0; demux in ISR */
 
 /* TMRX1.CR */
@@ -458,7 +444,7 @@ REGFORGE_MAYBE_UNUSED static ld_tmrx_t *const LD_TMRX1 = (ld_tmrx_t *)(uintptr_t
 
 /* TMRV @ 0x40062000 */
 #define LD_TMRV_BASE (0x40062000UL)
-REGFORGE_MAYBE_UNUSED static ld_tmrx_t *const LD_TMRV = (ld_tmrx_t *)(uintptr_t)LD_TMRV_BASE;
+#define LD_TMRV ((ld_tmrx_t *)(uintptr_t)LD_TMRV_BASE)
 #define LD_TMRV_IRQ LD_TMRV_IRQn  /* vector 42 */
 
 /* TMRV.CR */
@@ -507,7 +493,7 @@ REGFORGE_STATIC_ASSERT(offsetof(ld_dmax_t, CH) + (LD_DMAX_CH_COUNT - 1U) * sizeo
 
 /* DMAX @ 0x40057000 */
 #define LD_DMAX_BASE (0x40057000UL)
-REGFORGE_MAYBE_UNUSED static ld_dmax_t *const LD_DMAX = (ld_dmax_t *)(uintptr_t)LD_DMAX_BASE;
+#define LD_DMAX ((ld_dmax_t *)(uintptr_t)LD_DMAX_BASE)
 
 /* DMAX.CH[2].CTRL */
 #define LD_DMAX_CH_CTRL(ch_index) (LD_DMAX->CH[(ch_index)].CTRL)
@@ -538,14 +524,14 @@ typedef ld_tmry_t ld_tmry1_t;
 
 /* TMRY0 @ 0x40058000 */
 #define LD_TMRY0_BASE (0x40058000UL)
-REGFORGE_MAYBE_UNUSED static ld_tmry_t *const LD_TMRY0 = (ld_tmry_t *)(uintptr_t)LD_TMRY0_BASE;
+#define LD_TMRY0 ((ld_tmry_t *)(uintptr_t)LD_TMRY0_BASE)
 
 /* TMRY0.CR */
 #define LD_TMRY0_CR (LD_TMRY0->CR)
 
 /* TMRY1 @ 0x40058100 */
 #define LD_TMRY1_BASE (0x40058100UL)
-REGFORGE_MAYBE_UNUSED static ld_tmry_t *const LD_TMRY1 = (ld_tmry_t *)(uintptr_t)LD_TMRY1_BASE;
+#define LD_TMRY1 ((ld_tmry_t *)(uintptr_t)LD_TMRY1_BASE)
 
 /* TMRY1.CR */
 #define LD_TMRY1_CR (LD_TMRY1->CR)
@@ -574,21 +560,21 @@ typedef ld_tmrz_t ld_tmrz2_t;
 
 /* TMRZ0 @ 0x40059000 */
 #define LD_TMRZ0_BASE (0x40059000UL)
-REGFORGE_MAYBE_UNUSED static ld_tmrz_t *const LD_TMRZ0 = (ld_tmrz_t *)(uintptr_t)LD_TMRZ0_BASE;
+#define LD_TMRZ0 ((ld_tmrz_t *)(uintptr_t)LD_TMRZ0_BASE)
 
 /* TMRZ0.CR */
 #define LD_TMRZ0_CR (LD_TMRZ0->CR)
 
 /* TMRZ1 @ 0x40059100 */
 #define LD_TMRZ1_BASE (0x40059100UL)
-REGFORGE_MAYBE_UNUSED static ld_tmrz_t *const LD_TMRZ1 = (ld_tmrz_t *)(uintptr_t)LD_TMRZ1_BASE;
+#define LD_TMRZ1 ((ld_tmrz_t *)(uintptr_t)LD_TMRZ1_BASE)
 
 /* TMRZ1.CR */
 #define LD_TMRZ1_CR (LD_TMRZ1->CR)
 
 /* TMRZ2 @ 0x40059200 */
 #define LD_TMRZ2_BASE (0x40059200UL)
-REGFORGE_MAYBE_UNUSED static ld_tmrz_t *const LD_TMRZ2 = (ld_tmrz_t *)(uintptr_t)LD_TMRZ2_BASE;
+#define LD_TMRZ2 ((ld_tmrz_t *)(uintptr_t)LD_TMRZ2_BASE)
 
 /* TMRZ2.CR */
 #define LD_TMRZ2_CR (LD_TMRZ2->CR)
@@ -610,7 +596,7 @@ REGFORGE_STATIC_ASSERT(offsetof(ld_tmrw_t, CR) == LD_TMRW_CR_OFFSET, LD_TMRW_CR_
 
 /* TMRW @ 0x4005A000 */
 #define LD_TMRW_BASE (0x4005A000UL)
-REGFORGE_MAYBE_UNUSED static ld_tmrw_t *const LD_TMRW = (ld_tmrw_t *)(uintptr_t)LD_TMRW_BASE;
+#define LD_TMRW ((ld_tmrw_t *)(uintptr_t)LD_TMRW_BASE)
 
 /* TMRW.CR */
 #define LD_TMRW_CR (LD_TMRW->CR)
@@ -632,7 +618,7 @@ REGFORGE_STATIC_ASSERT(offsetof(ld_notdim_t, CR) == LD_NOTDIM_CR_OFFSET, LD_NOTD
 
 /* NOTDIM @ 0x4005B000 */
 #define LD_NOTDIM_BASE (0x4005B000UL)
-REGFORGE_MAYBE_UNUSED static ld_notdim_t *const LD_NOTDIM = (ld_notdim_t *)(uintptr_t)LD_NOTDIM_BASE;
+#define LD_NOTDIM ((ld_notdim_t *)(uintptr_t)LD_NOTDIM_BASE)
 
 /* NOTDIM.CR */
 #define LD_NOTDIM_CR (LD_NOTDIM->CR)
@@ -660,14 +646,14 @@ typedef ld_same_t ld_same1_t;
 
 /* SAME0 @ 0x4005D000 */
 #define LD_SAME0_BASE (0x4005D000UL)
-REGFORGE_MAYBE_UNUSED static ld_same_t *const LD_SAME0 = (ld_same_t *)(uintptr_t)LD_SAME0_BASE;
+#define LD_SAME0 ((ld_same_t *)(uintptr_t)LD_SAME0_BASE)
 
 /* SAME0.CR */
 #define LD_SAME0_CR (LD_SAME0->CR)
 
 /* SAME1 @ 0x4005D000 */
 #define LD_SAME1_BASE (0x4005D000UL)
-REGFORGE_MAYBE_UNUSED static ld_same_t *const LD_SAME1 = (ld_same_t *)(uintptr_t)LD_SAME1_BASE;
+#define LD_SAME1 ((ld_same_t *)(uintptr_t)LD_SAME1_BASE)
 
 /* SAME1.CR */
 #define LD_SAME1_CR (LD_SAME1->CR)
@@ -707,7 +693,7 @@ REGFORGE_STATIC_ASSERT(sizeof(ld_pwmx_t) == LD_PWMX_SIZE, LD_PWMX_SIZE_CHECK, "P
 
 /* PWMX @ 0x4005E000 */
 #define LD_PWMX_BASE (0x4005E000UL)
-REGFORGE_MAYBE_UNUSED static ld_pwmx_t *const LD_PWMX = (ld_pwmx_t *)(uintptr_t)LD_PWMX_BASE;
+#define LD_PWMX ((ld_pwmx_t *)(uintptr_t)LD_PWMX_BASE)
 
 /* PWMX.CH[4] */
 #define LD_PWMX_CH(ch_index) (*(volatile uint32_t *)(LD_PWMX_BASE + LD_PWMX_CH_OFFSET + (ch_index) * LD_PWMX_CH_STRIDE))
@@ -776,7 +762,7 @@ REGFORGE_STATIC_ASSERT(sizeof(ld_fifox_t) == LD_FIFOX_SIZE, LD_FIFOX_SIZE_CHECK,
 
 /* FIFOX @ 0x4005F000 */
 #define LD_FIFOX_BASE (0x4005F000UL)
-REGFORGE_MAYBE_UNUSED static ld_fifox_t *const LD_FIFOX = (ld_fifox_t *)(uintptr_t)LD_FIFOX_BASE;
+#define LD_FIFOX ((ld_fifox_t *)(uintptr_t)LD_FIFOX_BASE)
 
 /* FIFOX.DATA0 */
 #define LD_FIFOX_DATA0 (LD_FIFOX->DATA0)
@@ -853,14 +839,14 @@ typedef ld_ovl_t ld_ovl1_t;
 
 /* OVL0 @ 0x40060000 */
 #define LD_OVL0_BASE (0x40060000UL)
-REGFORGE_MAYBE_UNUSED static ld_ovl_t *const LD_OVL0 = (ld_ovl_t *)(uintptr_t)LD_OVL0_BASE;
+#define LD_OVL0 ((ld_ovl_t *)(uintptr_t)LD_OVL0_BASE)
 
 /* OVL0.CR */
 #define LD_OVL0_CR (LD_OVL0->CR)
 
 /* OVL1 @ 0x40060100 */
 #define LD_OVL1_BASE (0x40060100UL)
-REGFORGE_MAYBE_UNUSED static ld_ovl_t *const LD_OVL1 = (ld_ovl_t *)(uintptr_t)LD_OVL1_BASE;
+#define LD_OVL1 ((ld_ovl_t *)(uintptr_t)LD_OVL1_BASE)
 
 /* OVL1.CR */
 #define LD_OVL1_CR (LD_OVL1->CR)
@@ -898,56 +884,56 @@ typedef ld_ser_t ld_serx3_t;
 
 /* SER0 @ 0x40061000 */
 #define LD_SER0_BASE (0x40061000UL)
-REGFORGE_MAYBE_UNUSED static ld_ser_t *const LD_SER0 = (ld_ser_t *)(uintptr_t)LD_SER0_BASE;
+#define LD_SER0 ((ld_ser_t *)(uintptr_t)LD_SER0_BASE)
 
 /* SER0.CR */
 #define LD_SER0_CR (LD_SER0->CR)
 
 /* SER1 @ 0x40061100 */
 #define LD_SER1_BASE (0x40061100UL)
-REGFORGE_MAYBE_UNUSED static ld_ser_t *const LD_SER1 = (ld_ser_t *)(uintptr_t)LD_SER1_BASE;
+#define LD_SER1 ((ld_ser_t *)(uintptr_t)LD_SER1_BASE)
 
 /* SER1.CR */
 #define LD_SER1_CR (LD_SER1->CR)
 
 /* SER2 @ 0x40061200 */
 #define LD_SER2_BASE (0x40061200UL)
-REGFORGE_MAYBE_UNUSED static ld_ser_t *const LD_SER2 = (ld_ser_t *)(uintptr_t)LD_SER2_BASE;
+#define LD_SER2 ((ld_ser_t *)(uintptr_t)LD_SER2_BASE)
 
 /* SER2.CR */
 #define LD_SER2_CR (LD_SER2->CR)
 
 /* SER3 @ 0x40061300 */
 #define LD_SER3_BASE (0x40061300UL)
-REGFORGE_MAYBE_UNUSED static ld_ser_t *const LD_SER3 = (ld_ser_t *)(uintptr_t)LD_SER3_BASE;
+#define LD_SER3 ((ld_ser_t *)(uintptr_t)LD_SER3_BASE)
 
 /* SER3.CR */
 #define LD_SER3_CR (LD_SER3->CR)
 
 /* SERX0 @ 0x40063000 */
 #define LD_SERX0_BASE (0x40063000UL)
-REGFORGE_MAYBE_UNUSED static ld_ser_t *const LD_SERX0 = (ld_ser_t *)(uintptr_t)LD_SERX0_BASE;
+#define LD_SERX0 ((ld_ser_t *)(uintptr_t)LD_SERX0_BASE)
 
 /* SERX0.CR */
 #define LD_SERX0_CR (LD_SERX0->CR)
 
 /* SERX1 @ 0x40063200 */
 #define LD_SERX1_BASE (0x40063200UL)
-REGFORGE_MAYBE_UNUSED static ld_ser_t *const LD_SERX1 = (ld_ser_t *)(uintptr_t)LD_SERX1_BASE;
+#define LD_SERX1 ((ld_ser_t *)(uintptr_t)LD_SERX1_BASE)
 
 /* SERX1.CR */
 #define LD_SERX1_CR (LD_SERX1->CR)
 
 /* SERX2 @ 0x40063400 */
 #define LD_SERX2_BASE (0x40063400UL)
-REGFORGE_MAYBE_UNUSED static ld_ser_t *const LD_SERX2 = (ld_ser_t *)(uintptr_t)LD_SERX2_BASE;
+#define LD_SERX2 ((ld_ser_t *)(uintptr_t)LD_SERX2_BASE)
 
 /* SERX2.CR */
 #define LD_SERX2_CR (LD_SERX2->CR)
 
 /* SERX3 @ 0x40063600 */
 #define LD_SERX3_BASE (0x40063600UL)
-REGFORGE_MAYBE_UNUSED static ld_ser_t *const LD_SERX3 = (ld_ser_t *)(uintptr_t)LD_SERX3_BASE;
+#define LD_SERX3 ((ld_ser_t *)(uintptr_t)LD_SERX3_BASE)
 
 /* SERX3.CR */
 #define LD_SERX3_CR (LD_SERX3->CR)
@@ -969,7 +955,7 @@ REGFORGE_STATIC_ASSERT(offsetof(ld_spix_t, CR) == LD_SPIX_CR_OFFSET, LD_SPIX_CR_
 
 /* SPIX @ 0x40061380 */
 #define LD_SPIX_BASE (0x40061380UL)
-REGFORGE_MAYBE_UNUSED static ld_spix_t *const LD_SPIX = (ld_spix_t *)(uintptr_t)LD_SPIX_BASE;
+#define LD_SPIX ((ld_spix_t *)(uintptr_t)LD_SPIX_BASE)
 
 /* SPIX.CR */
 #define LD_SPIX_CR (LD_SPIX->CR)
@@ -997,7 +983,7 @@ typedef ld_tmru_t ld_tmru1_t;
 
 /* TMRU0 @ 0x40064000 */
 #define LD_TMRU0_BASE (0x40064000UL)
-REGFORGE_MAYBE_UNUSED static ld_tmru_t *const LD_TMRU0 = (ld_tmru_t *)(uintptr_t)LD_TMRU0_BASE;
+#define LD_TMRU0 ((ld_tmru_t *)(uintptr_t)LD_TMRU0_BASE)
 #define LD_TMRU_IRQ_IRQ LD_TMRU_IRQ_IRQn  /* vector 43 */
 
 /* TMRU0.CR */
@@ -1005,7 +991,7 @@ REGFORGE_MAYBE_UNUSED static ld_tmru_t *const LD_TMRU0 = (ld_tmru_t *)(uintptr_t
 
 /* TMRU1 @ 0x40064100 */
 #define LD_TMRU1_BASE (0x40064100UL)
-REGFORGE_MAYBE_UNUSED static ld_tmru_t *const LD_TMRU1 = (ld_tmru_t *)(uintptr_t)LD_TMRU1_BASE;
+#define LD_TMRU1 ((ld_tmru_t *)(uintptr_t)LD_TMRU1_BASE)
 
 /* TMRU1.CR */
 #define LD_TMRU1_CR (LD_TMRU1->CR)
@@ -1082,7 +1068,7 @@ REGFORGE_STATIC_ASSERT(sizeof(ld_altx_t) == LD_ALTX_SIZE, LD_ALTX_SIZE_CHECK, "A
 
 /* ALTX @ 0x40070000 */
 #define LD_ALTX_BASE (0x40070000UL)
-REGFORGE_MAYBE_UNUSED static ld_altx_t *const LD_ALTX = (ld_altx_t *)(uintptr_t)LD_ALTX_BASE;
+#define LD_ALTX ((ld_altx_t *)(uintptr_t)LD_ALTX_BASE)
 
 /* ALTX.A_Out  [alternate: A_In] */
 #define LD_ALTX_A_OUT (LD_ALTX->A.Out)

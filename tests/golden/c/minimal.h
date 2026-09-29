@@ -72,20 +72,6 @@
 #  define REGFORGE_INLINE static
 #endif
 
-/* REGFORGE_MAYBE_UNUSED -- suppress "defined but not used" on an entity a given
- * translation unit may legitimately not reference. Used as a *prefix* on the
- * declaration (required by [[maybe_unused]]; also valid for __attribute__). */
-#if defined(__cplusplus) && (__cplusplus >= 201703L)
-#  define REGFORGE_MAYBE_UNUSED [[maybe_unused]]
-#elif REGFORGE_STDC >= 202311L
-#  define REGFORGE_MAYBE_UNUSED [[maybe_unused]]              /* C23 */
-#elif defined(__GNUC__) || defined(__clang__) \
-   || defined(__CC_ARM) || defined(__ICCARM__)
-#  define REGFORGE_MAYBE_UNUSED __attribute__((unused))       /* GCC/Clang/armclang/armcc5/IAR8+ */
-#else
-#  define REGFORGE_MAYBE_UNUSED                                /* MSVC (no such warning) + exotic */
-#endif
-
 #endif /* REGFORGE_COMPAT_H */
 
 /* ========================================================================== */
@@ -269,7 +255,7 @@ REGFORGE_STATIC_ASSERT(sizeof(dc_gpioa_t) == DC_GPIOA_SIZE, DC_GPIOA_SIZE_CHECK,
 
 /* GPIOA @ 0x40020000 */
 #define DC_GPIOA_BASE (0x40020000UL)
-REGFORGE_MAYBE_UNUSED static dc_gpioa_t *const DC_GPIOA = (dc_gpioa_t *)(uintptr_t)DC_GPIOA_BASE;
+#define DC_GPIOA ((dc_gpioa_t *)(uintptr_t)DC_GPIOA_BASE)
 
 /* GPIOA.MODER - Mode register */
 #define DC_GPIOA_MODER (DC_GPIOA->MODER)
@@ -330,7 +316,7 @@ typedef dc_uart_t dc_uart1_t;
 
 /* UART0 @ 0x40004000 */
 #define DC_UART0_BASE (0x40004000UL)
-REGFORGE_MAYBE_UNUSED static dc_uart_t *const DC_UART0 = (dc_uart_t *)(uintptr_t)DC_UART0_BASE;
+#define DC_UART0 ((dc_uart_t *)(uintptr_t)DC_UART0_BASE)
 #define DC_UART0_IRQ DC_UART0_IRQn  /* UART0 global interrupt, vector 20 */
 
 /* UART0.DR - Data register */
@@ -341,7 +327,7 @@ REGFORGE_MAYBE_UNUSED static dc_uart_t *const DC_UART0 = (dc_uart_t *)(uintptr_t
 
 /* UART1 @ 0x40004400 */
 #define DC_UART1_BASE (0x40004400UL)
-REGFORGE_MAYBE_UNUSED static dc_uart_t *const DC_UART1 = (dc_uart_t *)(uintptr_t)DC_UART1_BASE;
+#define DC_UART1 ((dc_uart_t *)(uintptr_t)DC_UART1_BASE)
 #define DC_UART1_IRQ DC_UART1_IRQn  /* UART1 global interrupt, vector 21 */
 
 /* UART1.DR - Data register */
@@ -387,7 +373,7 @@ typedef dc_spi_t dc_spi1_t;
 
 /* SPI0 @ 0x40008000 */
 #define DC_SPI0_BASE (0x40008000UL)
-REGFORGE_MAYBE_UNUSED static dc_spi_t *const DC_SPI0 = (dc_spi_t *)(uintptr_t)DC_SPI0_BASE;
+#define DC_SPI0 ((dc_spi_t *)(uintptr_t)DC_SPI0_BASE)
 #define DC_SPI0_IRQ DC_SPI0_IRQn  /* SPI0 interrupt, vector 30 -- shared with DC_SPI1; demux in ISR */
 
 /* SPI0.CR - Control register */
@@ -401,7 +387,7 @@ REGFORGE_MAYBE_UNUSED static dc_spi_t *const DC_SPI0 = (dc_spi_t *)(uintptr_t)DC
 
 /* SPI1 @ 0x40008400 */
 #define DC_SPI1_BASE (0x40008400UL)
-REGFORGE_MAYBE_UNUSED static dc_spi_t *const DC_SPI1 = (dc_spi_t *)(uintptr_t)DC_SPI1_BASE;
+#define DC_SPI1 ((dc_spi_t *)(uintptr_t)DC_SPI1_BASE)
 #define DC_SPI1_IRQ DC_SPI1_IRQn  /* SPI1 interrupt, vector 30 -- shared with DC_SPI0; demux in ISR */
 
 /* SPI1.CR - Control register */
@@ -450,7 +436,7 @@ REGFORGE_STATIC_ASSERT(sizeof(dc_tim1_t) == DC_TIM1_SIZE, DC_TIM1_SIZE_CHECK, "T
 
 /* TIM1 @ 0x40010000 */
 #define DC_TIM1_BASE (0x40010000UL)
-REGFORGE_MAYBE_UNUSED static dc_tim1_t *const DC_TIM1 = (dc_tim1_t *)(uintptr_t)DC_TIM1_BASE;
+#define DC_TIM1 ((dc_tim1_t *)(uintptr_t)DC_TIM1_BASE)
 #define DC_TIM1_UP_IRQ DC_TIM1_UP_IRQn  /* TIM1 update, vector 25 */
 #define DC_TIM1_BRK_IRQ DC_TIM1_BRK_IRQn  /* TIM1 break, vector 26 */
 
@@ -507,7 +493,7 @@ typedef dc_tim_t dc_tim3_t;
 
 /* TIM2 @ 0x40000000 */
 #define DC_TIM2_BASE (0x40000000UL)
-REGFORGE_MAYBE_UNUSED static dc_tim_t *const DC_TIM2 = (dc_tim_t *)(uintptr_t)DC_TIM2_BASE;
+#define DC_TIM2 ((dc_tim_t *)(uintptr_t)DC_TIM2_BASE)
 
 /* TIM2.CR1 - Control register 1 */
 #define DC_TIM2_CR1 (DC_TIM2->CR1)
@@ -517,7 +503,7 @@ REGFORGE_MAYBE_UNUSED static dc_tim_t *const DC_TIM2 = (dc_tim_t *)(uintptr_t)DC
 
 /* TIM3 @ 0x40000400 */
 #define DC_TIM3_BASE (0x40000400UL)
-REGFORGE_MAYBE_UNUSED static dc_tim_t *const DC_TIM3 = (dc_tim_t *)(uintptr_t)DC_TIM3_BASE;
+#define DC_TIM3 ((dc_tim_t *)(uintptr_t)DC_TIM3_BASE)
 
 /* TIM3.CR1 - Control register 1 */
 #define DC_TIM3_CR1 (DC_TIM3->CR1)
@@ -562,7 +548,7 @@ typedef dc_adc_t dc_adc1_t;
 
 /* ADC0 @ 0x40012000 */
 #define DC_ADC0_BASE (0x40012000UL)
-REGFORGE_MAYBE_UNUSED static dc_adc_t *const DC_ADC0 = (dc_adc_t *)(uintptr_t)DC_ADC0_BASE;
+#define DC_ADC0 ((dc_adc_t *)(uintptr_t)DC_ADC0_BASE)
 #define DC_ADC0_IRQ DC_ADC0_IRQn  /* ADC0 conversion complete, vector 27 */
 
 /* ADC0.CR - Control register */
@@ -576,7 +562,7 @@ REGFORGE_MAYBE_UNUSED static dc_adc_t *const DC_ADC0 = (dc_adc_t *)(uintptr_t)DC
 
 /* ADC1 @ 0x40012400 */
 #define DC_ADC1_BASE (0x40012400UL)
-REGFORGE_MAYBE_UNUSED static dc_adc_t *const DC_ADC1 = (dc_adc_t *)(uintptr_t)DC_ADC1_BASE;
+#define DC_ADC1 ((dc_adc_t *)(uintptr_t)DC_ADC1_BASE)
 #define DC_ADC1_IRQ DC_ADC1_IRQn  /* ADC1 conversion complete, vector 28 */
 
 /* ADC1.CR - Control register */
@@ -610,7 +596,7 @@ REGFORGE_STATIC_ASSERT(sizeof(dc_wdt0_t) == DC_WDT0_SIZE, DC_WDT0_SIZE_CHECK, "W
 
 /* WDT0 @ 0x40013000 */
 #define DC_WDT0_BASE (0x40013000UL)
-REGFORGE_MAYBE_UNUSED static dc_wdt0_t *const DC_WDT0 = (dc_wdt0_t *)(uintptr_t)DC_WDT0_BASE;
+#define DC_WDT0 ((dc_wdt0_t *)(uintptr_t)DC_WDT0_BASE)
 
 /* WDT0.CR - Control register */
 #define DC_WDT0_CR (DC_WDT0->CR)
@@ -640,7 +626,7 @@ REGFORGE_STATIC_ASSERT(sizeof(dc_wdt1_t) == DC_WDT1_SIZE, DC_WDT1_SIZE_CHECK, "W
 
 /* WDT1 @ 0x40013400 */
 #define DC_WDT1_BASE (0x40013400UL)
-REGFORGE_MAYBE_UNUSED static dc_wdt1_t *const DC_WDT1 = (dc_wdt1_t *)(uintptr_t)DC_WDT1_BASE;
+#define DC_WDT1 ((dc_wdt1_t *)(uintptr_t)DC_WDT1_BASE)
 
 /* WDT1.CR - Control register */
 #define DC_WDT1_CR (DC_WDT1->CR)
@@ -678,7 +664,7 @@ REGFORGE_STATIC_ASSERT(sizeof(dc_crc_t) == DC_CRC_SIZE, DC_CRC_SIZE_CHECK, "CRC 
 
 /* CRC @ 0x40014000 */
 #define DC_CRC_BASE (0x40014000UL)
-REGFORGE_MAYBE_UNUSED static dc_crc_t *const DC_CRC = (dc_crc_t *)(uintptr_t)DC_CRC_BASE;
+#define DC_CRC ((dc_crc_t *)(uintptr_t)DC_CRC_BASE)
 
 /* CRC.DR - Data register  [alternate: DR8, DR16] */
 #define DC_CRC_DR (DC_CRC->DR.DR)
@@ -751,7 +737,7 @@ typedef dc_pwm_t dc_pwmb_t;
 
 /* PWMA @ 0x40015000 */
 #define DC_PWMA_BASE (0x40015000UL)
-REGFORGE_MAYBE_UNUSED static dc_pwm_t *const DC_PWMA = (dc_pwm_t *)(uintptr_t)DC_PWMA_BASE;
+#define DC_PWMA ((dc_pwm_t *)(uintptr_t)DC_PWMA_BASE)
 
 /* PWMA.CTRL - Control register */
 #define DC_PWMA_CTRL (DC_PWMA->CTRL)
@@ -780,7 +766,7 @@ REGFORGE_MAYBE_UNUSED static dc_pwm_t *const DC_PWMA = (dc_pwm_t *)(uintptr_t)DC
 
 /* PWMB @ 0x40015100 */
 #define DC_PWMB_BASE (0x40015100UL)
-REGFORGE_MAYBE_UNUSED static dc_pwm_t *const DC_PWMB = (dc_pwm_t *)(uintptr_t)DC_PWMB_BASE;
+#define DC_PWMB ((dc_pwm_t *)(uintptr_t)DC_PWMB_BASE)
 
 /* PWMB.CTRL - Control register */
 #define DC_PWMB_CTRL (DC_PWMB->CTRL)
@@ -876,7 +862,7 @@ REGFORGE_STATIC_ASSERT(sizeof(dc_dma_t) == DC_DMA_SIZE, DC_DMA_SIZE_CHECK, "DMA 
 
 /* DMA @ 0x40016000 */
 #define DC_DMA_BASE (0x40016000UL)
-REGFORGE_MAYBE_UNUSED static dc_dma_t *const DC_DMA = (dc_dma_t *)(uintptr_t)DC_DMA_BASE;
+#define DC_DMA ((dc_dma_t *)(uintptr_t)DC_DMA_BASE)
 
 /* DMA.CFG - Global configuration */
 #define DC_DMA_CFG (DC_DMA->CFG)
