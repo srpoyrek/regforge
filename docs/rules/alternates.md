@@ -74,7 +74,6 @@ Output — emitted as [C](targets/c.md#union-members):
     } CCMR1;  /* 0x0C  one register, 2 views */
 REGFORGE_STATIC_ASSERT(offsetof(dc_tim1_t, CCMR1) == DC_TIM1_CCMR1_OFFSET, DC_TIM1_CCMR1_OFFSET_CHECK, "TIM1.CCMR1 offset");
 REGFORGE_STATIC_ASSERT(sizeof(((dc_tim1_t *)0)->CCMR1) == DC_TIM1_CCMR1_SIZE, DC_TIM1_CCMR1_SIZE_CHECK, "TIM1.CCMR1 union size");
-REGFORGE_STATIC_ASSERT(offsetof(dc_tim1_t, CCMR1.Input) == DC_TIM1_CCMR1_OFFSET, DC_TIM1_CCMR1_INPUT_OFFSET_CHECK, "TIM1.CCMR1.Input offset");
 
 #define DC_TIM1_CCMR1_OUTPUT (DC_TIM1->CCMR1.Output)
 #define DC_TIM1_CCMR1_INPUT (DC_TIM1->CCMR1.Input)
@@ -110,13 +109,14 @@ reset macros are emitted per view under the register's name
 |---|---|
 | `offsetof(t, CCMR1) == _OFFSET` | the union is where the vendor put the word |
 | `sizeof(t.CCMR1) == _SIZE` | the union is as wide as the widest view, so the padding after it is right |
-| `offsetof(t, CCMR1.Input) == _OFFSET` | every view, by name, sits at that offset |
 
-An array of unions (`CCI[%s]` alternate `CC[%s]`) gets the array asserts
-instead: `_STRIDE`, `_COUNT`, the array size, the last element, and the
-element size against `dimIncrement`. An array whose stride is wider than the
-widest view is unpacked into `CC0`, `CC1`, ... like a register array, and its
-macro is then the address sum.
+Two, not three: a view's own offset is not asserted, because the standard puts
+every union member at offset zero and the union's offset is already checked
+([targets/c.md](targets/c.md#what-is-not-asserted)). An array of unions
+(`CCI[%s]` alternate `CC[%s]`) is asserted like any array, its offset and one
+element against `_STRIDE`. An array whose stride is wider than the widest view
+is unpacked into `CC0`, `CC1`, ... like a register array, and its macro is then
+the address sum.
 
 ## Rule 6: findings
 

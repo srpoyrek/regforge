@@ -268,6 +268,7 @@ def _c_layout(
                     "field": f"{cluster.name}{_count_suffix(spf, cluster.name, slot.count)};",
                     "desc": _short_desc(cluster.description),
                     "member": cluster.name,
+                    "cluster": True,  # its element size is asserted on the type
                     "elements": slot.count,
                     "bytes": slot.size_bytes,
                     "stem": None,

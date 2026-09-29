@@ -473,7 +473,7 @@ typedef struct {
     uint8_t           RESERVED0[LD_DMAX_CH_RESERVED0_SIZE];  /* 0x04  (reserved) */
 } ld_dmax_ch_t;
 REGFORGE_STATIC_ASSERT(offsetof(ld_dmax_ch_t, CTRL) == LD_DMAX_CH_CTRL_OFFSET, LD_DMAX_CH_CTRL_OFFSET_CHECK, "DMAX.CH.CTRL offset");
-REGFORGE_STATIC_ASSERT(sizeof(ld_dmax_ch_t) == LD_DMAX_CH_STRIDE, LD_DMAX_CH_SIZE_CHECK, "DMAX.CH element size vs dimIncrement");
+REGFORGE_STATIC_ASSERT(sizeof(ld_dmax_ch_t) == LD_DMAX_CH_STRIDE, LD_DMAX_CH_STRIDE_CHECK, "DMAX.CH element size vs dimIncrement");
 
 /* DMAX.EXTRA */
 typedef struct {
@@ -488,8 +488,6 @@ typedef struct {
 } ld_dmax_t;
 REGFORGE_STATIC_ASSERT(offsetof(ld_dmax_t, CH) == LD_DMAX_CH_OFFSET, LD_DMAX_CH_OFFSET_CHECK, "DMAX.CH offset");
 REGFORGE_STATIC_ASSERT(offsetof(ld_dmax_t, EXTRA) == LD_DMAX_EXTRA_OFFSET, LD_DMAX_EXTRA_OFFSET_CHECK, "DMAX.EXTRA offset");
-REGFORGE_STATIC_ASSERT(sizeof(((ld_dmax_t *)0)->CH) == LD_DMAX_CH_COUNT * LD_DMAX_CH_STRIDE, LD_DMAX_CH_ARRAY_CHECK, "DMAX.CH array size");
-REGFORGE_STATIC_ASSERT(offsetof(ld_dmax_t, CH) + (LD_DMAX_CH_COUNT - 1U) * sizeof(((ld_dmax_t *)0)->CH[0]) == LD_DMAX_CH_OFFSET + (LD_DMAX_CH_COUNT - 1U) * LD_DMAX_CH_STRIDE, LD_DMAX_CH_LAST_CHECK, "DMAX.CH[1] offset via the struct");
 
 /* DMAX @ 0x40057000 */
 #define LD_DMAX_BASE (0x40057000UL)
@@ -1054,16 +1052,10 @@ REGFORGE_STATIC_ASSERT(offsetof(ld_altx_t, CCR_X) == LD_ALTX_CCR_X_OFFSET, LD_AL
 REGFORGE_STATIC_ASSERT(offsetof(ld_altx_t, D) == LD_ALTX_D_OFFSET, LD_ALTX_D_OFFSET_CHECK, "ALTX.D offset");
 REGFORGE_STATIC_ASSERT(offsetof(ld_altx_t, F) == LD_ALTX_F_OFFSET, LD_ALTX_F_OFFSET_CHECK, "ALTX.F offset");
 REGFORGE_STATIC_ASSERT(offsetof(ld_altx_t, G) == LD_ALTX_G_OFFSET, LD_ALTX_G_OFFSET_CHECK, "ALTX.G offset");
-REGFORGE_STATIC_ASSERT(sizeof(((ld_altx_t *)0)->F) == LD_ALTX_F_COUNT * LD_ALTX_F_STRIDE, LD_ALTX_F_ARRAY_CHECK, "ALTX.F array size");
-REGFORGE_STATIC_ASSERT(offsetof(ld_altx_t, F) + (LD_ALTX_F_COUNT - 1U) * sizeof(((ld_altx_t *)0)->F[0]) == LD_ALTX_F_OFFSET + (LD_ALTX_F_COUNT - 1U) * LD_ALTX_F_STRIDE, LD_ALTX_F_LAST_CHECK, "ALTX.F[1] offset via the struct");
-REGFORGE_STATIC_ASSERT(sizeof(((ld_altx_t *)0)->G) == LD_ALTX_G_COUNT * LD_ALTX_G_STRIDE, LD_ALTX_G_ARRAY_CHECK, "ALTX.G array size");
-REGFORGE_STATIC_ASSERT(offsetof(ld_altx_t, G) + (LD_ALTX_G_COUNT - 1U) * sizeof(((ld_altx_t *)0)->G[0]) == LD_ALTX_G_OFFSET + (LD_ALTX_G_COUNT - 1U) * LD_ALTX_G_STRIDE, LD_ALTX_G_LAST_CHECK, "ALTX.G[2] offset via the struct");
+REGFORGE_STATIC_ASSERT(sizeof(((ld_altx_t *)0)->F[0]) == LD_ALTX_F_STRIDE, LD_ALTX_F_STRIDE_CHECK, "ALTX.F element size vs dimIncrement");
+REGFORGE_STATIC_ASSERT(sizeof(((ld_altx_t *)0)->G[0]) == LD_ALTX_G_STRIDE, LD_ALTX_G_STRIDE_CHECK, "ALTX.G element size vs dimIncrement");
 REGFORGE_STATIC_ASSERT(sizeof(((ld_altx_t *)0)->A) == LD_ALTX_A_SIZE, LD_ALTX_A_SIZE_CHECK, "ALTX.A union size");
-REGFORGE_STATIC_ASSERT(offsetof(ld_altx_t, A.Out) == LD_ALTX_A_OFFSET, LD_ALTX_A_OUT_OFFSET_CHECK, "ALTX.A.Out offset");
-REGFORGE_STATIC_ASSERT(offsetof(ld_altx_t, A.In) == LD_ALTX_A_OFFSET, LD_ALTX_A_IN_OFFSET_CHECK, "ALTX.A.In offset");
 REGFORGE_STATIC_ASSERT(sizeof(((ld_altx_t *)0)->CCR_X) == LD_ALTX_CCR_X_SIZE, LD_ALTX_CCR_X_SIZE_CHECK, "ALTX.CCR_X union size");
-REGFORGE_STATIC_ASSERT(offsetof(ld_altx_t, CCR_X.CCR_X) == LD_ALTX_CCR_X_OFFSET, LD_ALTX_CCR_X_CCR_X_OFFSET_CHECK, "ALTX.CCR_X.CCR_X offset");
-REGFORGE_STATIC_ASSERT(offsetof(ld_altx_t, CCR_X.CCR_Y) == LD_ALTX_CCR_X_OFFSET, LD_ALTX_CCR_X_CCR_Y_OFFSET_CHECK, "ALTX.CCR_X.CCR_Y offset");
 REGFORGE_STATIC_ASSERT(sizeof(ld_altx_t) == LD_ALTX_SIZE, LD_ALTX_SIZE_CHECK, "ALTX struct size vs addressBlock");
 
 /* ALTX @ 0x40070000 */

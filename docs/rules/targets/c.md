@@ -312,18 +312,16 @@ steps through, and a count is emitted for loop bounds:
 #define DC_PWMA_CC(cc_index) (DC_PWMA->CC[(cc_index)])
 ```
 
-Three asserts pin the array. One `offsetof` covers its start; a `sizeof` on the
-member checks it holds exactly its elements (`sizeof` is unevaluated, so the
-null pointer is never dereferenced); and the last element is placed outright,
-so `CC[k]` reaching `OFFSET + k * STRIDE` is stated rather than inferred. That
-last one is spelled as the start plus `k` element sizes, not as
-`offsetof(dc_pwm_t, CC[k])`, because MSVC's C front end does not accept an
-array subscript inside `offsetof` as a constant expression:
+Two asserts pin the array: one `offsetof` for where it starts, and one `sizeof`
+for one element against the stride (`sizeof` is unevaluated, so the null pointer
+is never dereferenced):
 
 ```c
-REGFORGE_STATIC_ASSERT(sizeof(((dc_pwm_t *)0)->CC) == DC_PWM_CC_COUNT * DC_PWM_CC_STRIDE, DC_PWM_CC_ARRAY_CHECK, "PWM.CC array size");
-REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, CC) + (DC_PWM_CC_COUNT - 1U) * sizeof(((dc_pwm_t *)0)->CC[0]) == DC_PWM_CC_OFFSET + (DC_PWM_CC_COUNT - 1U) * DC_PWM_CC_STRIDE, DC_PWM_CC_LAST_CHECK, "PWM.CC[3] offset via the struct");
+REGFORGE_STATIC_ASSERT(sizeof(((dc_pwm_t *)0)->CC[0]) == DC_PWM_CC_STRIDE, DC_PWM_CC_STRIDE_CHECK, "PWM.CC element size vs dimIncrement");
 ```
+
+Neither the whole array's size nor the position of its last element is asserted;
+both follow from those two, see [What is not asserted](#what-is-not-asserted).
 
 When the stride is larger than the element (`CH[%s]` 8 bytes apart for 32-bit
 registers) no C array fits, so the struct gets one member per element with
@@ -368,7 +366,7 @@ typedef struct {
     uint8_t           RESERVED0[DC_DMA_CH_RESERVED0_SIZE];  /* 0x08  (reserved) */
 } dc_dma_ch_t;
 REGFORGE_STATIC_ASSERT(offsetof(dc_dma_ch_t, SRC) == DC_DMA_CH_SRC_OFFSET, DC_DMA_CH_SRC_OFFSET_CHECK, "DMA.CH.SRC offset");
-REGFORGE_STATIC_ASSERT(sizeof(dc_dma_ch_t) == DC_DMA_CH_STRIDE, DC_DMA_CH_SIZE_CHECK, "DMA.CH element size vs dimIncrement");
+REGFORGE_STATIC_ASSERT(sizeof(dc_dma_ch_t) == DC_DMA_CH_STRIDE, DC_DMA_CH_STRIDE_CHECK, "DMA.CH element size vs dimIncrement");
 
 /* DMA.STAT -- Status block */
 typedef struct {
@@ -387,9 +385,9 @@ typedef struct {
 The type is named `<prefix><family>_<cluster>_t`, the cluster's
 `headerStructName` replacing its name when given, and a nested cluster appends
 its own name (`dc_dma_ch_sub_t`); see [ir/naming.md](../naming.md). An array
-cluster's element is padded to the stride and its size asserted, so the array
-tiles the vendor's spacing exactly, and its last element is placed by an
-`offsetof` assert of its own. A single cluster's type is asserted against its
+cluster's element is padded to the stride and the type's size asserted against
+that stride, so the array tiles the vendor's spacing exactly. A single
+cluster's type is asserted against its
 extent, the end of its last register rounded up to the type's alignment, so
 the inner struct is checked on its own terms rather than only through the
 padding its parent computes after it.
@@ -414,19 +412,22 @@ reaches it through the union:
     } CCMR1;  /* 0x0C  one register, 2 views */
 REGFORGE_STATIC_ASSERT(offsetof(dc_tim1_t, CCMR1) == DC_TIM1_CCMR1_OFFSET, DC_TIM1_CCMR1_OFFSET_CHECK, "TIM1.CCMR1 offset");
 REGFORGE_STATIC_ASSERT(sizeof(((dc_tim1_t *)0)->CCMR1) == DC_TIM1_CCMR1_SIZE, DC_TIM1_CCMR1_SIZE_CHECK, "TIM1.CCMR1 union size");
-REGFORGE_STATIC_ASSERT(offsetof(dc_tim1_t, CCMR1.Output) == DC_TIM1_CCMR1_OFFSET, DC_TIM1_CCMR1_OUTPUT_OFFSET_CHECK, "TIM1.CCMR1.Output offset");
 
 /* TIM1.CCMR1_Output - Capture/compare mode (output)  [alternate: CCMR1_Input] */
 #define DC_TIM1_CCMR1_OUTPUT (DC_TIM1->CCMR1.Output)
 #define DC_TIM1_CCMR1_OUTPUT_OC1M_Pos (4U)
 ```
 
+Two asserts cover it, the union's offset and its size; a view's own offset is not
+asserted, because every union member is at offset zero
+([What is not asserted](#what-is-not-asserted)).
+
 The union is named, never anonymous, so the header stays C89. Each view keeps
 its own type and qualifiers (`volatile const uint32_t RXD;` beside
 `volatile uint32_t DR;`), its own field and reset macros, and a comment naming
 the other views. An array of unions (`CCI[%s]` alternate `CC[%s]`) is an
-array member `CC[DC_PWM_CC_COUNT]` with the usual stride, count, array and
-last-element asserts, plus `sizeof(CC[0]) == _STRIDE`; the macros index it,
+array member `CC[DC_PWM_CC_COUNT]` asserted like any array, its offset and
+`sizeof(CC[0]) == _STRIDE`; the macros index it,
 `DC_PWMA_CCI(cc_index)` being `DC_PWMA->CC[(cc_index)].CCI`. Two registers at
 one offset that are not declared alternates are refused (`LayoutError`).
 
@@ -479,9 +480,9 @@ compile time rather than reading the wrong register at run time.
 
 Buffer windows get one too, so the window's position is checked as tightly as a
 register's. So do array members and cluster members, and a cluster's own
-members are asserted inside its type. An array member gets a second one on
-its last element, the start plus `COUNT - 1` element sizes, so element
-addressing is checked outright rather than inferred from the array size.
+members are asserted inside its type. Each element of an unpacked array gets
+its own, against `_OFFSET + kU * _STRIDE`, because each is a separate member
+whose position depends on the padding between them.
 
 ## Struct size
 
@@ -498,6 +499,33 @@ Emitted only when the source supports it; see
 array cluster's element type is asserted against `dimIncrement` the same way,
 so `CH[3]` lands where the third channel really is, and a single cluster's
 type against its own extent, `DC_DMA_STAT_SIZE`.
+
+## What is not asserted
+
+An assert earns its place only if something can make it fail. It is a line the
+reader has to check does nothing otherwise, and in C89 mode a negative-array
+typedef as well. These three cannot fail, so they are not emitted:
+
+| Not emitted | Why it cannot fail |
+|---|---|
+| a view's offset, `offsetof(t, CCMR1.Output) == _OFFSET` | the standard puts every union member at offset zero, and the union's own offset is asserted |
+| an array's total size, `sizeof(CC) == _COUNT * _STRIDE` | a C array is contiguous, so this is `_COUNT * sizeof(CC[0])`, and the count is the bound `CC[DC_PWM_CC_COUNT]` itself |
+| an array's last element, `offsetof(CC) + (_COUNT - 1U) * sizeof(CC[0])` | arithmetic on the asserted offset and the asserted element size |
+
+What is left is one assert per fact the generator could get wrong:
+
+| Assert | Fails when |
+|---|---|
+| `offsetof(t, M) == <PF>_<M>_OFFSET` | the padding between members is wrong, or a packing option moves them |
+| `sizeof(((t *)0)->M[0]) == <PF>_<M>_STRIDE` | a register is wider than the vendor's spacing |
+| `sizeof(<cluster type>) == <PF>_<C>_STRIDE` | a cluster element's internal padding is wrong |
+| `sizeof(((t *)0)->M) == <PF>_<M>_SIZE` | a union view is wider than expected, so what follows the union moves |
+| `sizeof(<cluster type>) == <PF>_<C>_SIZE` | a single cluster's alignment rounds differently than assumed |
+| `sizeof(t) == <PF>_SIZE` | the footprint disagrees with the `addressBlock` |
+| `CHAR_BIT == <DEV>_ADDRESS_UNIT_BITS` | the compiler's byte is not the device's |
+
+The tag always names the constant on the right of the comparison, so
+`_STRIDE_CHECK` is the element-size assert and `_SIZE_CHECK` a size one.
 
 ## Endianness and FPU
 
@@ -819,8 +847,7 @@ REGFORGE_STATIC_ASSERT(offsetof(pwm_t, CTRL) == PWM_CTRL_OFFSET, PWM_CTRL_OFFSET
 REGFORGE_STATIC_ASSERT(offsetof(pwm_t, CC) == PWM_CC_OFFSET, PWM_CC_OFFSET_CHECK, "PWM.CC offset");
 REGFORGE_STATIC_ASSERT(offsetof(pwm_t, DT0) == PWM_DT0_OFFSET, PWM_DT0_OFFSET_CHECK, "PWM.DT0 offset");
 REGFORGE_STATIC_ASSERT(offsetof(pwm_t, DT1) == PWM_DT1_OFFSET, PWM_DT1_OFFSET_CHECK, "PWM.DT1 offset");
-REGFORGE_STATIC_ASSERT(sizeof(((pwm_t *)0)->CC) == PWM_CC_COUNT * PWM_CC_STRIDE, PWM_CC_ARRAY_CHECK, "PWM.CC array size");
-REGFORGE_STATIC_ASSERT(offsetof(pwm_t, CC) + (PWM_CC_COUNT - 1U) * sizeof(((pwm_t *)0)->CC[0]) == PWM_CC_OFFSET + (PWM_CC_COUNT - 1U) * PWM_CC_STRIDE, PWM_CC_LAST_CHECK, "PWM.CC[3] offset via the struct");
+REGFORGE_STATIC_ASSERT(sizeof(((pwm_t *)0)->CC[0]) == PWM_CC_STRIDE, PWM_CC_STRIDE_CHECK, "PWM.CC element size vs dimIncrement");
 REGFORGE_STATIC_ASSERT(sizeof(pwm_t) == PWM_SIZE, PWM_SIZE_CHECK, "PWM struct size vs addressBlock");
 
 /* Per-instance names for the shared type, so a signature never has to know
@@ -898,7 +925,7 @@ typedef struct {
 } dma_ch_t;
 REGFORGE_STATIC_ASSERT(offsetof(dma_ch_t, CTRL) == DMA_CH_CTRL_OFFSET, DMA_CH_CTRL_OFFSET_CHECK, "DMA.CH.CTRL offset");
 REGFORGE_STATIC_ASSERT(offsetof(dma_ch_t, SRC) == DMA_CH_SRC_OFFSET, DMA_CH_SRC_OFFSET_CHECK, "DMA.CH.SRC offset");
-REGFORGE_STATIC_ASSERT(sizeof(dma_ch_t) == DMA_CH_STRIDE, DMA_CH_SIZE_CHECK, "DMA.CH element size vs dimIncrement");
+REGFORGE_STATIC_ASSERT(sizeof(dma_ch_t) == DMA_CH_STRIDE, DMA_CH_STRIDE_CHECK, "DMA.CH element size vs dimIncrement");
 
 typedef struct {
     volatile uint32_t CFG;                            /* 0x00 */
@@ -907,8 +934,6 @@ typedef struct {
 } dma_t;
 REGFORGE_STATIC_ASSERT(offsetof(dma_t, CFG) == DMA_CFG_OFFSET, DMA_CFG_OFFSET_CHECK, "DMA.CFG offset");
 REGFORGE_STATIC_ASSERT(offsetof(dma_t, CH) == DMA_CH_OFFSET, DMA_CH_OFFSET_CHECK, "DMA.CH offset");
-REGFORGE_STATIC_ASSERT(sizeof(((dma_t *)0)->CH) == DMA_CH_COUNT * DMA_CH_STRIDE, DMA_CH_ARRAY_CHECK, "DMA.CH array size");
-REGFORGE_STATIC_ASSERT(offsetof(dma_t, CH) + (DMA_CH_COUNT - 1U) * sizeof(((dma_t *)0)->CH[0]) == DMA_CH_OFFSET + (DMA_CH_COUNT - 1U) * DMA_CH_STRIDE, DMA_CH_LAST_CHECK, "DMA.CH[3] offset via the struct");
 REGFORGE_STATIC_ASSERT(sizeof(dma_t) == DMA_SIZE, DMA_SIZE_CHECK, "DMA struct size vs addressBlock");
 
 /* DMA @ 0x40016000 */
@@ -956,8 +981,6 @@ typedef struct {
 REGFORGE_STATIC_ASSERT(offsetof(tim1_t, CR1) == TIM1_CR1_OFFSET, TIM1_CR1_OFFSET_CHECK, "TIM1.CR1 offset");
 REGFORGE_STATIC_ASSERT(offsetof(tim1_t, CCMR1) == TIM1_CCMR1_OFFSET, TIM1_CCMR1_OFFSET_CHECK, "TIM1.CCMR1 offset");
 REGFORGE_STATIC_ASSERT(sizeof(((tim1_t *)0)->CCMR1) == TIM1_CCMR1_SIZE, TIM1_CCMR1_SIZE_CHECK, "TIM1.CCMR1 union size");
-REGFORGE_STATIC_ASSERT(offsetof(tim1_t, CCMR1.Output) == TIM1_CCMR1_OFFSET, TIM1_CCMR1_OUTPUT_OFFSET_CHECK, "TIM1.CCMR1.Output offset");
-REGFORGE_STATIC_ASSERT(offsetof(tim1_t, CCMR1.Input) == TIM1_CCMR1_OFFSET, TIM1_CCMR1_INPUT_OFFSET_CHECK, "TIM1.CCMR1.Input offset");
 REGFORGE_STATIC_ASSERT(sizeof(tim1_t) == TIM1_SIZE, TIM1_SIZE_CHECK, "TIM1 struct size vs addressBlock");
 
 /* TIM1 @ 0x40010000 */

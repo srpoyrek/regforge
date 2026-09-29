@@ -297,24 +297,14 @@ typedef struct {
 {% for m in ct.members if m.member %}
 REGFORGE_STATIC_ASSERT(offsetof({{ ct.tname }}, {{ m.member }}) == {% if m.index is not none %}{{ ct.spf }}_{{ m.stem|upper }}_OFFSET + {{ m.index }}U * {{ ct.spf }}_{{ m.stem|upper }}_STRIDE{% else %}{{ ct.spf }}_{{ m.member|upper }}_OFFSET{% endif %}, {{ ct.spf }}_{{ m.member|upper }}_OFFSET_CHECK, "{{ ct.label }}.{{ m.member }} offset");
 {% endfor %}
-{% for m in ct.members if m.member and m.elements > 1 %}
-REGFORGE_STATIC_ASSERT(sizeof((({{ ct.tname }} *)0)->{{ m.member }}) == {{ ct.spf }}_{{ m.member|upper }}_COUNT * {{ ct.spf }}_{{ m.member|upper }}_STRIDE, {{ ct.spf }}_{{ m.member|upper }}_ARRAY_CHECK, "{{ ct.label }}.{{ m.member }} array size");
-REGFORGE_STATIC_ASSERT(offsetof({{ ct.tname }}, {{ m.member }}) + ({{ ct.spf }}_{{ m.member|upper }}_COUNT - 1U) * sizeof((({{ ct.tname }} *)0)->{{ m.member }}[0]) == {{ ct.spf }}_{{ m.member|upper }}_OFFSET + ({{ ct.spf }}_{{ m.member|upper }}_COUNT - 1U) * {{ ct.spf }}_{{ m.member|upper }}_STRIDE, {{ ct.spf }}_{{ m.member|upper }}_LAST_CHECK, "{{ ct.label }}.{{ m.member }}[{{ m.elements - 1 }}] offset via the struct");
+{% for m in ct.members if m.member and m.elements > 1 and not m.cluster %}
+REGFORGE_STATIC_ASSERT(sizeof((({{ ct.tname }} *)0)->{{ m.member }}[0]) == {{ ct.spf }}_{{ m.member|upper }}_STRIDE, {{ ct.spf }}_{{ m.member|upper }}_STRIDE_CHECK, "{{ ct.label }}.{{ m.member }} element size vs dimIncrement");
 {% endfor %}
-{% for m in ct.members if m.union %}
-{% if m.elements > 1 %}
-REGFORGE_STATIC_ASSERT(sizeof((({{ ct.tname }} *)0)->{{ m.member }}[0]) == {{ ct.spf }}_{{ m.member|upper }}_STRIDE, {{ ct.spf }}_{{ m.member|upper }}_SIZE_CHECK, "{{ ct.label }}.{{ m.member }} union size vs dimIncrement");
-{% elif m.index is none %}
+{% for m in ct.members if m.union and m.elements == 1 and m.index is none %}
 REGFORGE_STATIC_ASSERT(sizeof((({{ ct.tname }} *)0)->{{ m.member }}) == {{ ct.spf }}_{{ m.member|upper }}_SIZE, {{ ct.spf }}_{{ m.member|upper }}_SIZE_CHECK, "{{ ct.label }}.{{ m.member }} union size");
-{% endif %}
-{% if m.elements == 1 %}
-{% for v in m.views %}
-REGFORGE_STATIC_ASSERT(offsetof({{ ct.tname }}, {{ m.member }}.{{ v.name }}) == {% if m.index is not none %}{{ ct.spf }}_{{ m.stem|upper }}_OFFSET + {{ m.index }}U * {{ ct.spf }}_{{ m.stem|upper }}_STRIDE{% else %}{{ ct.spf }}_{{ m.member|upper }}_OFFSET{% endif %}, {{ ct.spf }}_{{ m.member|upper }}_{{ v.name|upper }}_OFFSET_CHECK, "{{ ct.label }}.{{ m.member }}.{{ v.name }} offset");
-{% endfor %}
-{% endif %}
 {% endfor %}
 {% if ct.count %}
-REGFORGE_STATIC_ASSERT(sizeof({{ ct.tname }}) == {{ ct.own }}_STRIDE, {{ ct.spf }}_SIZE_CHECK, "{{ ct.label }} element size vs dimIncrement");
+REGFORGE_STATIC_ASSERT(sizeof({{ ct.tname }}) == {{ ct.own }}_STRIDE, {{ ct.spf }}_STRIDE_CHECK, "{{ ct.label }} element size vs dimIncrement");
 {% else %}
 REGFORGE_STATIC_ASSERT(sizeof({{ ct.tname }}) == {{ ct.own }}_SIZE, {{ ct.spf }}_SIZE_CHECK, "{{ ct.label }} size vs its last register");
 {% endif %}
@@ -332,21 +322,11 @@ typedef struct {
 {% for m in members if m.member %}
 REGFORGE_STATIC_ASSERT(offsetof({{ tname }}, {{ m.member }}) == {% if m.index is not none %}{{ spf }}_{{ m.stem|upper }}_OFFSET + {{ m.index }}U * {{ spf }}_{{ m.stem|upper }}_STRIDE{% else %}{{ spf }}_{{ m.member|upper }}_OFFSET{% endif %}, {{ spf }}_{{ m.member|upper }}_OFFSET_CHECK, "{{ family.name }}.{{ m.member }} offset");
 {% endfor %}
-{% for m in members if m.member and m.elements > 1 %}
-REGFORGE_STATIC_ASSERT(sizeof((({{ tname }} *)0)->{{ m.member }}) == {{ spf }}_{{ m.member|upper }}_COUNT * {{ spf }}_{{ m.member|upper }}_STRIDE, {{ spf }}_{{ m.member|upper }}_ARRAY_CHECK, "{{ family.name }}.{{ m.member }} array size");
-REGFORGE_STATIC_ASSERT(offsetof({{ tname }}, {{ m.member }}) + ({{ spf }}_{{ m.member|upper }}_COUNT - 1U) * sizeof((({{ tname }} *)0)->{{ m.member }}[0]) == {{ spf }}_{{ m.member|upper }}_OFFSET + ({{ spf }}_{{ m.member|upper }}_COUNT - 1U) * {{ spf }}_{{ m.member|upper }}_STRIDE, {{ spf }}_{{ m.member|upper }}_LAST_CHECK, "{{ family.name }}.{{ m.member }}[{{ m.elements - 1 }}] offset via the struct");
+{% for m in members if m.member and m.elements > 1 and not m.cluster %}
+REGFORGE_STATIC_ASSERT(sizeof((({{ tname }} *)0)->{{ m.member }}[0]) == {{ spf }}_{{ m.member|upper }}_STRIDE, {{ spf }}_{{ m.member|upper }}_STRIDE_CHECK, "{{ family.name }}.{{ m.member }} element size vs dimIncrement");
 {% endfor %}
-{% for m in members if m.union %}
-{% if m.elements > 1 %}
-REGFORGE_STATIC_ASSERT(sizeof((({{ tname }} *)0)->{{ m.member }}[0]) == {{ spf }}_{{ m.member|upper }}_STRIDE, {{ spf }}_{{ m.member|upper }}_SIZE_CHECK, "{{ family.name }}.{{ m.member }} union size vs dimIncrement");
-{% elif m.index is none %}
+{% for m in members if m.union and m.elements == 1 and m.index is none %}
 REGFORGE_STATIC_ASSERT(sizeof((({{ tname }} *)0)->{{ m.member }}) == {{ spf }}_{{ m.member|upper }}_SIZE, {{ spf }}_{{ m.member|upper }}_SIZE_CHECK, "{{ family.name }}.{{ m.member }} union size");
-{% endif %}
-{% if m.elements == 1 %}
-{% for v in m.views %}
-REGFORGE_STATIC_ASSERT(offsetof({{ tname }}, {{ m.member }}.{{ v.name }}) == {% if m.index is not none %}{{ spf }}_{{ m.stem|upper }}_OFFSET + {{ m.index }}U * {{ spf }}_{{ m.stem|upper }}_STRIDE{% else %}{{ spf }}_{{ m.member|upper }}_OFFSET{% endif %}, {{ spf }}_{{ m.member|upper }}_{{ v.name|upper }}_OFFSET_CHECK, "{{ family.name }}.{{ m.member }}.{{ v.name }} offset");
-{% endfor %}
-{% endif %}
 {% endfor %}
 {% set ssize = struct_size(src) %}
 {% if ssize is not none %}

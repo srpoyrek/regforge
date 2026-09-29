@@ -48,8 +48,9 @@ Each family ([families.md](families.md)) is one section, and within it:
 2. Layout constants, in member order ([targets/c.md](targets/c.md#layout-constants)).
 3. Cluster types, innermost first, each followed by its own asserts
    ([clusters.md](clusters.md)).
-4. The family struct, then its asserts: member offsets, array sizes, last
-   elements, union sizes and views, the struct size.
+4. The family struct, then its asserts: member offsets, array element sizes,
+   union sizes, the struct size
+   ([targets/c.md](targets/c.md#what-is-not-asserted)).
 5. Per-instance type aliases, when the family has several instances.
 6. One sub-section per instance: base address, typed instance macro,
    interrupt links, then a macro group per register in layout order (the

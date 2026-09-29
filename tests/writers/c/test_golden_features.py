@@ -304,8 +304,8 @@ def test_fixture_cluster_array_and_single_cluster(demo_device):
     assert output.index("} dc_dma_ch_t;") < output.index("} dc_dma_t;")
     assert output.index("} dc_dma_stat_t;") < output.index("} dc_dma_t;")
     assert (
-        "REGFORGE_STATIC_ASSERT(sizeof(dc_dma_ch_t) == DC_DMA_CH_STRIDE, DC_DMA_CH_SIZE_CHECK, "
-        '"DMA.CH element size vs dimIncrement");' in output
+        "REGFORGE_STATIC_ASSERT(sizeof(dc_dma_ch_t) == DC_DMA_CH_STRIDE, "
+        'DC_DMA_CH_STRIDE_CHECK, "DMA.CH element size vs dimIncrement");' in output
     )
     assert (  # a single cluster is asserted against its own extent
         "REGFORGE_STATIC_ASSERT(sizeof(dc_dma_stat_t) == DC_DMA_STAT_SIZE, "
@@ -323,10 +323,11 @@ def test_fixture_alternate_registers_become_unions(demo_device):
     # TIM1: the common prefix names the union, the views keep their remainders.
     assert "} CCMR1; /* 0x0C one register, 2 views */" in squashed
     assert "#define DC_TIM1_CCMR1_SIZE (0x00000004UL)" in squashed
-    assert (
-        "REGFORGE_STATIC_ASSERT(offsetof(dc_tim1_t, CCMR1.Output) == DC_TIM1_CCMR1_OFFSET, "
-        'DC_TIM1_CCMR1_OUTPUT_OFFSET_CHECK, "TIM1.CCMR1.Output offset");' in output
+    assert (  # the union is asserted for offset and size; its views need neither
+        "REGFORGE_STATIC_ASSERT(sizeof(((dc_tim1_t *)0)->CCMR1) == DC_TIM1_CCMR1_SIZE, "
+        'DC_TIM1_CCMR1_SIZE_CHECK, "TIM1.CCMR1 union size");' in output
     )
+    assert "CCMR1.Output) ==" not in output
     assert "#define DC_TIM1_CCMR1_INPUT (DC_TIM1->CCMR1.Input)" in output
     assert "#define DC_TIM1_CCMR1_INPUT_IC1F_Pos (4U)" in output  # fields stay per view
     assert "#define DC_TIM1_CCMR1_OUTPUT_OC1M_Pos (4U)" in output

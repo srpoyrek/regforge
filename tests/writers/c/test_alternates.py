@@ -55,10 +55,10 @@ def test_pair_becomes_a_named_union_with_constants_asserts_and_a_macro_per_view(
         "REGFORGE_STATIC_ASSERT(sizeof(((dc_tim_t *)0)->CCMR1) == DC_TIM_CCMR1_SIZE, "
         'DC_TIM_CCMR1_SIZE_CHECK, "TIM.CCMR1 union size");' in output
     )
-    assert (  # every view is placed at the union's offset, by name
-        "REGFORGE_STATIC_ASSERT(offsetof(dc_tim_t, CCMR1.Input) == DC_TIM_CCMR1_OFFSET, "
-        'DC_TIM_CCMR1_INPUT_OFFSET_CHECK, "TIM.CCMR1.Input offset");' in output
-    )
+    # A view's own offset is not asserted: every union member is at offset zero, so
+    # the union's asserted offset already covers it.
+    assert "CCMR1.Input) ==" not in output
+    assert "CCMR1_INPUT_OFFSET_CHECK" not in output
     assert (
         "/* TIM.CCMR1_Output - Capture/compare mode (output)  [alternate: CCMR1_Input] */\n"
         "#define DC_TIM_CCMR1_OUTPUT (DC_TIM->CCMR1.Output)\n"
@@ -92,11 +92,12 @@ def test_union_array_is_indexed_like_a_register_array():
     assert "#define DC_TIM_CC_STRIDE (0x00000004UL)" in squashed
     assert "#define DC_TIM_CC(cc_index) (DC_TIM->CC[(cc_index)].CC)" in output
     assert "#define DC_TIM_CCI(cc_index) (DC_TIM->CC[(cc_index)].CCI)" in output
-    assert (
+    assert (  # asserted like any array: offset, then one element against the stride
         "REGFORGE_STATIC_ASSERT(sizeof(((dc_tim_t *)0)->CC[0]) == DC_TIM_CC_STRIDE, "
-        'DC_TIM_CC_SIZE_CHECK, "TIM.CC union size vs dimIncrement");' in output
+        'DC_TIM_CC_STRIDE_CHECK, "TIM.CC element size vs dimIncrement");' in output
     )
-    assert "DC_TIM_CC_ARRAY_CHECK" in output and "DC_TIM_CC_LAST_CHECK" in output
+    assert "DC_TIM_CC_ARRAY_CHECK" not in output
+    assert "DC_TIM_CC_LAST_CHECK" not in output
 
 
 def test_unpacked_union_array_is_flat_unions_with_an_address_macro():
@@ -111,10 +112,9 @@ def test_unpacked_union_array_is_flat_unions_with_an_address_macro():
         "REGFORGE_STATIC_ASSERT(offsetof(dc_tim_t, CC1) == DC_TIM_CC_OFFSET + 1U * "
         'DC_TIM_CC_STRIDE, DC_TIM_CC1_OFFSET_CHECK, "TIM.CC1 offset");' in output
     )
-    assert (
-        "REGFORGE_STATIC_ASSERT(offsetof(dc_tim_t, CC1.CCI) == DC_TIM_CC_OFFSET + 1U * "
-        'DC_TIM_CC_STRIDE, DC_TIM_CC1_CCI_OFFSET_CHECK, "TIM.CC1.CCI offset");' in output
-    )
+    # Each element carries its own member offset above; its views carry none,
+    # because a union member is always at offset zero.
+    assert "CC1.CCI) ==" not in output
     assert (
         "#define DC_TIM_CCI(cc_index) (*(volatile uint32_t *)"
         "(DC_TIM_BASE + DC_TIM_CC_OFFSET + (cc_index) * DC_TIM_CC_STRIDE))" in output
@@ -136,10 +136,11 @@ def test_union_inside_a_cluster_array_is_reached_through_both():
     squashed = _squash(output)
     assert "#define DC_TIM_CH_XFER_SIZE (0x00000004UL)" in squashed
     assert "} XFER; /* 0x04 one register, 2 views */" in squashed
-    assert (
-        "REGFORGE_STATIC_ASSERT(offsetof(dc_tim_ch_t, XFER.Periph) == DC_TIM_CH_XFER_OFFSET, "
-        'DC_TIM_CH_XFER_PERIPH_OFFSET_CHECK, "TIM.CH.XFER.Periph offset");' in output
+    assert (  # the union is asserted inside the cluster's own type
+        "REGFORGE_STATIC_ASSERT(sizeof(((dc_tim_ch_t *)0)->XFER) == DC_TIM_CH_XFER_SIZE, "
+        'DC_TIM_CH_XFER_SIZE_CHECK, "TIM.CH.XFER union size");' in output
     )
+    assert "XFER.Periph) ==" not in output  # a view needs no offset assert
     assert "#define DC_TIM_CH_XFER_MEM(ch_index) (DC_TIM->CH[(ch_index)].XFER.Mem)" in output
 
 

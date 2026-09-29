@@ -82,22 +82,17 @@ def test_array_cluster_is_padded_asserted_and_indexed():
     assert "uint8_t RESERVED0[DC_DMA_CH_RESERVED0_SIZE];" in squashed  # padded to the stride
     assert "#define DC_DMA_CH_RESERVED0_SIZE (0x00000008UL)" in squashed  # named in the type
     assert (
-        "REGFORGE_STATIC_ASSERT(sizeof(dc_dma_ch_t) == DC_DMA_CH_STRIDE, DC_DMA_CH_SIZE_CHECK, "
-        '"DMA.CH element size vs dimIncrement");' in output
+        "REGFORGE_STATIC_ASSERT(sizeof(dc_dma_ch_t) == DC_DMA_CH_STRIDE, "
+        'DC_DMA_CH_STRIDE_CHECK, "DMA.CH element size vs dimIncrement");' in output
     )
     assert "dc_dma_ch_t CH[DC_DMA_CH_COUNT];" in squashed
-    assert (
-        "REGFORGE_STATIC_ASSERT(sizeof(((dc_dma_t *)0)->CH) == "
-        'DC_DMA_CH_COUNT * DC_DMA_CH_STRIDE, DC_DMA_CH_ARRAY_CHECK, "DMA.CH array size");' in output
-    )
+    # The element size is asserted on the type above, so the member needs nothing
+    # more than its offset: the count is the bound and a C array has no padding.
+    assert "DC_DMA_CH_ARRAY_CHECK" not in output
+    assert "DC_DMA_CH_LAST_CHECK" not in output
     assert "/* DMA.CH[4].CTRL */" in output
     assert "#define DC_DMA_CH_CTRL(ch_index) (DC_DMA->CH[(ch_index)].CTRL)" in output
     assert "#define DC_DMA_CH_SRC(ch_index) (DC_DMA->CH[(ch_index)].SRC)" in output
-    assert (  # the last element is placed outright, so CH[k] is stated, not inferred
-        "REGFORGE_STATIC_ASSERT(offsetof(dc_dma_t, CH) + (DC_DMA_CH_COUNT - 1U) * "
-        "sizeof(((dc_dma_t *)0)->CH[0]) == DC_DMA_CH_OFFSET + (DC_DMA_CH_COUNT - 1U) * "
-        'DC_DMA_CH_STRIDE, DC_DMA_CH_LAST_CHECK, "DMA.CH[3] offset via the struct");' in output
-    )
     assert "#define DC_DMA_CH_CTRL_EN_Pos (0U)" in output  # fields are index-free
 
 
@@ -114,11 +109,13 @@ def test_array_register_inside_array_cluster_takes_two_indices():
         "#define DC_DMA_CH_BUF(ch_index, buf_index) "
         "(DC_DMA->CH[(ch_index)].BUF[(buf_index)])" in output
     )
-    assert (  # the inner array is placed inside its own type
-        "REGFORGE_STATIC_ASSERT(offsetof(dc_dma_ch_t, BUF) + (DC_DMA_CH_BUF_COUNT - 1U) * "
-        "sizeof(((dc_dma_ch_t *)0)->BUF[0]) == DC_DMA_CH_BUF_OFFSET + "
-        "(DC_DMA_CH_BUF_COUNT - 1U) * DC_DMA_CH_BUF_STRIDE, "
-        'DC_DMA_CH_BUF_LAST_CHECK, "DMA.CH.BUF[3] offset via the struct");' in output
+    assert (  # the inner array is asserted inside its own type: offset and element
+        "REGFORGE_STATIC_ASSERT(offsetof(dc_dma_ch_t, BUF) == DC_DMA_CH_BUF_OFFSET, "
+        'DC_DMA_CH_BUF_OFFSET_CHECK, "DMA.CH.BUF offset");' in output
+    )
+    assert (
+        "REGFORGE_STATIC_ASSERT(sizeof(((dc_dma_ch_t *)0)->BUF[0]) == DC_DMA_CH_BUF_STRIDE, "
+        'DC_DMA_CH_BUF_STRIDE_CHECK, "DMA.CH.BUF element size vs dimIncrement");' in output
     )
 
 

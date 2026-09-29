@@ -361,8 +361,6 @@ typedef struct {
 REGFORGE_STATIC_ASSERT(offsetof(dc_spi_t, CR) == DC_SPI_CR_OFFSET, DC_SPI_CR_OFFSET_CHECK, "SPI.CR offset");
 REGFORGE_STATIC_ASSERT(offsetof(dc_spi_t, DR) == DC_SPI_DR_OFFSET, DC_SPI_DR_OFFSET_CHECK, "SPI.DR offset");
 REGFORGE_STATIC_ASSERT(sizeof(((dc_spi_t *)0)->DR) == DC_SPI_DR_SIZE, DC_SPI_DR_SIZE_CHECK, "SPI.DR union size");
-REGFORGE_STATIC_ASSERT(offsetof(dc_spi_t, DR.DR) == DC_SPI_DR_OFFSET, DC_SPI_DR_DR_OFFSET_CHECK, "SPI.DR.DR offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_spi_t, DR.RXD) == DC_SPI_DR_OFFSET, DC_SPI_DR_RXD_OFFSET_CHECK, "SPI.DR.RXD offset");
 REGFORGE_STATIC_ASSERT(sizeof(dc_spi_t) == DC_SPI_SIZE, DC_SPI_SIZE_CHECK, "SPI struct size vs addressBlock");
 
 /* Per-instance names for the shared type, so a signature never has to know
@@ -430,8 +428,6 @@ REGFORGE_STATIC_ASSERT(offsetof(dc_tim1_t, ARR) == DC_TIM1_ARR_OFFSET, DC_TIM1_A
 REGFORGE_STATIC_ASSERT(offsetof(dc_tim1_t, RCR) == DC_TIM1_RCR_OFFSET, DC_TIM1_RCR_OFFSET_CHECK, "TIM1.RCR offset");
 REGFORGE_STATIC_ASSERT(offsetof(dc_tim1_t, CCMR1) == DC_TIM1_CCMR1_OFFSET, DC_TIM1_CCMR1_OFFSET_CHECK, "TIM1.CCMR1 offset");
 REGFORGE_STATIC_ASSERT(sizeof(((dc_tim1_t *)0)->CCMR1) == DC_TIM1_CCMR1_SIZE, DC_TIM1_CCMR1_SIZE_CHECK, "TIM1.CCMR1 union size");
-REGFORGE_STATIC_ASSERT(offsetof(dc_tim1_t, CCMR1.Output) == DC_TIM1_CCMR1_OFFSET, DC_TIM1_CCMR1_OUTPUT_OFFSET_CHECK, "TIM1.CCMR1.Output offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_tim1_t, CCMR1.Input) == DC_TIM1_CCMR1_OFFSET, DC_TIM1_CCMR1_INPUT_OFFSET_CHECK, "TIM1.CCMR1.Input offset");
 REGFORGE_STATIC_ASSERT(sizeof(dc_tim1_t) == DC_TIM1_SIZE, DC_TIM1_SIZE_CHECK, "TIM1 struct size vs addressBlock");
 
 /* TIM1 @ 0x40010000 */
@@ -536,8 +532,6 @@ typedef struct {
 REGFORGE_STATIC_ASSERT(offsetof(dc_adc_t, CR) == DC_ADC_CR_OFFSET, DC_ADC_CR_OFFSET_CHECK, "ADC.CR offset");
 REGFORGE_STATIC_ASSERT(offsetof(dc_adc_t, DR) == DC_ADC_DR_OFFSET, DC_ADC_DR_OFFSET_CHECK, "ADC.DR offset");
 REGFORGE_STATIC_ASSERT(sizeof(((dc_adc_t *)0)->DR) == DC_ADC_DR_SIZE, DC_ADC_DR_SIZE_CHECK, "ADC.DR union size");
-REGFORGE_STATIC_ASSERT(offsetof(dc_adc_t, DR.DR) == DC_ADC_DR_OFFSET, DC_ADC_DR_DR_OFFSET_CHECK, "ADC.DR.DR offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_adc_t, DR.DR_Cal) == DC_ADC_DR_OFFSET, DC_ADC_DR_DR_CAL_OFFSET_CHECK, "ADC.DR.DR_Cal offset");
 REGFORGE_STATIC_ASSERT(sizeof(dc_adc_t) == DC_ADC_SIZE, DC_ADC_SIZE_CHECK, "ADC struct size vs addressBlock");
 
 /* Per-instance names for the shared type, so a signature never has to know
@@ -657,9 +651,6 @@ typedef struct {
 } dc_crc_t;
 REGFORGE_STATIC_ASSERT(offsetof(dc_crc_t, DR) == DC_CRC_DR_OFFSET, DC_CRC_DR_OFFSET_CHECK, "CRC.DR offset");
 REGFORGE_STATIC_ASSERT(sizeof(((dc_crc_t *)0)->DR) == DC_CRC_DR_SIZE, DC_CRC_DR_SIZE_CHECK, "CRC.DR union size");
-REGFORGE_STATIC_ASSERT(offsetof(dc_crc_t, DR.DR) == DC_CRC_DR_OFFSET, DC_CRC_DR_DR_OFFSET_CHECK, "CRC.DR.DR offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_crc_t, DR.DR8) == DC_CRC_DR_OFFSET, DC_CRC_DR_DR8_OFFSET_CHECK, "CRC.DR.DR8 offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_crc_t, DR.DR16) == DC_CRC_DR_OFFSET, DC_CRC_DR_DR16_OFFSET_CHECK, "CRC.DR.DR16 offset");
 REGFORGE_STATIC_ASSERT(sizeof(dc_crc_t) == DC_CRC_SIZE, DC_CRC_SIZE_CHECK, "CRC struct size vs addressBlock");
 
 /* CRC @ 0x40014000 */
@@ -718,15 +709,9 @@ REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, CTRL) == DC_PWM_CTRL_OFFSET, DC_PWM_CT
 REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, CC) == DC_PWM_CC_OFFSET, DC_PWM_CC_OFFSET_CHECK, "PWM.CC offset");
 REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, DT0) == DC_PWM_DT0_OFFSET, DC_PWM_DT0_OFFSET_CHECK, "PWM.DT0 offset");
 REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, DT1) == DC_PWM_DT1_OFFSET, DC_PWM_DT1_OFFSET_CHECK, "PWM.DT1 offset");
-REGFORGE_STATIC_ASSERT(sizeof(((dc_pwm_t *)0)->CC) == DC_PWM_CC_COUNT * DC_PWM_CC_STRIDE, DC_PWM_CC_ARRAY_CHECK, "PWM.CC array size");
-REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, CC) + (DC_PWM_CC_COUNT - 1U) * sizeof(((dc_pwm_t *)0)->CC[0]) == DC_PWM_CC_OFFSET + (DC_PWM_CC_COUNT - 1U) * DC_PWM_CC_STRIDE, DC_PWM_CC_LAST_CHECK, "PWM.CC[3] offset via the struct");
-REGFORGE_STATIC_ASSERT(sizeof(((dc_pwm_t *)0)->CC[0]) == DC_PWM_CC_STRIDE, DC_PWM_CC_SIZE_CHECK, "PWM.CC union size vs dimIncrement");
+REGFORGE_STATIC_ASSERT(sizeof(((dc_pwm_t *)0)->CC[0]) == DC_PWM_CC_STRIDE, DC_PWM_CC_STRIDE_CHECK, "PWM.CC element size vs dimIncrement");
 REGFORGE_STATIC_ASSERT(sizeof(((dc_pwm_t *)0)->DT0) == DC_PWM_DT0_SIZE, DC_PWM_DT0_SIZE_CHECK, "PWM.DT0 union size");
-REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, DT0.DT0) == DC_PWM_DT0_OFFSET, DC_PWM_DT0_DT0_OFFSET_CHECK, "PWM.DT0.DT0 offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, DT0.DTR0) == DC_PWM_DT0_OFFSET, DC_PWM_DT0_DTR0_OFFSET_CHECK, "PWM.DT0.DTR0 offset");
 REGFORGE_STATIC_ASSERT(sizeof(((dc_pwm_t *)0)->DT1) == DC_PWM_DT1_SIZE, DC_PWM_DT1_SIZE_CHECK, "PWM.DT1 union size");
-REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, DT1.DT1) == DC_PWM_DT1_OFFSET, DC_PWM_DT1_DT1_OFFSET_CHECK, "PWM.DT1.DT1 offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, DT1.DTR1) == DC_PWM_DT1_OFFSET, DC_PWM_DT1_DTR1_OFFSET_CHECK, "PWM.DT1.DTR1 offset");
 REGFORGE_STATIC_ASSERT(sizeof(dc_pwm_t) == DC_PWM_SIZE, DC_PWM_SIZE_CHECK, "PWM struct size vs addressBlock");
 
 /* Per-instance names for the shared type, so a signature never has to know
@@ -833,9 +818,7 @@ REGFORGE_STATIC_ASSERT(offsetof(dc_dma_ch_t, SRC) == DC_DMA_CH_SRC_OFFSET, DC_DM
 REGFORGE_STATIC_ASSERT(offsetof(dc_dma_ch_t, DST) == DC_DMA_CH_DST_OFFSET, DC_DMA_CH_DST_OFFSET_CHECK, "DMA.CH.DST offset");
 REGFORGE_STATIC_ASSERT(offsetof(dc_dma_ch_t, XFER) == DC_DMA_CH_XFER_OFFSET, DC_DMA_CH_XFER_OFFSET_CHECK, "DMA.CH.XFER offset");
 REGFORGE_STATIC_ASSERT(sizeof(((dc_dma_ch_t *)0)->XFER) == DC_DMA_CH_XFER_SIZE, DC_DMA_CH_XFER_SIZE_CHECK, "DMA.CH.XFER union size");
-REGFORGE_STATIC_ASSERT(offsetof(dc_dma_ch_t, XFER.Mem) == DC_DMA_CH_XFER_OFFSET, DC_DMA_CH_XFER_MEM_OFFSET_CHECK, "DMA.CH.XFER.Mem offset");
-REGFORGE_STATIC_ASSERT(offsetof(dc_dma_ch_t, XFER.Periph) == DC_DMA_CH_XFER_OFFSET, DC_DMA_CH_XFER_PERIPH_OFFSET_CHECK, "DMA.CH.XFER.Periph offset");
-REGFORGE_STATIC_ASSERT(sizeof(dc_dma_ch_t) == DC_DMA_CH_STRIDE, DC_DMA_CH_SIZE_CHECK, "DMA.CH element size vs dimIncrement");
+REGFORGE_STATIC_ASSERT(sizeof(dc_dma_ch_t) == DC_DMA_CH_STRIDE, DC_DMA_CH_STRIDE_CHECK, "DMA.CH element size vs dimIncrement");
 
 /* DMA.STAT -- Status block */
 typedef struct {
@@ -856,8 +839,6 @@ typedef struct {
 REGFORGE_STATIC_ASSERT(offsetof(dc_dma_t, CFG) == DC_DMA_CFG_OFFSET, DC_DMA_CFG_OFFSET_CHECK, "DMA.CFG offset");
 REGFORGE_STATIC_ASSERT(offsetof(dc_dma_t, CH) == DC_DMA_CH_OFFSET, DC_DMA_CH_OFFSET_CHECK, "DMA.CH offset");
 REGFORGE_STATIC_ASSERT(offsetof(dc_dma_t, STAT) == DC_DMA_STAT_OFFSET, DC_DMA_STAT_OFFSET_CHECK, "DMA.STAT offset");
-REGFORGE_STATIC_ASSERT(sizeof(((dc_dma_t *)0)->CH) == DC_DMA_CH_COUNT * DC_DMA_CH_STRIDE, DC_DMA_CH_ARRAY_CHECK, "DMA.CH array size");
-REGFORGE_STATIC_ASSERT(offsetof(dc_dma_t, CH) + (DC_DMA_CH_COUNT - 1U) * sizeof(((dc_dma_t *)0)->CH[0]) == DC_DMA_CH_OFFSET + (DC_DMA_CH_COUNT - 1U) * DC_DMA_CH_STRIDE, DC_DMA_CH_LAST_CHECK, "DMA.CH[3] offset via the struct");
 REGFORGE_STATIC_ASSERT(sizeof(dc_dma_t) == DC_DMA_SIZE, DC_DMA_SIZE_CHECK, "DMA struct size vs addressBlock");
 
 /* DMA @ 0x40016000 */

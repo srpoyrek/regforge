@@ -62,16 +62,15 @@ def test_array_register_is_one_member_with_count_and_indexed_macro():
     )
     assert "/* PWM.CC[4] - Capture/compare */" in output
     assert "#define DC_PWM_CC_COUNT (4U)" in squashed  # the family constant, aligned
-    assert (  # the member holds exactly its elements
-        "REGFORGE_STATIC_ASSERT(sizeof(((dc_pwm_t *)0)->CC) == "
-        'DC_PWM_CC_COUNT * DC_PWM_CC_STRIDE, DC_PWM_CC_ARRAY_CHECK, "PWM.CC array size");' in output
+    assert (  # one element is exactly the stride
+        "REGFORGE_STATIC_ASSERT(sizeof(((dc_pwm_t *)0)->CC[0]) == DC_PWM_CC_STRIDE, "
+        'DC_PWM_CC_STRIDE_CHECK, "PWM.CC element size vs dimIncrement");' in output
     )
     assert "#define DC_PWM_CC(cc_index) (DC_PWM->CC[(cc_index)])" in output  # via the type
-    assert (  # the last element is placed outright, so CC[k] is stated, not inferred
-        "REGFORGE_STATIC_ASSERT(offsetof(dc_pwm_t, CC) + (DC_PWM_CC_COUNT - 1U) * "
-        "sizeof(((dc_pwm_t *)0)->CC[0]) == DC_PWM_CC_OFFSET + (DC_PWM_CC_COUNT - 1U) * "
-        'DC_PWM_CC_STRIDE, DC_PWM_CC_LAST_CHECK, "PWM.CC[3] offset via the struct");' in output
-    )
+    # The whole array's size and its last element are not asserted: a C array is
+    # contiguous, so both follow from the offset and the element size above.
+    assert "DC_PWM_CC_ARRAY_CHECK" not in output
+    assert "DC_PWM_CC_LAST_CHECK" not in output
     assert output.count("DC_PWM_CC_RESET_VALUE") == 1  # once per array, not per element
     assert "#define DC_PWM_CC_V_Pos (0U)" in output  # fields once, index-free
 
