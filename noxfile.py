@@ -85,14 +85,15 @@ def goldens(session: nox.Session) -> None:
     """Regenerate golden test fixtures from their inputs."""
     session.install("-e", ".")
     for name in ("minimal", "lint_demo"):
-        session.run(
-            "python",
-            "-m",
-            "regforge",
-            f"tests/fixtures/svd/{name}.svd",
-            "-o",
-            f"tests/golden/c/{name}.h",
-        )
+        for target, extension in (("c", "h"), ("html", "html")):
+            session.run(
+                "python",
+                "-m",
+                "regforge",
+                f"tests/fixtures/svd/{name}.svd",
+                "-o",
+                f"tests/golden/{target}/{name}.{extension}",
+            )
 
 
 @nox.session

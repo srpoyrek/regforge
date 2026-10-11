@@ -1,0 +1,2154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LintDemo register reference</title>
+<style>
+:root { --ink: #1c2530; --muted: #5d6b7a; --line: #d5dce4; --accent: #1f5fa8; --soft: #f3f6fa; --warn: #8a4b00; }
+* { box-sizing: border-box; }
+body { font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); margin: 0 auto; max-width: 1100px; padding: 24px; }
+h1 { font-size: 2rem; margin: 0 0 4px; }
+h2 { font-size: 1.5rem; margin: 40px 0 6px; border-bottom: 2px solid var(--accent); padding-bottom: 4px; }
+h3 { font-size: 1.15rem; margin: 28px 0 4px; }
+h3 small { font-weight: 400; color: var(--muted); font-size: .85em; margin-left: 8px; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+p, .desc { margin: 6px 0; white-space: pre-line; }
+code, .mono { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: .92em; }
+table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+th, td { border: 1px solid var(--line); padding: 5px 9px; text-align: left; vertical-align: top; }
+th { background: var(--soft); font-weight: 600; }
+table.facts { width: auto; }
+table.facts th { width: 11em; }
+table.facts caption { text-align: left; font-weight: 600; margin-bottom: 2px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 6px 0; color: var(--muted); }
+.meta b { color: var(--ink); font-weight: 600; }
+ul.notes { margin: 6px 0 6px 18px; padding: 0; color: var(--warn); }
+ul.enums { margin: 6px 0 2px 18px; padding: 0; list-style: none; }
+ul.enums li { margin: 1px 0; }
+ul.enums li.group { color: var(--muted); font-style: italic; }
+.alt { color: var(--muted); }
+article.register { margin-bottom: 20px; }
+table.bitmap { width: auto; table-layout: fixed; margin: 8px 0 12px; }
+table.bitmap td { text-align: center; min-width: 2.2em; padding: 3px 4px; font-size: .85em; }
+table.bitmap tr.numbers td { background: var(--soft); color: var(--muted); }
+table.bitmap td.field { background: #e4eefb; font-weight: 600; }
+table.bitmap td.reserved { background: #fafafa; color: var(--muted); }
+table.bitmap tr.resets td { color: var(--muted); }
+footer { margin-top: 48px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: .85em; }
+details { margin: 8px 0; color: var(--muted); }
+details pre { white-space: pre-wrap; }
+@media print {
+  body { max-width: none; padding: 0; font-size: 11px; }
+  section.peripheral { break-before: page; }
+  article.register { break-inside: avoid; }
+  a { color: inherit; }
+}
+</style>
+</head>
+<body>
+<header>
+<h1>LintDemo</h1>
+<table class="facts">
+<caption>Device</caption>
+<tr><th>Vendor</th><td>DemoCorp</td></tr>
+<tr><th>Address unit</th><td>8 bits</td></tr>
+<tr><th>Bus width</th><td>32 bits</td></tr>
+</table>
+
+
+
+</header>
+<nav>
+<h2>Peripherals</h2>
+<table>
+<tr><th>Peripheral</th><th>Base address</th><th>Interrupts</th><th>Description</th></tr>
+<tr><td><a href="#UART">UART</a></td><td class="mono">0x40004000</td><td></td><td></td></tr>
+
+<tr><td><a href="#TIMER">TIMER</a></td><td class="mono">0x40004200</td><td></td><td></td></tr>
+
+<tr><td><a href="#FLASH">FLASH</a></td><td class="mono">0x40010000</td><td></td><td></td></tr>
+
+<tr><td><a href="#DMA">DMA</a></td><td class="mono">0x40020000</td><td></td><td></td></tr>
+
+<tr><td><a href="#FIFO">FIFO</a></td><td class="mono">0x40040000</td><td></td><td></td></tr>
+
+<tr><td><a href="#MISC">MISC</a></td><td class="mono">0x40030000</td><td></td><td></td></tr>
+
+<tr><td><a href="#FPU_CPACR">FPU_CPACR</a></td><td class="mono">0x40050000</td><td></td><td></td></tr>
+
+<tr><td><a href="#FPU">FPU</a></td><td class="mono">0x40051000</td><td></td><td></td></tr>
+
+<tr><td><a href="#TMR0">TMR0</a></td><td class="mono">0x40052000</td><td></td><td></td></tr>
+
+<tr><td><a href="#TIMER_ADV">TIMER_ADV</a></td><td class="mono">0x40053000</td><td></td><td></td></tr>
+
+<tr><td><a href="#ADCA">ADCA</a></td><td class="mono">0x40054000</td><td>ADCA</td><td></td></tr>
+
+<tr><td><a href="#ADCB">ADCB</a></td><td class="mono">0x40055000</td><td></td><td></td></tr>
+
+<tr><td><a href="#TMRX0">TMRX0</a></td><td class="mono">0x40056000</td><td>TMRX0</td><td></td></tr>
+
+<tr><td><a href="#TMRX1">TMRX1</a></td><td class="mono">0x40056100</td><td>TMRX1</td><td></td></tr>
+
+<tr><td><a href="#DMAX">DMAX</a></td><td class="mono">0x40057000</td><td></td><td></td></tr>
+
+<tr><td><a href="#TMRY0">TMRY0</a></td><td class="mono">0x40058000</td><td></td><td></td></tr>
+
+<tr><td><a href="#TMRY1">TMRY1</a></td><td class="mono">0x40058100</td><td></td><td></td></tr>
+
+<tr><td><a href="#TMRZ0">TMRZ0</a></td><td class="mono">0x40059000</td><td></td><td></td></tr>
+
+<tr><td><a href="#TMRZ1">TMRZ1</a></td><td class="mono">0x40059100</td><td></td><td></td></tr>
+
+<tr><td><a href="#TMRZ2">TMRZ2</a></td><td class="mono">0x40059200</td><td></td><td></td></tr>
+
+<tr><td><a href="#TMRW">TMRW</a></td><td class="mono">0x4005A000</td><td></td><td></td></tr>
+
+<tr><td><a href="#NOTDIM">NOTDIM</a></td><td class="mono">0x4005B000</td><td></td><td></td></tr>
+
+<tr><td><a href="#SAME0">SAME0</a></td><td class="mono">0x4005D000</td><td></td><td></td></tr>
+
+<tr><td><a href="#SAME1">SAME1</a></td><td class="mono">0x4005D000</td><td></td><td></td></tr>
+
+<tr><td><a href="#PWMX">PWMX</a></td><td class="mono">0x4005E000</td><td></td><td></td></tr>
+
+<tr><td><a href="#FIFOX">FIFOX</a></td><td class="mono">0x4005F000</td><td></td><td></td></tr>
+
+<tr><td><a href="#OVL0">OVL0</a></td><td class="mono">0x40060000</td><td></td><td></td></tr>
+
+<tr><td><a href="#OVL1">OVL1</a></td><td class="mono">0x40060100</td><td></td><td></td></tr>
+
+<tr><td><a href="#SER0">SER0</a></td><td class="mono">0x40061000</td><td></td><td></td></tr>
+
+<tr><td><a href="#SER1">SER1</a></td><td class="mono">0x40061100</td><td></td><td></td></tr>
+
+<tr><td><a href="#SER2">SER2</a></td><td class="mono">0x40061200</td><td></td><td></td></tr>
+
+<tr><td><a href="#SER3">SER3</a></td><td class="mono">0x40061300</td><td></td><td></td></tr>
+
+<tr><td><a href="#SPIX">SPIX</a></td><td class="mono">0x40061380</td><td></td><td></td></tr>
+
+<tr><td><a href="#TMRV">TMRV</a></td><td class="mono">0x40062000</td><td>TMRV</td><td></td></tr>
+
+<tr><td><a href="#SERX0">SERX0</a></td><td class="mono">0x40063000</td><td></td><td></td></tr>
+
+<tr><td><a href="#SERX1">SERX1</a></td><td class="mono">0x40063200</td><td></td><td></td></tr>
+
+<tr><td><a href="#SERX2">SERX2</a></td><td class="mono">0x40063400</td><td></td><td></td></tr>
+
+<tr><td><a href="#SERX3">SERX3</a></td><td class="mono">0x40063600</td><td></td><td></td></tr>
+
+<tr><td><a href="#TMRU0">TMRU0</a></td><td class="mono">0x40064000</td><td>TMRU_IRQ</td><td></td></tr>
+
+<tr><td><a href="#TMRU1">TMRU1</a></td><td class="mono">0x40064100</td><td></td><td></td></tr>
+
+<tr><td><a href="#ALTX">ALTX</a></td><td class="mono">0x40070000</td><td></td><td></td></tr>
+
+</table>
+</nav>
+<section class="peripheral" id="UART">
+<h2>UART</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40004000</b></span>
+</div>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0400</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#UART.DR">DR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="UART.DR">
+<h3>DR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40004000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="TIMER">
+<h2>TIMER</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40004200</b></span>
+</div>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0100</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#TIMER.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="TIMER.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40004200</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="FLASH">
+<h2>FLASH</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40010000</b></span>
+</div>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0020</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#FLASH.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0040</td><td><a href="#FLASH.FAR">FAR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="FLASH.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40010000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="FLASH.FAR">
+<h3>FAR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0040</b></span>
+<span>Address <b class="mono">0x40010040</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="DMA">
+<h2>DMA</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40020000</b></span>
+</div>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0020</td><td>registers</td></tr>
+
+<tr><td class="mono">0x0010</td><td class="mono">0x0020</td><td>buffer</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#DMA.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="DMA.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40020000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="FIFO">
+<h2>FIFO</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40040000</b></span>
+</div>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0100</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#FIFO.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x2000</td><td><a href="#FIFO.DATA">DATA</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="FIFO.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40040000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="FIFO.DATA">
+<h3>DATA</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x2000</b></span>
+<span>Address <b class="mono">0x40042000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="MISC">
+<h2>MISC</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40030000</b></span>
+</div>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#MISC.REG">REG</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="MISC.REG">
+<h3>REG</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40030000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="FPU_CPACR">
+<h2>FPU_CPACR</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40050000</b></span>
+<span>Group <b>FPU</b></span>
+</div>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#FPU_CPACR.CPACR">CPACR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="FPU_CPACR.CPACR">
+<h3>CPACR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40050000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="FPU">
+<h2>FPU</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40051000</b></span>
+<span>Group <b>FPU</b></span>
+</div>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#FPU.FPCCR">FPCCR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0004</td><td><a href="#FPU.FPCAR">FPCAR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="FPU.FPCCR">
+<h3>FPCCR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40051000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="FPU.FPCAR">
+<h3>FPCAR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0004</b></span>
+<span>Address <b class="mono">0x40051004</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="TMR0">
+<h2>TMR0</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40052000</b></span>
+<span>Group <b>TMR</b></span>
+</div>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#TMR0.CR1">CR1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="TMR0.CR1">
+<h3>CR1</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40052000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="TIMER_ADV">
+<h2>TIMER_ADV</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40053000</b></span>
+<span>Group <b>TMR</b></span>
+</div>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#TIMER_ADV.CR1">CR1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0004</td><td><a href="#TIMER_ADV.RCR">RCR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="TIMER_ADV.CR1">
+<h3>CR1</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40053000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="TIMER_ADV.RCR">
+<h3>RCR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0004</b></span>
+<span>Address <b class="mono">0x40053004</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="ADCA">
+<h2>ADCA</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40054000</b></span>
+</div>
+<h3>Interrupts</h3>
+<table>
+<tr><th>Name</th><th>Vector</th><th>Description</th></tr>
+<tr><td>ADCA</td><td>40</td><td></td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#ADCA.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="ADCA.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40054000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="ADCB">
+<h2>ADCB</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40055000</b></span>
+<span>Same layout as <a href="#ADCA">ADCA</a></span>
+</div>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#ADCB.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="ADCB.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40055000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="TMRX0">
+<h2>TMRX0</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40056000</b></span>
+<span>Group <b>TMRX</b></span>
+<span>copy 1 of 2 of TMRX%s</span>
+</div>
+<h3>Interrupts</h3>
+<table>
+<tr><th>Name</th><th>Vector</th><th>Description</th></tr>
+<tr><td>TMRX0</td><td>41</td><td></td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#TMRX0.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="TMRX0.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40056000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="TMRX1">
+<h2>TMRX1</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40056100</b></span>
+<span>Group <b>TMRX</b></span>
+<span>copy 2 of 2 of TMRX%s</span>
+</div>
+<h3>Interrupts</h3>
+<table>
+<tr><th>Name</th><th>Vector</th><th>Description</th></tr>
+<tr><td>TMRX1</td><td>41</td><td></td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#TMRX1.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="TMRX1.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40056100</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="DMAX">
+<h2>DMAX</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40057000</b></span>
+</div>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#DMAX.CH.CTRL">CH.CTRL</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0020</td><td><a href="#DMAX.EXTRA.CTRL">EXTRA.CTRL</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="DMAX.CH.CTRL">
+<h3>CH.CTRL</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40057000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">array of 2, 0x10 units apart</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="DMAX.EXTRA.CTRL">
+<h3>EXTRA.CTRL</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0020</b></span>
+<span>Address <b class="mono">0x40057020</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="TMRY0">
+<h2>TMRY0</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40058000</b></span>
+<span>Group <b>TMRY</b></span>
+<span>copy 1 of 2 of TMRY</span>
+</div>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#TMRY0.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="TMRY0.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40058000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="TMRY1">
+<h2>TMRY1</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40058100</b></span>
+<span>Group <b>TMRY</b></span>
+<span>copy 2 of 2 of TMRY</span>
+</div>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#TMRY1.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="TMRY1.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40058100</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="TMRZ0">
+<h2>TMRZ0</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40059000</b></span>
+<span>Group <b>TMRZ</b></span>
+<span>copy 1 of 3 of TMRZ%s</span>
+</div>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#TMRZ0.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="TMRZ0.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40059000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="TMRZ1">
+<h2>TMRZ1</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40059100</b></span>
+<span>Group <b>TMRZ</b></span>
+<span>copy 2 of 3 of TMRZ%s</span>
+</div>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#TMRZ1.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="TMRZ1.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40059100</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="TMRZ2">
+<h2>TMRZ2</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40059200</b></span>
+<span>Group <b>TMRZ</b></span>
+<span>copy 3 of 3 of TMRZ%s</span>
+</div>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#TMRZ2.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="TMRZ2.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40059200</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="TMRW">
+<h2>TMRW</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x4005A000</b></span>
+</div>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#TMRW.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="TMRW.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x4005A000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="NOTDIM">
+<h2>NOTDIM</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x4005B000</b></span>
+</div>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#NOTDIM.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="NOTDIM.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x4005B000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="SAME0">
+<h2>SAME0</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x4005D000</b></span>
+<span>Group <b>SAME</b></span>
+<span>copy 1 of 2 of SAME%s</span>
+</div>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#SAME0.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="SAME0.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x4005D000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="SAME1">
+<h2>SAME1</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x4005D000</b></span>
+<span>Group <b>SAME</b></span>
+<span>copy 2 of 2 of SAME%s</span>
+</div>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#SAME1.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="SAME1.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x4005D000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="PWMX">
+<h2>PWMX</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x4005E000</b></span>
+</div>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0020</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#PWMX.CH">CH</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="PWMX.CH">
+<h3>CH</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x4005E000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">array of 4, 0x8 units apart</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="FIFOX">
+<h2>FIFOX</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x4005F000</b></span>
+</div>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0020</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#FIFOX.DATA0">DATA0</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0004</td><td><a href="#FIFOX.DATA1">DATA1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0008</td><td><a href="#FIFOX.DATA2">DATA2</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x000C</td><td><a href="#FIFOX.DATA3">DATA3</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0010</td><td><a href="#FIFOX.DATA4">DATA4</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0014</td><td><a href="#FIFOX.DATA5">DATA5</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0018</td><td><a href="#FIFOX.DATA6">DATA6</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x001C</td><td><a href="#FIFOX.DATA7">DATA7</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0020</td><td><a href="#FIFOX.DATA8">DATA8</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0024</td><td><a href="#FIFOX.DATA9">DATA9</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0028</td><td><a href="#FIFOX.DATA10">DATA10</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x002C</td><td><a href="#FIFOX.DATA11">DATA11</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0030</td><td><a href="#FIFOX.DATA12">DATA12</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0034</td><td><a href="#FIFOX.DATA13">DATA13</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0038</td><td><a href="#FIFOX.DATA14">DATA14</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x003C</td><td><a href="#FIFOX.DATA15">DATA15</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="FIFOX.DATA0">
+<h3>DATA0</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x4005F000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">copy 1 of 16 of DATA%s</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="FIFOX.DATA1">
+<h3>DATA1</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0004</b></span>
+<span>Address <b class="mono">0x4005F004</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">copy 2 of 16 of DATA%s</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="FIFOX.DATA2">
+<h3>DATA2</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0008</b></span>
+<span>Address <b class="mono">0x4005F008</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">copy 3 of 16 of DATA%s</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="FIFOX.DATA3">
+<h3>DATA3</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x000C</b></span>
+<span>Address <b class="mono">0x4005F00C</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">copy 4 of 16 of DATA%s</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="FIFOX.DATA4">
+<h3>DATA4</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0010</b></span>
+<span>Address <b class="mono">0x4005F010</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">copy 5 of 16 of DATA%s</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="FIFOX.DATA5">
+<h3>DATA5</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0014</b></span>
+<span>Address <b class="mono">0x4005F014</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">copy 6 of 16 of DATA%s</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="FIFOX.DATA6">
+<h3>DATA6</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0018</b></span>
+<span>Address <b class="mono">0x4005F018</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">copy 7 of 16 of DATA%s</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="FIFOX.DATA7">
+<h3>DATA7</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x001C</b></span>
+<span>Address <b class="mono">0x4005F01C</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">copy 8 of 16 of DATA%s</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="FIFOX.DATA8">
+<h3>DATA8</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0020</b></span>
+<span>Address <b class="mono">0x4005F020</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">copy 9 of 16 of DATA%s</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="FIFOX.DATA9">
+<h3>DATA9</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0024</b></span>
+<span>Address <b class="mono">0x4005F024</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">copy 10 of 16 of DATA%s</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="FIFOX.DATA10">
+<h3>DATA10</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0028</b></span>
+<span>Address <b class="mono">0x4005F028</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">copy 11 of 16 of DATA%s</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="FIFOX.DATA11">
+<h3>DATA11</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x002C</b></span>
+<span>Address <b class="mono">0x4005F02C</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">copy 12 of 16 of DATA%s</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="FIFOX.DATA12">
+<h3>DATA12</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0030</b></span>
+<span>Address <b class="mono">0x4005F030</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">copy 13 of 16 of DATA%s</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="FIFOX.DATA13">
+<h3>DATA13</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0034</b></span>
+<span>Address <b class="mono">0x4005F034</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">copy 14 of 16 of DATA%s</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="FIFOX.DATA14">
+<h3>DATA14</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0038</b></span>
+<span>Address <b class="mono">0x4005F038</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">copy 15 of 16 of DATA%s</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="FIFOX.DATA15">
+<h3>DATA15</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x003C</b></span>
+<span>Address <b class="mono">0x4005F03C</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">copy 16 of 16 of DATA%s</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="OVL0">
+<h2>OVL0</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40060000</b></span>
+<span>Group <b>OVL</b></span>
+<span>copy 1 of 2 of OVL%s</span>
+</div>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0400</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#OVL0.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="OVL0.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40060000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="OVL1">
+<h2>OVL1</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40060100</b></span>
+<span>Group <b>OVL</b></span>
+<span>copy 2 of 2 of OVL%s</span>
+</div>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0400</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#OVL1.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="OVL1.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40060100</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="SER0">
+<h2>SER0</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40061000</b></span>
+<span>Group <b>SER</b></span>
+<span>copy 1 of 4 of SER%s</span>
+</div>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0100</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#SER0.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="SER0.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40061000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="SER1">
+<h2>SER1</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40061100</b></span>
+<span>Group <b>SER</b></span>
+<span>copy 2 of 4 of SER%s</span>
+</div>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0100</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#SER1.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="SER1.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40061100</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="SER2">
+<h2>SER2</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40061200</b></span>
+<span>Group <b>SER</b></span>
+<span>copy 3 of 4 of SER%s</span>
+</div>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0100</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#SER2.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="SER2.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40061200</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="SER3">
+<h2>SER3</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40061300</b></span>
+<span>Group <b>SER</b></span>
+<span>copy 4 of 4 of SER%s</span>
+</div>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0100</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#SER3.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="SER3.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40061300</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="SPIX">
+<h2>SPIX</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40061380</b></span>
+</div>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#SPIX.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="SPIX.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40061380</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="TMRV">
+<h2>TMRV</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40062000</b></span>
+<span>Same layout as <a href="#TMRX0">TMRX0</a></span>
+</div>
+<h3>Interrupts</h3>
+<table>
+<tr><th>Name</th><th>Vector</th><th>Description</th></tr>
+<tr><td>TMRV</td><td>42</td><td></td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#TMRV.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="TMRV.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40062000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="SERX0">
+<h2>SERX0</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40063000</b></span>
+<span>Group <b>SERX</b></span>
+<span>Same layout as <a href="#SER0">SER0</a></span>
+<span>copy 1 of 4 of SERX%s</span>
+</div>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0100</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#SERX0.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="SERX0.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40063000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="SERX1">
+<h2>SERX1</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40063200</b></span>
+<span>Group <b>SERX</b></span>
+<span>Same layout as <a href="#SER0">SER0</a></span>
+<span>copy 2 of 4 of SERX%s</span>
+</div>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0100</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#SERX1.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="SERX1.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40063200</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="SERX2">
+<h2>SERX2</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40063400</b></span>
+<span>Group <b>SERX</b></span>
+<span>Same layout as <a href="#SER0">SER0</a></span>
+<span>copy 3 of 4 of SERX%s</span>
+</div>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0100</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#SERX2.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="SERX2.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40063400</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="SERX3">
+<h2>SERX3</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40063600</b></span>
+<span>Group <b>SERX</b></span>
+<span>Same layout as <a href="#SER0">SER0</a></span>
+<span>copy 4 of 4 of SERX%s</span>
+</div>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0100</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#SERX3.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="SERX3.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40063600</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="TMRU0">
+<h2>TMRU0</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40064000</b></span>
+<span>Group <b>TMRU</b></span>
+<span>copy 1 of 2 of TMRU%s</span>
+</div>
+<h3>Interrupts</h3>
+<table>
+<tr><th>Name</th><th>Vector</th><th>Description</th></tr>
+<tr><td>TMRU_IRQ</td><td>43</td><td></td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#TMRU0.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="TMRU0.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40064000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="TMRU1">
+<h2>TMRU1</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40064100</b></span>
+<span>Group <b>TMRU</b></span>
+<span>copy 2 of 2 of TMRU%s</span>
+</div>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#TMRU1.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="TMRU1.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40064100</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="ALTX">
+<h2>ALTX</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40070000</b></span>
+</div>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0040</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#ALTX.A_Out">A_Out</a></td><td>32 bits</td><td>RW</td><td class="mono">0x00000000</td><td></td></tr>
+
+<tr><td class="mono">0x0000</td><td><a href="#ALTX.A_In">A_In</a></td><td>32 bits</td><td>RW</td><td class="mono">0x000000FF</td><td></td></tr>
+
+<tr><td class="mono">0x0008</td><td><a href="#ALTX.B">B</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0010</td><td><a href="#ALTX.C">C</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0014</td><td><a href="#ALTX.CCR">CCR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0018</td><td><a href="#ALTX.CCR_X">CCR_X</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0018</td><td><a href="#ALTX.CCR_Y">CCR_Y</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0020</td><td><a href="#ALTX.D">D</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0028</td><td><a href="#ALTX.F">F</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+<tr><td class="mono">0x0030</td><td><a href="#ALTX.G">G</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td></td></tr>
+
+</table>
+<article class="register" id="ALTX.A_Out">
+<h3>A_Out</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40070000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">0x00000000</b></span>
+</div>
+<p class="alt">Shares this address with A_In: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="ALTX.A_In">
+<h3>A_In</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40070000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">0x000000FF</b></span>
+</div>
+<p class="alt">Shares this address with A_Out: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="ALTX.B">
+<h3>B</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0008</b></span>
+<span>Address <b class="mono">0x40070008</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="ALTX.C">
+<h3>C</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0010</b></span>
+<span>Address <b class="mono">0x40070010</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="ALTX.CCR">
+<h3>CCR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0014</b></span>
+<span>Address <b class="mono">0x40070014</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="ALTX.CCR_X">
+<h3>CCR_X</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0018</b></span>
+<span>Address <b class="mono">0x40070018</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">Shares this address with CCR_Y: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="ALTX.CCR_Y">
+<h3>CCR_Y</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0018</b></span>
+<span>Address <b class="mono">0x40070018</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">Shares this address with CCR_X: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="ALTX.D">
+<h3>D</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0020</b></span>
+<span>Address <b class="mono">0x40070020</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="ALTX.F">
+<h3>F</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0028</b></span>
+<span>Address <b class="mono">0x40070028</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">array of 2, 0x4 units apart</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="ALTX.G">
+<h3>G</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0030</b></span>
+<span>Address <b class="mono">0x40070030</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="alt">array of 3, 0x4 units apart</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<footer>
+Generated by regforge 0.0.1 from <b>lint_demo.svd</b> (sha256 <span class="mono" title="61cac394cae331da8a7428e940bc06ff7f4bc205f059d841cf5e1fe898ba5d89">61cac394cae331da</span>).<br>
+Command: <span class="mono">regforge tests/fixtures/svd/lint_demo.svd -o tests/golden/html/lint_demo.html</span>
+</footer>
+
+</body>
+</html>

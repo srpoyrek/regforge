@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DemoMCU register reference</title>
+<style>
+:root { --ink: #1c2530; --muted: #5d6b7a; --line: #d5dce4; --accent: #1f5fa8; --soft: #f3f6fa; --warn: #8a4b00; }
+* { box-sizing: border-box; }
+body { font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); margin: 0 auto; max-width: 1100px; padding: 24px; }
+h1 { font-size: 2rem; margin: 0 0 4px; }
+h2 { font-size: 1.5rem; margin: 40px 0 6px; border-bottom: 2px solid var(--accent); padding-bottom: 4px; }
+h3 { font-size: 1.15rem; margin: 28px 0 4px; }
+h3 small { font-weight: 400; color: var(--muted); font-size: .85em; margin-left: 8px; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+p, .desc { margin: 6px 0; white-space: pre-line; }
+code, .mono { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: .92em; }
+table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+th, td { border: 1px solid var(--line); padding: 5px 9px; text-align: left; vertical-align: top; }
+th { background: var(--soft); font-weight: 600; }
+table.facts { width: auto; }
+table.facts th { width: 11em; }
+table.facts caption { text-align: left; font-weight: 600; margin-bottom: 2px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 6px 0; color: var(--muted); }
+.meta b { color: var(--ink); font-weight: 600; }
+ul.notes { margin: 6px 0 6px 18px; padding: 0; color: var(--warn); }
+ul.enums { margin: 6px 0 2px 18px; padding: 0; list-style: none; }
+ul.enums li { margin: 1px 0; }
+ul.enums li.group { color: var(--muted); font-style: italic; }
+.alt { color: var(--muted); }
+article.register { margin-bottom: 20px; }
+table.bitmap { width: auto; table-layout: fixed; margin: 8px 0 12px; }
+table.bitmap td { text-align: center; min-width: 2.2em; padding: 3px 4px; font-size: .85em; }
+table.bitmap tr.numbers td { background: var(--soft); color: var(--muted); }
+table.bitmap td.field { background: #e4eefb; font-weight: 600; }
+table.bitmap td.reserved { background: #fafafa; color: var(--muted); }
+table.bitmap tr.resets td { color: var(--muted); }
+footer { margin-top: 48px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: .85em; }
+details { margin: 8px 0; color: var(--muted); }
+details pre { white-space: pre-wrap; }
+@media print {
+  body { max-width: none; padding: 0; font-size: 11px; }
+  section.peripheral { break-before: page; }
+  article.register { break-inside: avoid; }
+  a { color: inherit; }
+}
+</style>
+</head>
+<body>
+<header>
+<h1>DemoMCU</h1>
+<p class="desc">Minimal demo device used by the regforge test suite</p>
+<table class="facts">
+<caption>Device</caption>
+<tr><th>Vendor</th><td>DemoCorp</td></tr>
+<tr><th>Series</th><td>DemoSeries</td></tr>
+<tr><th>Version</th><td>1.0</td></tr>
+<tr><th>Address unit</th><td>8 bits</td></tr>
+<tr><th>Bus width</th><td>32 bits</td></tr>
+</table>
+
+<table class="facts">
+<caption>Processor</caption>
+<tr><th>Core</th><td>CM0PLUS</td></tr>
+<tr><th>Revision</th><td>r0p1</td></tr>
+<tr><th>Endianness</th><td>little</td></tr>
+<tr><th>MPU</th><td>yes</td></tr>
+<tr><th>FPU</th><td>no</td></tr>
+<tr><th>VTOR</th><td>yes</td></tr>
+<tr><th>NVIC priority bits</th><td>2</td></tr>
+<tr><th>Interrupts</th><td>32</td></tr>
+</table>
+
+<details>
+<summary>Licence</summary>
+<pre>Copyright (c) 2024 DemoCorp.
+Licensed under the Apache License, Version 2.0.</pre>
+</details>
+
+</header>
+<nav>
+<h2>Peripherals</h2>
+<table>
+<tr><th>Peripheral</th><th>Base address</th><th>Interrupts</th><th>Description</th></tr>
+<tr><td><a href="#GPIOA">GPIOA</a></td><td class="mono">0x40020000</td><td></td><td>General purpose I/O port A</td></tr>
+
+<tr><td><a href="#UART0">UART0</a></td><td class="mono">0x40004000</td><td>UART0</td><td>Universal async receiver/transmitter</td></tr>
+
+<tr><td><a href="#UART1">UART1</a></td><td class="mono">0x40004400</td><td>UART1</td><td>UART, instance 1</td></tr>
+
+<tr><td><a href="#SPI0">SPI0</a></td><td class="mono">0x40008000</td><td>SPI0</td><td>Serial peripheral interface</td></tr>
+
+<tr><td><a href="#SPI1">SPI1</a></td><td class="mono">0x40008400</td><td>SPI1</td><td>Serial peripheral interface</td></tr>
+
+<tr><td><a href="#TIM1">TIM1</a></td><td class="mono">0x40010000</td><td>TIM1_UP, TIM1_BRK</td><td>Advanced timer</td></tr>
+
+<tr><td><a href="#TIM2">TIM2</a></td><td class="mono">0x40000000</td><td></td><td>General-purpose timer</td></tr>
+
+<tr><td><a href="#TIM3">TIM3</a></td><td class="mono">0x40000400</td><td></td><td>General-purpose timer</td></tr>
+
+<tr><td><a href="#ADC0">ADC0</a></td><td class="mono">0x40012000</td><td>ADC0</td><td>Analog-to-digital converter</td></tr>
+
+<tr><td><a href="#ADC1">ADC1</a></td><td class="mono">0x40012400</td><td>ADC1</td><td>ADC, instance 1</td></tr>
+
+<tr><td><a href="#WDT0">WDT0</a></td><td class="mono">0x40013000</td><td></td><td>Watchdog timer</td></tr>
+
+<tr><td><a href="#WDT1">WDT1</a></td><td class="mono">0x40013400</td><td></td><td>Watchdog, instance 1 (adds a reload register)</td></tr>
+
+<tr><td><a href="#CRC">CRC</a></td><td class="mono">0x40014000</td><td></td><td>Cyclic redundancy check</td></tr>
+
+<tr><td><a href="#PWMA">PWMA</a></td><td class="mono">0x40015000</td><td></td><td>Pulse-width modulator</td></tr>
+
+<tr><td><a href="#PWMB">PWMB</a></td><td class="mono">0x40015100</td><td></td><td>Pulse-width modulator</td></tr>
+
+<tr><td><a href="#DMA">DMA</a></td><td class="mono">0x40016000</td><td></td><td>Direct memory access</td></tr>
+
+</table>
+</nav>
+<section class="peripheral" id="GPIOA">
+<h2>GPIOA</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40020000</b></span>
+</div>
+<p class="desc">General purpose I/O port A</p>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0020</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#GPIOA.MODER">MODER</a></td><td>32 bits</td><td>RW</td><td class="mono">0x00000000</td><td>Mode register</td></tr>
+
+<tr><td class="mono">0x0010</td><td><a href="#GPIOA.IDR">IDR</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Input data register</td></tr>
+
+<tr><td class="mono">0x0014</td><td><a href="#GPIOA.ODR">ODR</a></td><td>32 bits</td><td>RW</td><td class="mono">0x00000000</td><td>Output data register</td></tr>
+
+</table>
+<article class="register" id="GPIOA.MODER">
+<h3>MODER</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40020000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">0x00000000</b></span>
+</div>
+<p class="desc">Mode register</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="28" class="reserved"></td><td colspan="2" class="field">MODE1</td><td colspan="2" class="field">MODE0</td></tr>
+<tr class="resets"><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+</table>
+
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">[1:0]</td><td>MODE0</td><td>RW</td><td class="mono">0x0</td><td>
+<div class="desc">Pin mode</div>
+<ul class="enums">
+<li><span class="mono">0x0</span> <b>INPUT</b></li>
+
+<li><span class="mono">0x1</span> <b>OUTPUT</b></li>
+
+<li><span class="mono">0x2</span> <b>ALTERNATE</b></li>
+
+<li><span class="mono">0x3</span> <b>ANALOG</b></li>
+
+</ul>
+
+<ul class="notes">
+<li>copy 1 of 2 of MODE%s</li>
+</ul>
+</td></tr>
+
+<tr><td class="mono">[3:2]</td><td>MODE1</td><td>RW</td><td class="mono">0x0</td><td>
+<div class="desc">Pin mode</div>
+<ul class="enums">
+<li><span class="mono">0x0</span> <b>INPUT</b></li>
+
+<li><span class="mono">0x1</span> <b>OUTPUT</b></li>
+
+<li><span class="mono">0x2</span> <b>ALTERNATE</b></li>
+
+<li><span class="mono">0x3</span> <b>ANALOG</b></li>
+
+</ul>
+
+<ul class="notes">
+<li>copy 2 of 2 of MODE%s</li>
+</ul>
+</td></tr>
+
+</table>
+</article>
+
+<article class="register" id="GPIOA.IDR">
+<h3>IDR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0010</b></span>
+<span>Address <b class="mono">0x40020010</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RO</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Input data register</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="GPIOA.ODR">
+<h3>ODR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0014</b></span>
+<span>Address <b class="mono">0x40020014</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">0x00000000</b></span>
+<span>Reset mask <b class="mono">0x0000FFFF</b></span>
+</div>
+<p class="desc">Output data register</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="16" class="reserved"></td><td colspan="1" class="field">OD[15]</td><td colspan="1" class="field">OD[14]</td><td colspan="1" class="field">OD[13]</td><td colspan="1" class="field">OD[12]</td><td colspan="1" class="field">OD[11]</td><td colspan="1" class="field">OD[10]</td><td colspan="1" class="field">OD[9]</td><td colspan="1" class="field">OD[8]</td><td colspan="1" class="field">OD[7]</td><td colspan="1" class="field">OD[6]</td><td colspan="1" class="field">OD[5]</td><td colspan="1" class="field">OD[4]</td><td colspan="1" class="field">OD[3]</td><td colspan="1" class="field">OD[2]</td><td colspan="1" class="field">OD[1]</td><td colspan="1" class="field">OD[0]</td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+</table>
+
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">[0]</td><td>OD</td><td>RW</td><td class="mono">0x0</td><td>
+<div class="desc">Port output data bit</div>
+<ul class="notes">
+<li>array of 16, 0x1 bits apart</li>
+</ul>
+</td></tr>
+
+</table>
+</article>
+
+</section>
+
+<section class="peripheral" id="UART0">
+<h2>UART0</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40004000</b></span>
+<span>Group <b>UART</b></span>
+</div>
+<p class="desc">Universal async receiver/transmitter</p>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0008</td><td>registers</td></tr>
+
+<tr><td class="mono">0x0008</td><td class="mono">0x0020</td><td>buffer</td></tr>
+
+</table>
+<h3>Interrupts</h3>
+<table>
+<tr><th>Name</th><th>Vector</th><th>Description</th></tr>
+<tr><td>UART0</td><td>20</td><td>UART0 global interrupt</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#UART0.DR">DR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Data register</td></tr>
+
+<tr><td class="mono">0x0004</td><td><a href="#UART0.SR">SR</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Status register</td></tr>
+
+</table>
+<article class="register" id="UART0.DR">
+<h3>DR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40004000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Data register</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="UART0.SR">
+<h3>SR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0004</b></span>
+<span>Address <b class="mono">0x40004004</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RO</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Status register</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="UART1">
+<h2>UART1</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40004400</b></span>
+<span>Same layout as <a href="#UART0">UART0</a></span>
+</div>
+<p class="desc">UART, instance 1</p>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0008</td><td>registers</td></tr>
+
+<tr><td class="mono">0x0008</td><td class="mono">0x0020</td><td>buffer</td></tr>
+
+</table>
+<h3>Interrupts</h3>
+<table>
+<tr><th>Name</th><th>Vector</th><th>Description</th></tr>
+<tr><td>UART1</td><td>21</td><td>UART1 global interrupt</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#UART1.DR">DR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Data register</td></tr>
+
+<tr><td class="mono">0x0004</td><td><a href="#UART1.SR">SR</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Status register</td></tr>
+
+</table>
+<article class="register" id="UART1.DR">
+<h3>DR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40004400</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Data register</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="UART1.SR">
+<h3>SR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0004</b></span>
+<span>Address <b class="mono">0x40004404</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RO</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Status register</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="SPI0">
+<h2>SPI0</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40008000</b></span>
+<span>Group <b>SPI</b></span>
+</div>
+<p class="desc">Serial peripheral interface</p>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0400</td><td>registers</td></tr>
+
+</table>
+<h3>Interrupts</h3>
+<table>
+<tr><th>Name</th><th>Vector</th><th>Description</th></tr>
+<tr><td>SPI0</td><td>30</td><td>SPI0 interrupt</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#SPI0.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
+
+<tr><td class="mono">0x0004</td><td><a href="#SPI0.DR">DR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Data register</td></tr>
+
+<tr><td class="mono">0x0004</td><td><a href="#SPI0.RXD">RXD</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Receive data (read view of DR)</td></tr>
+
+</table>
+<article class="register" id="SPI0.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40008000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Control register</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="SPI0.DR">
+<h3>DR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0004</b></span>
+<span>Address <b class="mono">0x40008004</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Data register</p>
+<p class="alt">Shares this address with RXD: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="SPI0.RXD">
+<h3>RXD</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0004</b></span>
+<span>Address <b class="mono">0x40008004</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RO</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Receive data (read view of DR)</p>
+<p class="alt">Shares this address with DR: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="SPI1">
+<h2>SPI1</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40008400</b></span>
+<span>Group <b>SPI</b></span>
+</div>
+<p class="desc">Serial peripheral interface</p>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0400</td><td>registers</td></tr>
+
+</table>
+<h3>Interrupts</h3>
+<table>
+<tr><th>Name</th><th>Vector</th><th>Description</th></tr>
+<tr><td>SPI1</td><td>30</td><td>SPI1 interrupt</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#SPI1.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
+
+<tr><td class="mono">0x0004</td><td><a href="#SPI1.DR">DR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Data register</td></tr>
+
+<tr><td class="mono">0x0004</td><td><a href="#SPI1.RXD">RXD</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Receive data (read view of DR)</td></tr>
+
+</table>
+<article class="register" id="SPI1.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40008400</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Control register</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="SPI1.DR">
+<h3>DR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0004</b></span>
+<span>Address <b class="mono">0x40008404</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Data register</p>
+<p class="alt">Shares this address with RXD: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="SPI1.RXD">
+<h3>RXD</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0004</b></span>
+<span>Address <b class="mono">0x40008404</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RO</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Receive data (read view of DR)</p>
+<p class="alt">Shares this address with DR: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="TIM1">
+<h2>TIM1</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40010000</b></span>
+<span>Group <b>TIM1</b></span>
+</div>
+<p class="desc">Advanced timer</p>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0020</td><td>registers</td></tr>
+
+</table>
+<h3>Interrupts</h3>
+<table>
+<tr><th>Name</th><th>Vector</th><th>Description</th></tr>
+<tr><td>TIM1_UP</td><td>25</td><td>TIM1 update</td></tr>
+
+<tr><td>TIM1_BRK</td><td>26</td><td>TIM1 break</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#TIM1.CR1">CR1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register 1</td></tr>
+
+<tr><td class="mono">0x0004</td><td><a href="#TIM1.ARR">ARR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Auto-reload register</td></tr>
+
+<tr><td class="mono">0x0008</td><td><a href="#TIM1.RCR">RCR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Repetition counter (advanced only)</td></tr>
+
+<tr><td class="mono">0x000C</td><td><a href="#TIM1.CCMR1_Output">CCMR1_Output</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Capture/compare mode (output)</td></tr>
+
+<tr><td class="mono">0x000C</td><td><a href="#TIM1.CCMR1_Input">CCMR1_Input</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Capture/compare mode (input)</td></tr>
+
+</table>
+<article class="register" id="TIM1.CR1">
+<h3>CR1</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40010000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Control register 1</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="TIM1.ARR">
+<h3>ARR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0004</b></span>
+<span>Address <b class="mono">0x40010004</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Auto-reload register</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="TIM1.RCR">
+<h3>RCR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0008</b></span>
+<span>Address <b class="mono">0x40010008</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Repetition counter (advanced only)</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="TIM1.CCMR1_Output">
+<h3>CCMR1_Output</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x000C</b></span>
+<span>Address <b class="mono">0x4001000C</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Capture/compare mode (output)</p>
+<p class="alt">Shares this address with CCMR1_Input: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="25" class="reserved"></td><td colspan="3" class="field">OC1M</td><td colspan="2" class="reserved"></td><td colspan="2" class="field">CC1S</td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">[1:0]</td><td>CC1S</td><td>RW</td><td class="mono">–</td><td>
+<div class="desc">Capture/compare 1 selection</div>
+</td></tr>
+
+<tr><td class="mono">[6:4]</td><td>OC1M</td><td>RW</td><td class="mono">–</td><td>
+<div class="desc">Output compare 1 mode</div>
+</td></tr>
+
+</table>
+</article>
+
+<article class="register" id="TIM1.CCMR1_Input">
+<h3>CCMR1_Input</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x000C</b></span>
+<span>Address <b class="mono">0x4001000C</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Capture/compare mode (input)</p>
+<p class="alt">Shares this address with CCMR1_Output: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="24" class="reserved"></td><td colspan="4" class="field">IC1F</td><td colspan="2" class="reserved"></td><td colspan="2" class="field">CC1S</td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">[1:0]</td><td>CC1S</td><td>RW</td><td class="mono">–</td><td>
+<div class="desc">Capture/compare 1 selection</div>
+</td></tr>
+
+<tr><td class="mono">[7:4]</td><td>IC1F</td><td>RW</td><td class="mono">–</td><td>
+<div class="desc">Input capture 1 filter</div>
+</td></tr>
+
+</table>
+</article>
+
+</section>
+
+<section class="peripheral" id="TIM2">
+<h2>TIM2</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40000000</b></span>
+<span>Group <b>TIM</b></span>
+</div>
+<p class="desc">General-purpose timer</p>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0020</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#TIM2.CR1">CR1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register 1</td></tr>
+
+<tr><td class="mono">0x0004</td><td><a href="#TIM2.ARR">ARR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Auto-reload register</td></tr>
+
+</table>
+<article class="register" id="TIM2.CR1">
+<h3>CR1</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40000000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Control register 1</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="TIM2.ARR">
+<h3>ARR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0004</b></span>
+<span>Address <b class="mono">0x40000004</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Auto-reload register</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="TIM3">
+<h2>TIM3</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40000400</b></span>
+<span>Group <b>TIM</b></span>
+</div>
+<p class="desc">General-purpose timer</p>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0020</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#TIM3.CR1">CR1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register 1</td></tr>
+
+<tr><td class="mono">0x0004</td><td><a href="#TIM3.ARR">ARR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Auto-reload register</td></tr>
+
+</table>
+<article class="register" id="TIM3.CR1">
+<h3>CR1</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40000400</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Control register 1</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="TIM3.ARR">
+<h3>ARR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0004</b></span>
+<span>Address <b class="mono">0x40000404</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Auto-reload register</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="ADC0">
+<h2>ADC0</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40012000</b></span>
+</div>
+<p class="desc">Analog-to-digital converter</p>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0010</td><td>registers</td></tr>
+
+</table>
+<h3>Interrupts</h3>
+<table>
+<tr><th>Name</th><th>Vector</th><th>Description</th></tr>
+<tr><td>ADC0</td><td>27</td><td>ADC0 conversion complete</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#ADC0.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
+
+<tr><td class="mono">0x0004</td><td><a href="#ADC0.DR">DR</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Data register</td></tr>
+
+<tr><td class="mono">0x0004</td><td><a href="#ADC0.DR_Cal">DR_Cal</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Calibrated data (alternate group of DR)</td></tr>
+
+</table>
+<article class="register" id="ADC0.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40012000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Control register</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="ADC0.DR">
+<h3>DR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0004</b></span>
+<span>Address <b class="mono">0x40012004</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RO</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Data register</p>
+<p class="alt">Shares this address with DR_Cal: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="ADC0.DR_Cal">
+<h3>DR_Cal</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0004</b></span>
+<span>Address <b class="mono">0x40012004</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RO</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Calibrated data (alternate group of DR)</p>
+<p class="alt">Shares this address with DR: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="ADC1">
+<h2>ADC1</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40012400</b></span>
+<span>Same layout as <a href="#ADC0">ADC0</a></span>
+</div>
+<p class="desc">ADC, instance 1</p>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0010</td><td>registers</td></tr>
+
+</table>
+<h3>Interrupts</h3>
+<table>
+<tr><th>Name</th><th>Vector</th><th>Description</th></tr>
+<tr><td>ADC1</td><td>28</td><td>ADC1 conversion complete</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#ADC1.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
+
+<tr><td class="mono">0x0004</td><td><a href="#ADC1.DR">DR</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Data register</td></tr>
+
+<tr><td class="mono">0x0004</td><td><a href="#ADC1.DR_Cal">DR_Cal</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Calibrated data (alternate group of DR)</td></tr>
+
+</table>
+<article class="register" id="ADC1.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40012400</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Control register</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="ADC1.DR">
+<h3>DR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0004</b></span>
+<span>Address <b class="mono">0x40012404</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RO</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Data register</p>
+<p class="alt">Shares this address with DR_Cal: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="ADC1.DR_Cal">
+<h3>DR_Cal</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0004</b></span>
+<span>Address <b class="mono">0x40012404</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RO</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Calibrated data (alternate group of DR)</p>
+<p class="alt">Shares this address with DR: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="WDT0">
+<h2>WDT0</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40013000</b></span>
+</div>
+<p class="desc">Watchdog timer</p>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0010</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#WDT0.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
+
+</table>
+<article class="register" id="WDT0.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40013000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Control register</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="WDT1">
+<h2>WDT1</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40013400</b></span>
+<span>Same layout as <a href="#WDT0">WDT0</a></span>
+</div>
+<p class="desc">Watchdog, instance 1 (adds a reload register)</p>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0008</td><td>registers</td></tr>
+
+<tr><td class="mono">0x0008</td><td class="mono">0x0008</td><td>reserved</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#WDT1.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
+
+<tr><td class="mono">0x0004</td><td><a href="#WDT1.RELOAD">RELOAD</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Reload value</td></tr>
+
+</table>
+<article class="register" id="WDT1.CR">
+<h3>CR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40013400</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Control register</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="WDT1.RELOAD">
+<h3>RELOAD</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0004</b></span>
+<span>Address <b class="mono">0x40013404</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Reload value</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="CRC">
+<h2>CRC</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40014000</b></span>
+<span>Group <b>CRC</b></span>
+</div>
+<p class="desc">Cyclic redundancy check</p>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0008</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#CRC.DR">DR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Data register</td></tr>
+
+<tr><td class="mono">0x0000</td><td><a href="#CRC.DR8">DR8</a></td><td>8 bits</td><td>RW</td><td class="mono">–</td><td>Byte-wide view of DR</td></tr>
+
+<tr><td class="mono">0x0000</td><td><a href="#CRC.DR16">DR16</a></td><td>16 bits</td><td>RW</td><td class="mono">–</td><td>Half-word view of DR</td></tr>
+
+</table>
+<article class="register" id="CRC.DR">
+<h3>DR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40014000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Data register</p>
+<p class="alt">Shares this address with DR8, DR16: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="CRC.DR8">
+<h3>DR8</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40014000</b></span>
+<span>Size <b>8 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Byte-wide view of DR</p>
+<p class="alt">Shares this address with DR, DR16: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="8" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="CRC.DR16">
+<h3>DR16</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40014000</b></span>
+<span>Size <b>16 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Half-word view of DR</p>
+<p class="alt">Shares this address with DR, DR8: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="16" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="PWMA">
+<h2>PWMA</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40015000</b></span>
+<span>Group <b>PWM</b></span>
+<span>copy 1 of 2 of PWM%s</span>
+</div>
+<p class="desc">Pulse-width modulator</p>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0100</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#PWMA.CTRL">CTRL</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
+
+<tr><td class="mono">0x0010</td><td><a href="#PWMA.CC">CC</a></td><td>32 bits</td><td>RW</td><td class="mono">0x00000000</td><td>Capture/compare channel</td></tr>
+
+<tr><td class="mono">0x0010</td><td><a href="#PWMA.CCI">CCI</a></td><td>32 bits</td><td>RW</td><td class="mono">0x00000000</td><td>Capture/compare channel (input capture view)</td></tr>
+
+<tr><td class="mono">0x0020</td><td><a href="#PWMA.DT0">DT0</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time</td></tr>
+
+<tr><td class="mono">0x0028</td><td><a href="#PWMA.DT1">DT1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time</td></tr>
+
+<tr><td class="mono">0x0020</td><td><a href="#PWMA.DTR0">DTR0</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time (raw view)</td></tr>
+
+<tr><td class="mono">0x0028</td><td><a href="#PWMA.DTR1">DTR1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time (raw view)</td></tr>
+
+</table>
+<article class="register" id="PWMA.CTRL">
+<h3>CTRL</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40015000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Control register</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="PWMA.CC">
+<h3>CC</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0010</b></span>
+<span>Address <b class="mono">0x40015010</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">0x00000000</b></span>
+</div>
+<p class="desc">Capture/compare channel</p>
+<p class="alt">array of 4, 0x4 units apart</p>
+<p class="alt">Shares this address with CCI: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="PWMA.CCI">
+<h3>CCI</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0010</b></span>
+<span>Address <b class="mono">0x40015010</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">0x00000000</b></span>
+</div>
+<p class="desc">Capture/compare channel (input capture view)</p>
+<p class="alt">array of 4, 0x4 units apart</p>
+<p class="alt">Shares this address with CC: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="PWMA.DT0">
+<h3>DT0</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0020</b></span>
+<span>Address <b class="mono">0x40015020</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Dead time</p>
+<p class="alt">copy 1 of 2 of DT%s</p>
+<p class="alt">Shares this address with DTR0: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="PWMA.DT1">
+<h3>DT1</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0028</b></span>
+<span>Address <b class="mono">0x40015028</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Dead time</p>
+<p class="alt">copy 2 of 2 of DT%s</p>
+<p class="alt">Shares this address with DTR1: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="PWMA.DTR0">
+<h3>DTR0</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0020</b></span>
+<span>Address <b class="mono">0x40015020</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Dead time (raw view)</p>
+<p class="alt">copy 1 of 2 of DTR%s</p>
+<p class="alt">Shares this address with DT0: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="PWMA.DTR1">
+<h3>DTR1</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0028</b></span>
+<span>Address <b class="mono">0x40015028</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Dead time (raw view)</p>
+<p class="alt">copy 2 of 2 of DTR%s</p>
+<p class="alt">Shares this address with DT1: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="PWMB">
+<h2>PWMB</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40015100</b></span>
+<span>Group <b>PWM</b></span>
+<span>copy 2 of 2 of PWM%s</span>
+</div>
+<p class="desc">Pulse-width modulator</p>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0100</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#PWMB.CTRL">CTRL</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
+
+<tr><td class="mono">0x0010</td><td><a href="#PWMB.CC">CC</a></td><td>32 bits</td><td>RW</td><td class="mono">0x00000000</td><td>Capture/compare channel</td></tr>
+
+<tr><td class="mono">0x0010</td><td><a href="#PWMB.CCI">CCI</a></td><td>32 bits</td><td>RW</td><td class="mono">0x00000000</td><td>Capture/compare channel (input capture view)</td></tr>
+
+<tr><td class="mono">0x0020</td><td><a href="#PWMB.DT0">DT0</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time</td></tr>
+
+<tr><td class="mono">0x0028</td><td><a href="#PWMB.DT1">DT1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time</td></tr>
+
+<tr><td class="mono">0x0020</td><td><a href="#PWMB.DTR0">DTR0</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time (raw view)</td></tr>
+
+<tr><td class="mono">0x0028</td><td><a href="#PWMB.DTR1">DTR1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time (raw view)</td></tr>
+
+</table>
+<article class="register" id="PWMB.CTRL">
+<h3>CTRL</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40015100</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Control register</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="PWMB.CC">
+<h3>CC</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0010</b></span>
+<span>Address <b class="mono">0x40015110</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">0x00000000</b></span>
+</div>
+<p class="desc">Capture/compare channel</p>
+<p class="alt">array of 4, 0x4 units apart</p>
+<p class="alt">Shares this address with CCI: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="PWMB.CCI">
+<h3>CCI</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0010</b></span>
+<span>Address <b class="mono">0x40015110</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">0x00000000</b></span>
+</div>
+<p class="desc">Capture/compare channel (input capture view)</p>
+<p class="alt">array of 4, 0x4 units apart</p>
+<p class="alt">Shares this address with CC: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="PWMB.DT0">
+<h3>DT0</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0020</b></span>
+<span>Address <b class="mono">0x40015120</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Dead time</p>
+<p class="alt">copy 1 of 2 of DT%s</p>
+<p class="alt">Shares this address with DTR0: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="PWMB.DT1">
+<h3>DT1</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0028</b></span>
+<span>Address <b class="mono">0x40015128</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Dead time</p>
+<p class="alt">copy 2 of 2 of DT%s</p>
+<p class="alt">Shares this address with DTR1: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="PWMB.DTR0">
+<h3>DTR0</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0020</b></span>
+<span>Address <b class="mono">0x40015120</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Dead time (raw view)</p>
+<p class="alt">copy 1 of 2 of DTR%s</p>
+<p class="alt">Shares this address with DT0: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="PWMB.DTR1">
+<h3>DTR1</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0028</b></span>
+<span>Address <b class="mono">0x40015128</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Dead time (raw view)</p>
+<p class="alt">copy 2 of 2 of DTR%s</p>
+<p class="alt">Shares this address with DT1: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<section class="peripheral" id="DMA">
+<h2>DMA</h2>
+<div class="meta">
+<span>Base address <b class="mono">0x40016000</b></span>
+</div>
+<p class="desc">Direct memory access</p>
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+<tr><td class="mono">0x0000</td><td class="mono">0x0100</td><td>registers</td></tr>
+
+</table>
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">0x0000</td><td><a href="#DMA.CFG">CFG</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Global configuration</td></tr>
+
+<tr><td class="mono">0x0010</td><td><a href="#DMA.CH.CTRL">CH.CTRL</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Channel control</td></tr>
+
+<tr><td class="mono">0x0014</td><td><a href="#DMA.CH.SRC">CH.SRC</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Source address</td></tr>
+
+<tr><td class="mono">0x0018</td><td><a href="#DMA.CH.DST">CH.DST</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Destination address</td></tr>
+
+<tr><td class="mono">0x001C</td><td><a href="#DMA.CH.XFER_Mem">CH.XFER_Mem</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Transfer control (memory side)</td></tr>
+
+<tr><td class="mono">0x001C</td><td><a href="#DMA.CH.XFER_Periph">CH.XFER_Periph</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Transfer control (peripheral side)</td></tr>
+
+<tr><td class="mono">0x0050</td><td><a href="#DMA.STAT.FLAGS">STAT.FLAGS</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Channel flags</td></tr>
+
+<tr><td class="mono">0x0054</td><td><a href="#DMA.STAT.ERR">STAT.ERR</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Error flags</td></tr>
+
+</table>
+<article class="register" id="DMA.CFG">
+<h3>CFG</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0000</b></span>
+<span>Address <b class="mono">0x40016000</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Global configuration</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="DMA.CH.CTRL">
+<h3>CH.CTRL</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0010</b></span>
+<span>Address <b class="mono">0x40016010</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Channel control</p>
+<p class="alt">array of 4, 0x10 units apart</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="31" class="reserved"></td><td colspan="1" class="field">EN</td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">[0]</td><td>EN</td><td>RW</td><td class="mono">–</td><td>
+<div class="desc">Channel enable</div>
+</td></tr>
+
+</table>
+</article>
+
+<article class="register" id="DMA.CH.SRC">
+<h3>CH.SRC</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0014</b></span>
+<span>Address <b class="mono">0x40016014</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Source address</p>
+<p class="alt">array of 4, 0x10 units apart</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="DMA.CH.DST">
+<h3>CH.DST</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0018</b></span>
+<span>Address <b class="mono">0x40016018</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Destination address</p>
+<p class="alt">array of 4, 0x10 units apart</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="DMA.CH.XFER_Mem">
+<h3>CH.XFER_Mem</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x001C</b></span>
+<span>Address <b class="mono">0x4001601C</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Transfer control (memory side)</p>
+<p class="alt">array of 4, 0x10 units apart</p>
+<p class="alt">Shares this address with XFER_Periph: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="DMA.CH.XFER_Periph">
+<h3>CH.XFER_Periph</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x001C</b></span>
+<span>Address <b class="mono">0x4001601C</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Transfer control (peripheral side)</p>
+<p class="alt">array of 4, 0x10 units apart</p>
+<p class="alt">Shares this address with XFER_Mem: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="DMA.STAT.FLAGS">
+<h3>STAT.FLAGS</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0050</b></span>
+<span>Address <b class="mono">0x40016050</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RO</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Channel flags</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="DMA.STAT.ERR">
+<h3>STAT.ERR</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x0054</b></span>
+<span>Address <b class="mono">0x40016054</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RO</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Error flags</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+</section>
+
+<footer>
+Generated by regforge 0.0.1 from <b>minimal.svd</b> (sha256 <span class="mono" title="40103ba0fcb5cc35593d18ef4d4f4b1cea63cfbd6e0c7db65e9abde312c1bcea">40103ba0fcb5cc35</span>).<br>
+Command: <span class="mono">regforge tests/fixtures/svd/minimal.svd -o tests/golden/html/minimal.html</span>
+</footer>
+
+</body>
+</html>
