@@ -3,7 +3,7 @@
 import pytest
 
 from regforge.ir import Access, Dim, Field, Register
-from regforge.ir.bit import bits
+from regforge.ir.bit import bits, claims
 
 
 def _ctrl() -> Register:
@@ -77,3 +77,29 @@ def test_unresolved_size_is_refused():
 def test_is_claimed_says_whether_a_field_names_the_bit():
     claimed = [b.is_claimed for b in bits(_ctrl())]
     assert claimed == [True, True, True, False, False, False, False, False]
+
+
+def test_claims_lists_every_field_on_a_bit_in_declaration_order():
+    register = Register("R", 0x0, size=8, fields=[Field("A", 0, 2), Field("B", 1, 2)])
+    found = claims(register)
+    assert [f.name for f in found[0]] == ["A"]
+    assert [f.name for f in found[1]] == ["A", "B"]  # bit 1 is in both
+    assert [f.name for f in found[2]] == ["B"]
+    assert 3 not in found
+
+
+def test_claims_lists_a_field_array_once_per_position():
+    register = Register("R", 0x0, size=8, fields=[Field("A", 0, 2, dim=Dim(2, 1, array=True))])
+    found = claims(register)  # copy 0 is bits 0..1, copy 1 is bits 1..2: bit 1 is in both copies
+    assert [f.name for f in found[1]] == ["A"]
+    assert sorted(found) == [0, 1, 2]
+
+
+def test_claims_includes_positions_past_the_register_width():
+    register = Register("R", 0x0, size=4, fields=[Field("WIDE", 2, 4)])
+    assert sorted(claims(register)) == [2, 3, 4, 5]  # the caller knows the width
+
+
+def test_claims_names_the_very_field_object():
+    field = Field("A", 0, 1)
+    assert claims(Register("R", 0x0, size=1, fields=[field]))[0][0] is field

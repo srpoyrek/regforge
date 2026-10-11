@@ -52,24 +52,15 @@ def _reset_bit(register: Register, position: int) -> int | None:
     return (register.reset_value >> position) & 1
 
 
-def bits(register: Register) -> list[Bit]:
-    """Every bit of ``register``, least-significant first.
+def claims(register: Register) -> dict[int, list[Field]]:
+    """Every field that covers each bit position of ``register``, in declaration order.
 
-    Needs the register's ``size``, so run it after defaults resolution; a
-    register whose size is still unresolved raises ``ValueError``. Fields are
-    expected to be expanded: one that still carries a ``dim`` is read as an
-    array, a copy every ``dim.stride`` bits, and every copy claims its bits. A
-    field bit past the register's width belongs to no bit of this register. When
-    two fields cover one bit the first declared keeps it; reporting that overlap
-    is the linter's job, not this view's.
-
-    Example: an 8-bit ``CTRL`` with ``EN`` at bit 0 and ``MODE`` at bits [2:1]
-    yields eight bits whose fields are ``EN``, ``MODE``, ``MODE``, then five
-    unclaimed.
+    A position maps to the distinct fields that claim it; a field array claims the bits
+    of every copy, but is listed once per position. Positions past the register's width
+    are included, since it is the caller who knows the width. More than one field on a
+    position is a collision, which :class:`~regforge.resolution.BitResolution` reports.
     """
-    if register.size is None:
-        raise ValueError(f"{register.name}: size is unresolved, so its bits are unknown")
-    claims: dict[int, Field] = {}
+    found: dict[int, list[Field]] = {}
     for field in register.fields:
         if field.dim is None:
             starts = [field.bit_offset]
@@ -79,8 +70,35 @@ def bits(register: Register) -> list[Bit]:
             ]
         for start in starts:
             for position in range(start, start + field.bit_width):
-                claims.setdefault(position, field)
+                owners = found.setdefault(position, [])
+                if not any(owner is field for owner in owners):
+                    owners.append(field)
+    return found
+
+
+def bits(register: Register) -> list[Bit]:
+    """Every bit of ``register``, least-significant first.
+
+    Needs the register's ``size``, so run it after defaults resolution; a
+    register whose size is still unresolved raises ``ValueError``. Fields are
+    expected to be expanded: one that still carries a ``dim`` is read as an
+    array, a copy every ``dim.stride`` bits, and every copy claims its bits. A
+    field bit past the register's width belongs to no bit of this register. When
+    two fields cover one bit the first declared keeps it; reporting that overlap
+    is :class:`~regforge.resolution.BitResolution`'s job, not this view's.
+
+    Example: an 8-bit ``CTRL`` with ``EN`` at bit 0 and ``MODE`` at bits [2:1]
+    yields eight bits whose fields are ``EN``, ``MODE``, ``MODE``, then five
+    unclaimed.
+    """
+    if register.size is None:
+        raise ValueError(f"{register.name}: size is unresolved, so its bits are unknown")
+    claimed = claims(register)
     return [
-        Bit(position, claims.get(position), _reset_bit(register, position))
+        Bit(
+            position,
+            claimed[position][0] if position in claimed else None,
+            _reset_bit(register, position),
+        )
         for position in range(register.size)
     ]

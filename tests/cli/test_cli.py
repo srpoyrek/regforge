@@ -174,3 +174,18 @@ def test_verbose_logs_every_pass_in_pipeline_order(capsys, minimal_svd_path):
     err = capsys.readouterr().err
     order = [err.index(marker) for marker in ("expanded dim", "derivedFrom", "defaults", "check")]
     assert order == sorted(order)
+
+
+def test_colliding_fields_are_warned_about_on_the_command_line(tmp_path, capsys):
+    svd = tmp_path / "collide.svd"
+    svd.write_text(
+        "<device><name>C</name><peripherals><peripheral><name>TIM</name>"
+        "<baseAddress>0x0</baseAddress><registers><register><name>CTRL</name>"
+        "<addressOffset>0x0</addressOffset><size>8</size><access>read-write</access><fields>"
+        "<field><name>MODE</name><bitOffset>0</bitOffset><bitWidth>2</bitWidth></field>"
+        "<field><name>STATE</name><bitOffset>1</bitOffset><bitWidth>2</bitWidth></field>"
+        "</fields></register></registers></peripheral></peripherals></device>",
+        encoding="utf-8",
+    )
+    assert main([str(svd), "--no-provenance"]) == ExitCode.OK  # a warning, not a refusal
+    assert "warn: TIM.CTRL: bit 1 is claimed by MODE and STATE" in capsys.readouterr().err

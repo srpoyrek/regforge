@@ -11,10 +11,10 @@ unusual (a multi-access register), so a human decides.
 from __future__ import annotations
 
 from collections.abc import Iterator
-from dataclasses import dataclass
-from enum import Enum
 
 from .families import first_divergence, layout_signature
+from .finding import Finding as Finding
+from .finding import Severity as Severity
 from .ir import Cluster, Device, Peripheral, Register, walk_clusters
 from .layout import (
     LayoutError,
@@ -26,25 +26,11 @@ from .layout import (
     union_naming,
     units_to_bytes,
 )
+from .resolution import collect
 
 #: One past the last address the C writer's ``UL`` literals can hold. regforge
 #: assumes 32-bit addresses today; a device that reaches beyond is an error.
 ADDRESS_LIMIT = 1 << 32
-
-
-class Severity(Enum):
-    """How seriously to treat a :class:`Finding`."""
-
-    WARNING = "warning"
-    ERROR = "error"
-
-
-@dataclass
-class Finding:
-    """A single consistency issue discovered in a device."""
-
-    severity: Severity
-    message: str
 
 
 def _is_power_of_two(value: int) -> bool:
@@ -640,6 +626,15 @@ def check_alternate_registers(device: Device) -> list[Finding]:
     return findings
 
 
+def check_element_rules(device: Device) -> list[Finding]:
+    """The rules each element carries itself, collected from :mod:`regforge.resolution`.
+
+    Today that is the bits: two fields on one bit. The other elements keep their rules
+    in the checks above until they get a resolution class of their own.
+    """
+    return collect(device)
+
+
 #: Every consistency check, run in order by :func:`run_checks`. Add a new check
 #: here and it is picked up by the CLI and any other caller automatically.
 ALL_CHECKS = (
@@ -651,6 +646,7 @@ ALL_CHECKS = (
     check_derived_interrupts,
     check_group_divergence,
     check_alternate_registers,
+    check_element_rules,
 )
 
 

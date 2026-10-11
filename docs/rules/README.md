@@ -38,6 +38,7 @@ rewritten.
 | [clusters.md](clusters.md) | Register groups as nested types |
 | [alternates.md](alternates.md) | Two layouts of one word: `alternateRegister` as a union |
 | [derived.md](derived.md) | A register or an enumerated set that is another one: what `derivedFrom` copies |
+| [bits.md](bits.md) | Which field owns a bit, two fields on one bit, a field past the register's width |
 
 ## Input formats
 
