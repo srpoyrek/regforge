@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from regforge.ir import Access, Dim, EnumeratedValue
+    from regforge.ir import Access, Dim, EnumeratedValue, EnumSet
 
 
 @dataclass
@@ -26,7 +26,8 @@ class Field:
         description: Optional human-readable description.
         access: Access policy. Raw (possibly ``None``) as parsed; filled in by
             the defaults resolution pass so every field carries a resolved value.
-        enums: Enumerated values the field may take, if any.
+        enum_sets: The field's enumerated sets, if any: one set, or a read set and
+            a write set. :attr:`enums` is their values flattened.
         dim: Array shape when the field is one of several copies (SVD
             ``<dim>``, increment in bits); ``None`` for a single field. After
             expansion only a ``[%s]`` array keeps it, with ``name`` bare.
@@ -40,7 +41,7 @@ class Field:
     bit_width: int
     description: str | None = None
     access: Access | None = None
-    enums: list[EnumeratedValue] = field(default_factory=list)
+    enum_sets: list[EnumSet] = field(default_factory=list)
     dim: Dim | None = None
     expanded_from: str | None = None
 
@@ -48,6 +49,14 @@ class Field:
     def mask(self) -> int:
         """The field's bit mask, shifted into position."""
         return ((1 << self.bit_width) - 1) << self.bit_offset
+
+    @property
+    def enums(self) -> list[EnumeratedValue]:
+        """The values of every enumerated set, in order, as one flat list.
+
+        What the writers read until they act on the sets themselves.
+        """
+        return [value for enum_set in self.enum_sets for value in enum_set.values]
 
     @property
     def max_value(self) -> int:

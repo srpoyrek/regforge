@@ -2,6 +2,7 @@
 
 import pytest
 
+from regforge.ir import EnumUsage
 from regforge.readers.svd import SvdReader, parse_svd_int
 
 
@@ -117,3 +118,54 @@ def test_address_block_is_captured(tmp_path):
     blocks = device.peripherals[0].address_blocks
     assert len(blocks) == 1
     assert (blocks[0].offset, blocks[0].size, blocks[0].usage) == (0, 0x100, "registers")
+
+
+def _field_with_enums(tmp_path, enum_xml):
+    svd = tmp_path / "enums.svd"
+    svd.write_text(
+        "<device><name>X</name><peripherals><peripheral><name>P</name>"
+        "<baseAddress>0x0</baseAddress><registers><register><name>R</name>"
+        "<addressOffset>0x0</addressOffset><fields><field><name>F</name>"
+        "<bitOffset>0</bitOffset><bitWidth>2</bitWidth>" + enum_xml + "</field>"
+        "</fields></register></registers></peripheral></peripherals></device>",
+        encoding="utf-8",
+    )
+    return SvdReader().read(svd).peripherals[0].registers[0].fields[0]
+
+
+def test_each_enumerated_values_block_becomes_a_set(tmp_path):
+    # A field may carry a read set and a write set; each keeps its own settings.
+    field = _field_with_enums(
+        tmp_path,
+        "<enumeratedValues><name>F_READ</name><headerEnumName>FRead</headerEnumName>"
+        "<usage>read</usage>"
+        "<enumeratedValue><name>OFF</name><value>0</value></enumeratedValue>"
+        "<enumeratedValue><name>ON</name><value>1</value></enumeratedValue>"
+        "</enumeratedValues>"
+        "<enumeratedValues derivedFrom='F_READ'><usage>write</usage></enumeratedValues>",
+    )
+    read, write = field.enum_sets
+    assert (read.name, read.header_enum_name, read.usage) == ("F_READ", "FRead", EnumUsage.READ)
+    assert [v.name for v in read.values] == ["OFF", "ON"]
+    assert (write.usage, write.derived_from, write.values) == (EnumUsage.WRITE, "F_READ", [])
+    assert [e.name for e in field.enums] == ["OFF", "ON"]  # the flat view across both sets
+
+
+def test_enumerated_values_usage_defaults_to_read_write(tmp_path):
+    absent = _field_with_enums(tmp_path, "<enumeratedValues></enumeratedValues>")
+    unknown = _field_with_enums(
+        tmp_path, "<enumeratedValues><usage>sideways</usage></enumeratedValues>"
+    )
+    assert absent.enum_sets[0].usage is EnumUsage.READ_WRITE
+    assert unknown.enum_sets[0].usage is EnumUsage.READ_WRITE
+
+
+def test_an_enumerated_value_with_no_number_is_skipped(tmp_path):
+    field = _field_with_enums(
+        tmp_path,
+        "<enumeratedValues>"
+        "<enumeratedValue><name>NAMED_ONLY</name></enumeratedValue>"
+        "<enumeratedValue><name>OK</name><value>1</value></enumeratedValue>"
+        "</enumeratedValues>",
+    )
+    assert [e.name for e in field.enums] == ["OK"]

@@ -14,6 +14,7 @@ from regforge.ir import (
     Device,
     Dim,
     EnumeratedValue,
+    EnumSet,
     Field,
     Peripheral,
     Register,
@@ -147,7 +148,13 @@ def test_field_array_emits_indexed_position_and_mask():
                     0x0,
                     size=32,
                     fields=[
-                        Field("OD[%s]", 0, 1, dim=Dim(16, 1), enums=[EnumeratedValue("LOW", 0)])
+                        Field(
+                            "OD[%s]",
+                            0,
+                            1,
+                            dim=Dim(16, 1),
+                            enum_sets=[EnumSet([EnumeratedValue("LOW", 0)])],
+                        )
                     ],
                 )
             ],

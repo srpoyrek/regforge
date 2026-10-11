@@ -29,6 +29,8 @@ from ..ir import (
     Device,
     Dim,
     EnumeratedValue,
+    EnumSet,
+    EnumUsage,
     Field,
     Interrupt,
     Peripheral,
@@ -233,25 +235,47 @@ def _parse_bits(field_element: ET.Element) -> tuple[int, int]:
     raise ValueError(f"field {name!r} has no recognizable bit-range specification")
 
 
+def _enum_usage(element: ET.Element) -> EnumUsage:
+    """Return the :class:`~regforge.ir.EnumUsage` of an ``<enumeratedValues>`` element.
+
+    ``READ_WRITE`` when ``<usage>`` is absent or unrecognized, as the schema defaults.
+    """
+    raw = _text(element, "usage")
+    try:
+        return EnumUsage(raw) if raw is not None else EnumUsage.READ_WRITE
+    except ValueError:
+        return EnumUsage.READ_WRITE
+
+
+def _build_enum_set(set_element: ET.Element) -> EnumSet:
+    return EnumSet(
+        values=[
+            EnumeratedValue(
+                name=_text(value_element, "name") or "",
+                value=parse_svd_int(_text(value_element, "value") or "0"),
+                description=_text(value_element, "description"),
+            )
+            for value_element in set_element.findall("enumeratedValue")
+            if _text(value_element, "value") is not None
+        ],
+        name=_text(set_element, "name"),
+        header_enum_name=_text(set_element, "headerEnumName"),
+        usage=_enum_usage(set_element),
+        derived_from=set_element.get("derivedFrom"),
+    )
+
+
 def _build_field(field_element: ET.Element, warnings: list[str]) -> Field:
     name = _text(field_element, "name") or ""
     offset, width = _parse_bits(field_element)
-    enums = [
-        EnumeratedValue(
-            name=_text(value_element, "name") or "",
-            value=parse_svd_int(_text(value_element, "value") or "0"),
-            description=_text(value_element, "description"),
-        )
-        for value_element in field_element.findall("./enumeratedValues/enumeratedValue")
-        if _text(value_element, "value") is not None
-    ]
+    enum_sets = [_build_enum_set(element) for element in field_element.findall("enumeratedValues")]
     return Field(
         name=name,
         bit_offset=offset,
         bit_width=width,
         description=_text(field_element, "description"),
         access=_access(field_element),
-        enums=enums,
+        enum_sets=enum_sets,
         dim=_dim(field_element, name, warnings),
     )
 

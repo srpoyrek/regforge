@@ -11,6 +11,7 @@ from regforge.ir import (
     Device,
     Dim,
     EnumeratedValue,
+    EnumSet,
     Field,
     Interrupt,
     Peripheral,
@@ -130,7 +131,7 @@ def test_register_copies_are_named_and_placed_along_the_stride():
             "DATA%s",
             0x10,
             dim=Dim(8, 4),
-            fields=[Field("V", 0, 8, enums=[EnumeratedValue("ZERO", 0)])],
+            fields=[Field("V", 0, 8, enum_sets=[EnumSet([EnumeratedValue("ZERO", 0)])])],
         ),
     )
     expand_dim(device)

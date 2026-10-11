@@ -114,8 +114,12 @@ The bit range can be written three ways, and all three are accepted:
 | `<bitOffset>` + `<bitWidth>` | `4` and `4` |
 | `<lsb>` + `<msb>` | `4` and `7` |
 
-`<enumeratedValues><enumeratedValue>` becomes the field's named constants. A
-value with no `<value>` child is skipped, because there is nothing to name.
+Each `<enumeratedValues>` block becomes one set on the field, since a field may
+carry a read set and a write set. The set keeps its `<name>`, `<headerEnumName>`,
+`<usage>` (`read-write` when absent) and `derivedFrom`; its `<enumeratedValue>`
+entries become the field's named constants. A value with no `<value>` child is
+skipped, because there is nothing to name. The C writer reads the values of all
+sets together; it does not yet act on `<usage>` or `derivedFrom`.
 
 `<dim>`, `<dimIncrement>` and `<dimIndex>` are read on a field too, with the
 increment in bits; see [Arrays](#arrays).

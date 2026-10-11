@@ -2,7 +2,7 @@
 
 import pytest
 
-from regforge.ir import Field
+from regforge.ir import EnumeratedValue, EnumSet, EnumUsage, Field
 
 
 def _mode() -> Field:
@@ -39,3 +39,16 @@ def test_insert_refuses_a_value_that_does_not_fit():
         _mode().insert(0, 4)  # 4 needs three bits, the field has two
     with pytest.raises(ValueError, match="MODE"):
         _mode().insert(0, -1)
+
+
+def test_a_field_with_no_enumerated_sets_has_no_enums():
+    field = Field("EN", 0, 1)
+    assert field.enum_sets == []
+    assert field.enums == []
+
+
+def test_enums_flattens_every_sets_values_in_order():
+    read = EnumSet([EnumeratedValue("OFF", 0)], usage=EnumUsage.READ)
+    write = EnumSet([EnumeratedValue("CLEAR", 1)], usage=EnumUsage.WRITE)
+    field = Field("FLAG", 0, 1, enum_sets=[read, write])
+    assert [e.name for e in field.enums] == ["OFF", "CLEAR"]

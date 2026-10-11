@@ -1,6 +1,6 @@
 """EnumeratedValue: a name for one number a field's bits can hold."""
 
-from regforge.ir import EnumeratedValue, Field
+from regforge.ir import EnumeratedValue, EnumSet, Field
 from regforge.ir.enumerated_value import EnumeratedValue as EnumeratedValueFromModule
 
 
@@ -29,13 +29,21 @@ def test_two_names_may_share_one_number():
 def test_numbers_may_leave_gaps():
     # nRF GPIOTE MODE has 0, 1 and 3 but no 2: only the listed numbers exist.
     field = Field(
-        "MODE", 0, 2, enums=[EnumeratedValue(n, v) for n, v in (("A", 0), ("B", 1), ("C", 3))]
+        "MODE",
+        0,
+        2,
+        enum_sets=[EnumSet([EnumeratedValue(n, v) for n, v in (("A", 0), ("B", 1), ("C", 3))])],
     )
     assert [e.value for e in field.enums] == [0, 1, 3]
 
 
 def test_a_field_carries_its_enumerated_values_in_order():
-    field = Field("MODE", 1, 2, enums=[EnumeratedValue("INPUT", 0), EnumeratedValue("OUTPUT", 1)])
+    field = Field(
+        "MODE",
+        1,
+        2,
+        enum_sets=[EnumSet([EnumeratedValue("INPUT", 0), EnumeratedValue("OUTPUT", 1)])],
+    )
     assert [e.name for e in field.enums] == ["INPUT", "OUTPUT"]
 
 
