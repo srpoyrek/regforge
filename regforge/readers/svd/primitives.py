@@ -39,9 +39,11 @@ def parse_svd_value(text: str) -> tuple[int, int]:
     in ``value`` and are set in ``dont_care``. A plain number has ``dont_care`` 0.
     """
     token = text.strip().lower()
-    digits = token[1:] if token.startswith("#") else token[2:] if token.startswith("0b") else ""
-    if "x" in digits and set(digits) <= set("01x"):
-        return int(digits.replace("x", "0"), 2), int(digits.replace("1", "0").replace("x", "1"), 2)
+    digits = token.removeprefix("#") if token.startswith("#") else token.removeprefix("0b")
+    if token.startswith(("#", "0b")) and "x" in digits and set(digits) <= set("01x"):
+        value = int(digits.replace("x", "0"), Radix.BINARY)
+        dont_care = int(digits.replace("1", "0").replace("x", "1"), Radix.BINARY)
+        return value, dont_care
     return parse_svd_int(text), 0
 
 

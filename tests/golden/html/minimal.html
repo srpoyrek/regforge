@@ -126,23 +126,23 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Address blocks</h3>
 <table>
 <tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
-<tr><td class="mono">0x0000</td><td class="mono">0x0020</td><td>registers</td></tr>
+<tr><td class="mono">0x000</td><td class="mono">0x020</td><td>registers</td></tr>
 
 </table>
 <h3>Registers</h3>
 <table>
 <tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td class="mono">0x0000</td><td><a href="#GPIOA.MODER">MODER</a></td><td>32 bits</td><td>RW</td><td class="mono">0x00000000</td><td>Mode register</td></tr>
+<tr><td class="mono">0x000</td><td><a href="#GPIOA.MODER">MODER</a></td><td>32 bits</td><td>RW</td><td class="mono">0x00000000</td><td>Mode register</td></tr>
 
-<tr><td class="mono">0x0010</td><td><a href="#GPIOA.IDR">IDR</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Input data register</td></tr>
+<tr><td class="mono">0x010</td><td><a href="#GPIOA.IDR">IDR</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Input data register</td></tr>
 
-<tr><td class="mono">0x0014</td><td><a href="#GPIOA.ODR">ODR</a></td><td>32 bits</td><td>RW</td><td class="mono">0x00000000</td><td>Output data register</td></tr>
+<tr><td class="mono">0x014</td><td><a href="#GPIOA.ODR">ODR</a></td><td>32 bits</td><td>RW</td><td class="mono">0x00000000</td><td>Output data register</td></tr>
 
 </table>
 <article class="register" id="GPIOA.MODER">
 <h3>MODER</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0000</b></span>
+<span>Offset <b class="mono">0x000</b></span>
 <span>Address <b class="mono">0x40020000</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -199,7 +199,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="GPIOA.IDR">
 <h3>IDR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0010</b></span>
+<span>Offset <b class="mono">0x010</b></span>
 <span>Address <b class="mono">0x40020010</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RO</b></span>
@@ -217,7 +217,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="GPIOA.ODR">
 <h3>ODR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0014</b></span>
+<span>Offset <b class="mono">0x014</b></span>
 <span>Address <b class="mono">0x40020014</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -255,9 +255,9 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Address blocks</h3>
 <table>
 <tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
-<tr><td class="mono">0x0000</td><td class="mono">0x0008</td><td>registers</td></tr>
+<tr><td class="mono">0x000</td><td class="mono">0x008</td><td>registers</td></tr>
 
-<tr><td class="mono">0x0008</td><td class="mono">0x0020</td><td>buffer</td></tr>
+<tr><td class="mono">0x008</td><td class="mono">0x020</td><td>buffer</td></tr>
 
 </table>
 <h3>Interrupts</h3>
@@ -269,15 +269,15 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Registers</h3>
 <table>
 <tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td class="mono">0x0000</td><td><a href="#UART0.DR">DR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Data register</td></tr>
+<tr><td class="mono">0x000</td><td><a href="#UART0.DR">DR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Data register</td></tr>
 
-<tr><td class="mono">0x0004</td><td><a href="#UART0.SR">SR</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Status register</td></tr>
+<tr><td class="mono">0x004</td><td><a href="#UART0.SR">SR</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Status register</td></tr>
 
 </table>
 <article class="register" id="UART0.DR">
 <h3>DR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0000</b></span>
+<span>Offset <b class="mono">0x000</b></span>
 <span>Address <b class="mono">0x40004000</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -295,7 +295,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="UART0.SR">
 <h3>SR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0004</b></span>
+<span>Offset <b class="mono">0x004</b></span>
 <span>Address <b class="mono">0x40004004</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RO</b></span>
@@ -322,9 +322,9 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Address blocks</h3>
 <table>
 <tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
-<tr><td class="mono">0x0000</td><td class="mono">0x0008</td><td>registers</td></tr>
+<tr><td class="mono">0x000</td><td class="mono">0x008</td><td>registers</td></tr>
 
-<tr><td class="mono">0x0008</td><td class="mono">0x0020</td><td>buffer</td></tr>
+<tr><td class="mono">0x008</td><td class="mono">0x020</td><td>buffer</td></tr>
 
 </table>
 <h3>Interrupts</h3>
@@ -336,15 +336,15 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Registers</h3>
 <table>
 <tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td class="mono">0x0000</td><td><a href="#UART1.DR">DR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Data register</td></tr>
+<tr><td class="mono">0x000</td><td><a href="#UART1.DR">DR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Data register</td></tr>
 
-<tr><td class="mono">0x0004</td><td><a href="#UART1.SR">SR</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Status register</td></tr>
+<tr><td class="mono">0x004</td><td><a href="#UART1.SR">SR</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Status register</td></tr>
 
 </table>
 <article class="register" id="UART1.DR">
 <h3>DR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0000</b></span>
+<span>Offset <b class="mono">0x000</b></span>
 <span>Address <b class="mono">0x40004400</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -362,7 +362,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="UART1.SR">
 <h3>SR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0004</b></span>
+<span>Offset <b class="mono">0x004</b></span>
 <span>Address <b class="mono">0x40004404</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RO</b></span>
@@ -389,7 +389,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Address blocks</h3>
 <table>
 <tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
-<tr><td class="mono">0x0000</td><td class="mono">0x0400</td><td>registers</td></tr>
+<tr><td class="mono">0x000</td><td class="mono">0x400</td><td>registers</td></tr>
 
 </table>
 <h3>Interrupts</h3>
@@ -401,17 +401,17 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Registers</h3>
 <table>
 <tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td class="mono">0x0000</td><td><a href="#SPI0.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
+<tr><td class="mono">0x000</td><td><a href="#SPI0.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
 
-<tr><td class="mono">0x0004</td><td><a href="#SPI0.DR">DR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Data register</td></tr>
+<tr><td class="mono">0x004</td><td><a href="#SPI0.DR">DR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Data register</td></tr>
 
-<tr><td class="mono">0x0004</td><td><a href="#SPI0.RXD">RXD</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Receive data (read view of DR)</td></tr>
+<tr><td class="mono">0x004</td><td><a href="#SPI0.RXD">RXD</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Receive data (read view of DR)</td></tr>
 
 </table>
 <article class="register" id="SPI0.CR">
 <h3>CR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0000</b></span>
+<span>Offset <b class="mono">0x000</b></span>
 <span>Address <b class="mono">0x40008000</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -429,7 +429,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="SPI0.DR">
 <h3>DR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0004</b></span>
+<span>Offset <b class="mono">0x004</b></span>
 <span>Address <b class="mono">0x40008004</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -448,7 +448,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="SPI0.RXD">
 <h3>RXD</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0004</b></span>
+<span>Offset <b class="mono">0x004</b></span>
 <span>Address <b class="mono">0x40008004</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RO</b></span>
@@ -476,7 +476,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Address blocks</h3>
 <table>
 <tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
-<tr><td class="mono">0x0000</td><td class="mono">0x0400</td><td>registers</td></tr>
+<tr><td class="mono">0x000</td><td class="mono">0x400</td><td>registers</td></tr>
 
 </table>
 <h3>Interrupts</h3>
@@ -488,17 +488,17 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Registers</h3>
 <table>
 <tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td class="mono">0x0000</td><td><a href="#SPI1.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
+<tr><td class="mono">0x000</td><td><a href="#SPI1.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
 
-<tr><td class="mono">0x0004</td><td><a href="#SPI1.DR">DR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Data register</td></tr>
+<tr><td class="mono">0x004</td><td><a href="#SPI1.DR">DR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Data register</td></tr>
 
-<tr><td class="mono">0x0004</td><td><a href="#SPI1.RXD">RXD</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Receive data (read view of DR)</td></tr>
+<tr><td class="mono">0x004</td><td><a href="#SPI1.RXD">RXD</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Receive data (read view of DR)</td></tr>
 
 </table>
 <article class="register" id="SPI1.CR">
 <h3>CR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0000</b></span>
+<span>Offset <b class="mono">0x000</b></span>
 <span>Address <b class="mono">0x40008400</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -516,7 +516,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="SPI1.DR">
 <h3>DR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0004</b></span>
+<span>Offset <b class="mono">0x004</b></span>
 <span>Address <b class="mono">0x40008404</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -535,7 +535,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="SPI1.RXD">
 <h3>RXD</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0004</b></span>
+<span>Offset <b class="mono">0x004</b></span>
 <span>Address <b class="mono">0x40008404</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RO</b></span>
@@ -563,7 +563,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Address blocks</h3>
 <table>
 <tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
-<tr><td class="mono">0x0000</td><td class="mono">0x0020</td><td>registers</td></tr>
+<tr><td class="mono">0x000</td><td class="mono">0x020</td><td>registers</td></tr>
 
 </table>
 <h3>Interrupts</h3>
@@ -577,21 +577,21 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Registers</h3>
 <table>
 <tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td class="mono">0x0000</td><td><a href="#TIM1.CR1">CR1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register 1</td></tr>
+<tr><td class="mono">0x000</td><td><a href="#TIM1.CR1">CR1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register 1</td></tr>
 
-<tr><td class="mono">0x0004</td><td><a href="#TIM1.ARR">ARR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Auto-reload register</td></tr>
+<tr><td class="mono">0x004</td><td><a href="#TIM1.ARR">ARR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Auto-reload register</td></tr>
 
-<tr><td class="mono">0x0008</td><td><a href="#TIM1.RCR">RCR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Repetition counter (advanced only)</td></tr>
+<tr><td class="mono">0x008</td><td><a href="#TIM1.RCR">RCR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Repetition counter (advanced only)</td></tr>
 
-<tr><td class="mono">0x000C</td><td><a href="#TIM1.CCMR1_Output">CCMR1_Output</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Capture/compare mode (output)</td></tr>
+<tr><td class="mono">0x00C</td><td><a href="#TIM1.CCMR1_Output">CCMR1_Output</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Capture/compare mode (output)</td></tr>
 
-<tr><td class="mono">0x000C</td><td><a href="#TIM1.CCMR1_Input">CCMR1_Input</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Capture/compare mode (input)</td></tr>
+<tr><td class="mono">0x00C</td><td><a href="#TIM1.CCMR1_Input">CCMR1_Input</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Capture/compare mode (input)</td></tr>
 
 </table>
 <article class="register" id="TIM1.CR1">
 <h3>CR1</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0000</b></span>
+<span>Offset <b class="mono">0x000</b></span>
 <span>Address <b class="mono">0x40010000</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -609,7 +609,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="TIM1.ARR">
 <h3>ARR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0004</b></span>
+<span>Offset <b class="mono">0x004</b></span>
 <span>Address <b class="mono">0x40010004</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -627,7 +627,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="TIM1.RCR">
 <h3>RCR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0008</b></span>
+<span>Offset <b class="mono">0x008</b></span>
 <span>Address <b class="mono">0x40010008</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -645,7 +645,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="TIM1.CCMR1_Output">
 <h3>CCMR1_Output</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x000C</b></span>
+<span>Offset <b class="mono">0x00C</b></span>
 <span>Address <b class="mono">0x4001000C</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -675,7 +675,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="TIM1.CCMR1_Input">
 <h3>CCMR1_Input</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x000C</b></span>
+<span>Offset <b class="mono">0x00C</b></span>
 <span>Address <b class="mono">0x4001000C</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -714,21 +714,21 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Address blocks</h3>
 <table>
 <tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
-<tr><td class="mono">0x0000</td><td class="mono">0x0020</td><td>registers</td></tr>
+<tr><td class="mono">0x000</td><td class="mono">0x020</td><td>registers</td></tr>
 
 </table>
 <h3>Registers</h3>
 <table>
 <tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td class="mono">0x0000</td><td><a href="#TIM2.CR1">CR1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register 1</td></tr>
+<tr><td class="mono">0x000</td><td><a href="#TIM2.CR1">CR1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register 1</td></tr>
 
-<tr><td class="mono">0x0004</td><td><a href="#TIM2.ARR">ARR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Auto-reload register</td></tr>
+<tr><td class="mono">0x004</td><td><a href="#TIM2.ARR">ARR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Auto-reload register</td></tr>
 
 </table>
 <article class="register" id="TIM2.CR1">
 <h3>CR1</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0000</b></span>
+<span>Offset <b class="mono">0x000</b></span>
 <span>Address <b class="mono">0x40000000</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -746,7 +746,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="TIM2.ARR">
 <h3>ARR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0004</b></span>
+<span>Offset <b class="mono">0x004</b></span>
 <span>Address <b class="mono">0x40000004</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -773,21 +773,21 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Address blocks</h3>
 <table>
 <tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
-<tr><td class="mono">0x0000</td><td class="mono">0x0020</td><td>registers</td></tr>
+<tr><td class="mono">0x000</td><td class="mono">0x020</td><td>registers</td></tr>
 
 </table>
 <h3>Registers</h3>
 <table>
 <tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td class="mono">0x0000</td><td><a href="#TIM3.CR1">CR1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register 1</td></tr>
+<tr><td class="mono">0x000</td><td><a href="#TIM3.CR1">CR1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register 1</td></tr>
 
-<tr><td class="mono">0x0004</td><td><a href="#TIM3.ARR">ARR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Auto-reload register</td></tr>
+<tr><td class="mono">0x004</td><td><a href="#TIM3.ARR">ARR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Auto-reload register</td></tr>
 
 </table>
 <article class="register" id="TIM3.CR1">
 <h3>CR1</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0000</b></span>
+<span>Offset <b class="mono">0x000</b></span>
 <span>Address <b class="mono">0x40000400</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -805,7 +805,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="TIM3.ARR">
 <h3>ARR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0004</b></span>
+<span>Offset <b class="mono">0x004</b></span>
 <span>Address <b class="mono">0x40000404</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -831,7 +831,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Address blocks</h3>
 <table>
 <tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
-<tr><td class="mono">0x0000</td><td class="mono">0x0010</td><td>registers</td></tr>
+<tr><td class="mono">0x000</td><td class="mono">0x010</td><td>registers</td></tr>
 
 </table>
 <h3>Interrupts</h3>
@@ -843,17 +843,17 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Registers</h3>
 <table>
 <tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td class="mono">0x0000</td><td><a href="#ADC0.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
+<tr><td class="mono">0x000</td><td><a href="#ADC0.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
 
-<tr><td class="mono">0x0004</td><td><a href="#ADC0.DR">DR</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Data register</td></tr>
+<tr><td class="mono">0x004</td><td><a href="#ADC0.DR">DR</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Data register</td></tr>
 
-<tr><td class="mono">0x0004</td><td><a href="#ADC0.DR_Cal">DR_Cal</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Calibrated data (alternate group of DR)</td></tr>
+<tr><td class="mono">0x004</td><td><a href="#ADC0.DR_Cal">DR_Cal</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Calibrated data (alternate group of DR)</td></tr>
 
 </table>
 <article class="register" id="ADC0.CR">
 <h3>CR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0000</b></span>
+<span>Offset <b class="mono">0x000</b></span>
 <span>Address <b class="mono">0x40012000</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -871,7 +871,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="ADC0.DR">
 <h3>DR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0004</b></span>
+<span>Offset <b class="mono">0x004</b></span>
 <span>Address <b class="mono">0x40012004</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RO</b></span>
@@ -890,7 +890,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="ADC0.DR_Cal">
 <h3>DR_Cal</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0004</b></span>
+<span>Offset <b class="mono">0x004</b></span>
 <span>Address <b class="mono">0x40012004</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RO</b></span>
@@ -918,7 +918,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Address blocks</h3>
 <table>
 <tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
-<tr><td class="mono">0x0000</td><td class="mono">0x0010</td><td>registers</td></tr>
+<tr><td class="mono">0x000</td><td class="mono">0x010</td><td>registers</td></tr>
 
 </table>
 <h3>Interrupts</h3>
@@ -930,17 +930,17 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Registers</h3>
 <table>
 <tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td class="mono">0x0000</td><td><a href="#ADC1.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
+<tr><td class="mono">0x000</td><td><a href="#ADC1.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
 
-<tr><td class="mono">0x0004</td><td><a href="#ADC1.DR">DR</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Data register</td></tr>
+<tr><td class="mono">0x004</td><td><a href="#ADC1.DR">DR</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Data register</td></tr>
 
-<tr><td class="mono">0x0004</td><td><a href="#ADC1.DR_Cal">DR_Cal</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Calibrated data (alternate group of DR)</td></tr>
+<tr><td class="mono">0x004</td><td><a href="#ADC1.DR_Cal">DR_Cal</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Calibrated data (alternate group of DR)</td></tr>
 
 </table>
 <article class="register" id="ADC1.CR">
 <h3>CR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0000</b></span>
+<span>Offset <b class="mono">0x000</b></span>
 <span>Address <b class="mono">0x40012400</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -958,7 +958,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="ADC1.DR">
 <h3>DR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0004</b></span>
+<span>Offset <b class="mono">0x004</b></span>
 <span>Address <b class="mono">0x40012404</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RO</b></span>
@@ -977,7 +977,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="ADC1.DR_Cal">
 <h3>DR_Cal</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0004</b></span>
+<span>Offset <b class="mono">0x004</b></span>
 <span>Address <b class="mono">0x40012404</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RO</b></span>
@@ -1004,19 +1004,19 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Address blocks</h3>
 <table>
 <tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
-<tr><td class="mono">0x0000</td><td class="mono">0x0010</td><td>registers</td></tr>
+<tr><td class="mono">0x000</td><td class="mono">0x010</td><td>registers</td></tr>
 
 </table>
 <h3>Registers</h3>
 <table>
 <tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td class="mono">0x0000</td><td><a href="#WDT0.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
+<tr><td class="mono">0x000</td><td><a href="#WDT0.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
 
 </table>
 <article class="register" id="WDT0.CR">
 <h3>CR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0000</b></span>
+<span>Offset <b class="mono">0x000</b></span>
 <span>Address <b class="mono">0x40013000</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1043,23 +1043,23 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Address blocks</h3>
 <table>
 <tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
-<tr><td class="mono">0x0000</td><td class="mono">0x0008</td><td>registers</td></tr>
+<tr><td class="mono">0x000</td><td class="mono">0x008</td><td>registers</td></tr>
 
-<tr><td class="mono">0x0008</td><td class="mono">0x0008</td><td>reserved</td></tr>
+<tr><td class="mono">0x008</td><td class="mono">0x008</td><td>reserved</td></tr>
 
 </table>
 <h3>Registers</h3>
 <table>
 <tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td class="mono">0x0000</td><td><a href="#WDT1.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
+<tr><td class="mono">0x000</td><td><a href="#WDT1.CR">CR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
 
-<tr><td class="mono">0x0004</td><td><a href="#WDT1.RELOAD">RELOAD</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Reload value</td></tr>
+<tr><td class="mono">0x004</td><td><a href="#WDT1.RELOAD">RELOAD</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Reload value</td></tr>
 
 </table>
 <article class="register" id="WDT1.CR">
 <h3>CR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0000</b></span>
+<span>Offset <b class="mono">0x000</b></span>
 <span>Address <b class="mono">0x40013400</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1077,7 +1077,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="WDT1.RELOAD">
 <h3>RELOAD</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0004</b></span>
+<span>Offset <b class="mono">0x004</b></span>
 <span>Address <b class="mono">0x40013404</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1104,23 +1104,23 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Address blocks</h3>
 <table>
 <tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
-<tr><td class="mono">0x0000</td><td class="mono">0x0008</td><td>registers</td></tr>
+<tr><td class="mono">0x000</td><td class="mono">0x008</td><td>registers</td></tr>
 
 </table>
 <h3>Registers</h3>
 <table>
 <tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td class="mono">0x0000</td><td><a href="#CRC.DR">DR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Data register</td></tr>
+<tr><td class="mono">0x000</td><td><a href="#CRC.DR">DR</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Data register</td></tr>
 
-<tr><td class="mono">0x0000</td><td><a href="#CRC.DR8">DR8</a></td><td>8 bits</td><td>RW</td><td class="mono">–</td><td>Byte-wide view of DR</td></tr>
+<tr><td class="mono">0x000</td><td><a href="#CRC.DR8">DR8</a></td><td>8 bits</td><td>RW</td><td class="mono">–</td><td>Byte-wide view of DR</td></tr>
 
-<tr><td class="mono">0x0000</td><td><a href="#CRC.DR16">DR16</a></td><td>16 bits</td><td>RW</td><td class="mono">–</td><td>Half-word view of DR</td></tr>
+<tr><td class="mono">0x000</td><td><a href="#CRC.DR16">DR16</a></td><td>16 bits</td><td>RW</td><td class="mono">–</td><td>Half-word view of DR</td></tr>
 
 </table>
 <article class="register" id="CRC.DR">
 <h3>DR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0000</b></span>
+<span>Offset <b class="mono">0x000</b></span>
 <span>Address <b class="mono">0x40014000</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1139,7 +1139,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="CRC.DR8">
 <h3>DR8</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0000</b></span>
+<span>Offset <b class="mono">0x000</b></span>
 <span>Address <b class="mono">0x40014000</b></span>
 <span>Size <b>8 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1158,7 +1158,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="CRC.DR16">
 <h3>DR16</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0000</b></span>
+<span>Offset <b class="mono">0x000</b></span>
 <span>Address <b class="mono">0x40014000</b></span>
 <span>Size <b>16 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1187,31 +1187,31 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Address blocks</h3>
 <table>
 <tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
-<tr><td class="mono">0x0000</td><td class="mono">0x0100</td><td>registers</td></tr>
+<tr><td class="mono">0x000</td><td class="mono">0x100</td><td>registers</td></tr>
 
 </table>
 <h3>Registers</h3>
 <table>
 <tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td class="mono">0x0000</td><td><a href="#PWMA.CTRL">CTRL</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
+<tr><td class="mono">0x000</td><td><a href="#PWMA.CTRL">CTRL</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
 
-<tr><td class="mono">0x0010</td><td><a href="#PWMA.CC">CC</a></td><td>32 bits</td><td>RW</td><td class="mono">0x00000000</td><td>Capture/compare channel</td></tr>
+<tr><td class="mono">0x010</td><td><a href="#PWMA.CC">CC</a></td><td>32 bits</td><td>RW</td><td class="mono">0x00000000</td><td>Capture/compare channel</td></tr>
 
-<tr><td class="mono">0x0010</td><td><a href="#PWMA.CCI">CCI</a></td><td>32 bits</td><td>RW</td><td class="mono">0x00000000</td><td>Capture/compare channel (input capture view)</td></tr>
+<tr><td class="mono">0x010</td><td><a href="#PWMA.CCI">CCI</a></td><td>32 bits</td><td>RW</td><td class="mono">0x00000000</td><td>Capture/compare channel (input capture view)</td></tr>
 
-<tr><td class="mono">0x0020</td><td><a href="#PWMA.DT0">DT0</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time</td></tr>
+<tr><td class="mono">0x020</td><td><a href="#PWMA.DT0">DT0</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time</td></tr>
 
-<tr><td class="mono">0x0028</td><td><a href="#PWMA.DT1">DT1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time</td></tr>
+<tr><td class="mono">0x028</td><td><a href="#PWMA.DT1">DT1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time</td></tr>
 
-<tr><td class="mono">0x0020</td><td><a href="#PWMA.DTR0">DTR0</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time (raw view)</td></tr>
+<tr><td class="mono">0x020</td><td><a href="#PWMA.DTR0">DTR0</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time (raw view)</td></tr>
 
-<tr><td class="mono">0x0028</td><td><a href="#PWMA.DTR1">DTR1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time (raw view)</td></tr>
+<tr><td class="mono">0x028</td><td><a href="#PWMA.DTR1">DTR1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time (raw view)</td></tr>
 
 </table>
 <article class="register" id="PWMA.CTRL">
 <h3>CTRL</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0000</b></span>
+<span>Offset <b class="mono">0x000</b></span>
 <span>Address <b class="mono">0x40015000</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1229,7 +1229,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="PWMA.CC">
 <h3>CC</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0010</b></span>
+<span>Offset <b class="mono">0x010</b></span>
 <span>Address <b class="mono">0x40015010</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1249,7 +1249,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="PWMA.CCI">
 <h3>CCI</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0010</b></span>
+<span>Offset <b class="mono">0x010</b></span>
 <span>Address <b class="mono">0x40015010</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1269,7 +1269,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="PWMA.DT0">
 <h3>DT0</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0020</b></span>
+<span>Offset <b class="mono">0x020</b></span>
 <span>Address <b class="mono">0x40015020</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1289,7 +1289,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="PWMA.DT1">
 <h3>DT1</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0028</b></span>
+<span>Offset <b class="mono">0x028</b></span>
 <span>Address <b class="mono">0x40015028</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1309,7 +1309,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="PWMA.DTR0">
 <h3>DTR0</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0020</b></span>
+<span>Offset <b class="mono">0x020</b></span>
 <span>Address <b class="mono">0x40015020</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1329,7 +1329,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="PWMA.DTR1">
 <h3>DTR1</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0028</b></span>
+<span>Offset <b class="mono">0x028</b></span>
 <span>Address <b class="mono">0x40015028</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1359,31 +1359,31 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Address blocks</h3>
 <table>
 <tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
-<tr><td class="mono">0x0000</td><td class="mono">0x0100</td><td>registers</td></tr>
+<tr><td class="mono">0x000</td><td class="mono">0x100</td><td>registers</td></tr>
 
 </table>
 <h3>Registers</h3>
 <table>
 <tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td class="mono">0x0000</td><td><a href="#PWMB.CTRL">CTRL</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
+<tr><td class="mono">0x000</td><td><a href="#PWMB.CTRL">CTRL</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Control register</td></tr>
 
-<tr><td class="mono">0x0010</td><td><a href="#PWMB.CC">CC</a></td><td>32 bits</td><td>RW</td><td class="mono">0x00000000</td><td>Capture/compare channel</td></tr>
+<tr><td class="mono">0x010</td><td><a href="#PWMB.CC">CC</a></td><td>32 bits</td><td>RW</td><td class="mono">0x00000000</td><td>Capture/compare channel</td></tr>
 
-<tr><td class="mono">0x0010</td><td><a href="#PWMB.CCI">CCI</a></td><td>32 bits</td><td>RW</td><td class="mono">0x00000000</td><td>Capture/compare channel (input capture view)</td></tr>
+<tr><td class="mono">0x010</td><td><a href="#PWMB.CCI">CCI</a></td><td>32 bits</td><td>RW</td><td class="mono">0x00000000</td><td>Capture/compare channel (input capture view)</td></tr>
 
-<tr><td class="mono">0x0020</td><td><a href="#PWMB.DT0">DT0</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time</td></tr>
+<tr><td class="mono">0x020</td><td><a href="#PWMB.DT0">DT0</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time</td></tr>
 
-<tr><td class="mono">0x0028</td><td><a href="#PWMB.DT1">DT1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time</td></tr>
+<tr><td class="mono">0x028</td><td><a href="#PWMB.DT1">DT1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time</td></tr>
 
-<tr><td class="mono">0x0020</td><td><a href="#PWMB.DTR0">DTR0</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time (raw view)</td></tr>
+<tr><td class="mono">0x020</td><td><a href="#PWMB.DTR0">DTR0</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time (raw view)</td></tr>
 
-<tr><td class="mono">0x0028</td><td><a href="#PWMB.DTR1">DTR1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time (raw view)</td></tr>
+<tr><td class="mono">0x028</td><td><a href="#PWMB.DTR1">DTR1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time (raw view)</td></tr>
 
 </table>
 <article class="register" id="PWMB.CTRL">
 <h3>CTRL</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0000</b></span>
+<span>Offset <b class="mono">0x000</b></span>
 <span>Address <b class="mono">0x40015100</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1401,7 +1401,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="PWMB.CC">
 <h3>CC</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0010</b></span>
+<span>Offset <b class="mono">0x010</b></span>
 <span>Address <b class="mono">0x40015110</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1421,7 +1421,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="PWMB.CCI">
 <h3>CCI</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0010</b></span>
+<span>Offset <b class="mono">0x010</b></span>
 <span>Address <b class="mono">0x40015110</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1441,7 +1441,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="PWMB.DT0">
 <h3>DT0</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0020</b></span>
+<span>Offset <b class="mono">0x020</b></span>
 <span>Address <b class="mono">0x40015120</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1461,7 +1461,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="PWMB.DT1">
 <h3>DT1</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0028</b></span>
+<span>Offset <b class="mono">0x028</b></span>
 <span>Address <b class="mono">0x40015128</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1481,7 +1481,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="PWMB.DTR0">
 <h3>DTR0</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0020</b></span>
+<span>Offset <b class="mono">0x020</b></span>
 <span>Address <b class="mono">0x40015120</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1501,7 +1501,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="PWMB.DTR1">
 <h3>DTR1</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0028</b></span>
+<span>Offset <b class="mono">0x028</b></span>
 <span>Address <b class="mono">0x40015128</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1529,33 +1529,33 @@ Licensed under the Apache License, Version 2.0.</pre>
 <h3>Address blocks</h3>
 <table>
 <tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
-<tr><td class="mono">0x0000</td><td class="mono">0x0100</td><td>registers</td></tr>
+<tr><td class="mono">0x000</td><td class="mono">0x100</td><td>registers</td></tr>
 
 </table>
 <h3>Registers</h3>
 <table>
 <tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td class="mono">0x0000</td><td><a href="#DMA.CFG">CFG</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Global configuration</td></tr>
+<tr><td class="mono">0x000</td><td><a href="#DMA.CFG">CFG</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Global configuration</td></tr>
 
-<tr><td class="mono">0x0010</td><td><a href="#DMA.CH.CTRL">CH.CTRL</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Channel control</td></tr>
+<tr><td class="mono">0x010</td><td><a href="#DMA.CH.CTRL">CH.CTRL</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Channel control</td></tr>
 
-<tr><td class="mono">0x0014</td><td><a href="#DMA.CH.SRC">CH.SRC</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Source address</td></tr>
+<tr><td class="mono">0x014</td><td><a href="#DMA.CH.SRC">CH.SRC</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Source address</td></tr>
 
-<tr><td class="mono">0x0018</td><td><a href="#DMA.CH.DST">CH.DST</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Destination address</td></tr>
+<tr><td class="mono">0x018</td><td><a href="#DMA.CH.DST">CH.DST</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Destination address</td></tr>
 
-<tr><td class="mono">0x001C</td><td><a href="#DMA.CH.XFER_Mem">CH.XFER_Mem</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Transfer control (memory side)</td></tr>
+<tr><td class="mono">0x01C</td><td><a href="#DMA.CH.XFER_Mem">CH.XFER_Mem</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Transfer control (memory side)</td></tr>
 
-<tr><td class="mono">0x001C</td><td><a href="#DMA.CH.XFER_Periph">CH.XFER_Periph</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Transfer control (peripheral side)</td></tr>
+<tr><td class="mono">0x01C</td><td><a href="#DMA.CH.XFER_Periph">CH.XFER_Periph</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Transfer control (peripheral side)</td></tr>
 
-<tr><td class="mono">0x0050</td><td><a href="#DMA.STAT.FLAGS">STAT.FLAGS</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Channel flags</td></tr>
+<tr><td class="mono">0x050</td><td><a href="#DMA.STAT.FLAGS">STAT.FLAGS</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Channel flags</td></tr>
 
-<tr><td class="mono">0x0054</td><td><a href="#DMA.STAT.ERR">STAT.ERR</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Error flags</td></tr>
+<tr><td class="mono">0x054</td><td><a href="#DMA.STAT.ERR">STAT.ERR</a></td><td>32 bits</td><td>RO</td><td class="mono">–</td><td>Error flags</td></tr>
 
 </table>
 <article class="register" id="DMA.CFG">
 <h3>CFG</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0000</b></span>
+<span>Offset <b class="mono">0x000</b></span>
 <span>Address <b class="mono">0x40016000</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1573,7 +1573,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="DMA.CH.CTRL">
 <h3>CH.CTRL</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0010</b></span>
+<span>Offset <b class="mono">0x010</b></span>
 <span>Address <b class="mono">0x40016010</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1599,7 +1599,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="DMA.CH.SRC">
 <h3>CH.SRC</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0014</b></span>
+<span>Offset <b class="mono">0x014</b></span>
 <span>Address <b class="mono">0x40016014</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1618,7 +1618,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="DMA.CH.DST">
 <h3>CH.DST</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0018</b></span>
+<span>Offset <b class="mono">0x018</b></span>
 <span>Address <b class="mono">0x40016018</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1637,7 +1637,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="DMA.CH.XFER_Mem">
 <h3>CH.XFER_Mem</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x001C</b></span>
+<span>Offset <b class="mono">0x01C</b></span>
 <span>Address <b class="mono">0x4001601C</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1657,7 +1657,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="DMA.CH.XFER_Periph">
 <h3>CH.XFER_Periph</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x001C</b></span>
+<span>Offset <b class="mono">0x01C</b></span>
 <span>Address <b class="mono">0x4001601C</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RW</b></span>
@@ -1677,7 +1677,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="DMA.STAT.FLAGS">
 <h3>STAT.FLAGS</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0050</b></span>
+<span>Offset <b class="mono">0x050</b></span>
 <span>Address <b class="mono">0x40016050</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RO</b></span>
@@ -1695,7 +1695,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <article class="register" id="DMA.STAT.ERR">
 <h3>STAT.ERR</h3>
 <div class="meta">
-<span>Offset <b class="mono">0x0054</b></span>
+<span>Offset <b class="mono">0x054</b></span>
 <span>Address <b class="mono">0x40016054</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RO</b></span>

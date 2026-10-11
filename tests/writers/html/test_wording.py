@@ -19,6 +19,7 @@ from regforge.writers.html.wording import (
     effects,
     field_reset,
     hex_,
+    hex_digits,
     register_reset,
     register_reset_mask,
     short,
@@ -27,6 +28,10 @@ from regforge.writers.html.wording import (
 
 def test_hex_is_zero_padded_upper_case():
     assert hex_(255, 4) == "0x00FF"
+
+
+def test_hex_digits_round_up_to_a_whole_digit():
+    assert [hex_digits(b) for b in (0, 1, 4, 5, 8, 32, 64)] == [0, 1, 1, 2, 2, 8, 16]
 
 
 def test_anchor_joins_parts_and_removes_spaces():

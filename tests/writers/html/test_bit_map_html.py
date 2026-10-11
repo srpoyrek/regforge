@@ -3,10 +3,13 @@
 from regforge.ir import Dim, Field, Register
 from regforge.writers.html.bit_map import BitMapHtml
 from regforge.writers.html.context import RenderContext
+from regforge.writers.html.device_facts import DeviceFacts
+
+FACTS = DeviceFacts(bus_width=32, address_digits=8, offset_digits=4)
 
 
-def _render(register):
-    return BitMapHtml(RenderContext.default()).render(register)
+def _render(register, facts=FACTS):
+    return BitMapHtml(RenderContext.default()).render(register, facts)
 
 
 def _ctrl():
@@ -61,3 +64,13 @@ def test_each_copy_of_an_array_field_is_its_own_cell():
 
 def test_an_unresolved_size_gives_no_map():
     assert _render(Register("R", 0x0)) == ""
+
+
+def test_a_row_holds_as_many_bits_as_the_bus_is_wide():
+    sixteen = Register("R", 0x0, size=16, fields=[Field("ALL", 0, 16)])
+    on_bus_of_8 = DeviceFacts(bus_width=8, address_digits=2, offset_digits=1)
+    on_bus_of_64 = DeviceFacts(bus_width=64, address_digits=16, offset_digits=1)
+    assert _render(sixteen, on_bus_of_8).count('class="numbers"') == 2
+    assert _render(sixteen, on_bus_of_64).count('class="numbers"') == 1
+    wide = Register("WIDE", 0x0, size=64, fields=[Field("ALL", 0, 64)])
+    assert _render(wide, on_bus_of_64).count('class="numbers"') == 1

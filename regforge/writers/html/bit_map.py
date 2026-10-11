@@ -8,10 +8,8 @@ from markupsafe import Markup
 
 from regforge.ir import Bit, Field, Register
 from regforge.writers.html.context import ElementHtml
+from regforge.writers.html.device_facts import DeviceFacts
 from regforge.writers.html.wording import NO_VALUE
-
-#: Bits shown per row; a wider register wraps onto more rows.
-ROW_BITS = 32
 
 
 @dataclass
@@ -45,14 +43,17 @@ def _label(bit: Bit) -> str:
 class BitMapHtml(ElementHtml):
     """Renders a register's bits: numbers, the field over each run of bits, reset values."""
 
-    def render(self, register: Register) -> Markup:
-        """The bit map, most-significant bit first; empty while the size is unresolved."""
+    def render(self, register: Register, facts: DeviceFacts) -> Markup:
+        """The bit map, most-significant bit first, wrapped at the bus width.
+
+        Empty while the register's size is unresolved.
+        """
         if register.size is None:
             return Markup("")
         bits = register.bits()
         rows = []
-        for high in range(register.size, 0, -ROW_BITS):
-            chunk = bits[max(0, high - ROW_BITS) : high][::-1]
+        for high in range(register.size, 0, -facts.bus_width):
+            chunk = bits[max(0, high - facts.bus_width) : high][::-1]
             cells: list[_Cell] = []
             keys: list[tuple[int, int] | None] = []
             for bit in chunk:

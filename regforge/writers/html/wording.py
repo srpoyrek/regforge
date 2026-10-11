@@ -15,6 +15,12 @@ from regforge.ir import (
 
 NO_VALUE = "–"
 
+#: Bits one hexadecimal digit stands for.
+BITS_PER_HEX_DIGIT = 4
+
+#: Characters of a description a summary table cell shows before it cuts the text.
+SUMMARY_LIMIT = 90
+
 _ACCESS_LABEL = {
     Access.READ_ONLY: "RO",
     Access.WRITE_ONLY: "WO",
@@ -49,6 +55,11 @@ _PROTECTION_TEXT = {
 }
 
 
+def hex_digits(bits: int) -> int:
+    """How many hexadecimal digits write a ``bits``-wide number in full."""
+    return -(-bits // BITS_PER_HEX_DIGIT)
+
+
 def hex_(value: int, digits: int) -> str:
     """``value`` as zero-padded upper-case hex, ``0x00FF``."""
     return f"0x{value:0{digits}X}"
@@ -64,7 +75,7 @@ def anchor(*parts: str) -> str:
     return ".".join(parts).replace(" ", "_")
 
 
-def short(text: str | None, limit: int = 90) -> str:
+def short(text: str | None, limit: int = SUMMARY_LIMIT) -> str:
     """The first line of ``text``, cut to ``limit`` characters, for a summary table."""
     if not text or not text.strip():
         return ""
@@ -121,14 +132,14 @@ def register_reset(register: Register) -> str:
     """The register's reset value as hex, or an en dash when it has none."""
     if register.reset_value is None or register.size is None:
         return NO_VALUE
-    return hex_(register.reset_value, (register.size + 3) // 4)
+    return hex_(register.reset_value, hex_digits(register.size))
 
 
 def register_reset_mask(register: Register) -> str | None:
     """The register's reset mask as hex, or ``None`` when it has none."""
     if register.reset_mask is None or register.size is None:
         return None
-    return hex_(register.reset_mask, (register.size + 3) // 4)
+    return hex_(register.reset_mask, hex_digits(register.size))
 
 
 def field_reset(register: Register, field_: Field) -> str:

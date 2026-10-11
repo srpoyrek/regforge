@@ -11,8 +11,11 @@ from regforge.ir import (
     Register,
 )
 from regforge.writers.html.context import RenderContext
+from regforge.writers.html.device_facts import DeviceFacts
 from regforge.writers.html.placement import PlacedRegister
 from regforge.writers.html.register import RegisterHtml
+
+FACTS = DeviceFacts(bus_width=32, address_digits=8, offset_digits=4)
 
 
 def _renderer():
@@ -41,19 +44,19 @@ def _peripheral():
 
 
 def test_it_shows_where_the_register_is():
-    html = _renderer().render(_peripheral(), _placed())
+    html = _renderer().render(_peripheral(), _placed(), FACTS)
     assert 'id="P.CTRL"' in html
     assert "0x0010" in html and "0x40000010" in html
 
 
 def test_it_shows_size_access_reset_name_and_description():
-    html = _renderer().render(_peripheral(), _placed())
+    html = _renderer().render(_peripheral(), _placed(), FACTS)
     for text in ("8 bits", "RW", "0x01", "Control register", "<small>Control</small>"):
         assert text in html
 
 
 def test_it_contains_the_bit_map_and_the_field_table():
-    html = _renderer().render(_peripheral(), _placed())
+    html = _renderer().render(_peripheral(), _placed(), FACTS)
     assert 'class="bitmap"' in html and "<th>Field</th>" in html
     table = html.split("<th>Field</th>")[1]
     assert table.index("<td>EN</td>") < table.index("<td>MODE</td>")  # declaration order
@@ -62,7 +65,7 @@ def test_it_contains_the_bit_map_and_the_field_table():
 def test_it_says_which_registers_share_its_address():
     register = _ctrl()
     register.alternates = ("CTRL", "CTRL_ALT")
-    html = _renderer().render(_peripheral(), _placed(register))
+    html = _renderer().render(_peripheral(), _placed(register), FACTS)
     assert "Shares this address with CTRL_ALT" in html
 
 
@@ -72,16 +75,23 @@ def test_it_notes_what_reading_and_writing_do():
     register.modified_write_values = ModifiedWriteValues.ONE_TO_CLEAR
     register.protection = Protection.SECURE
     register.data_type = DataType.UINT32
-    html = _renderer().render(_peripheral(), _placed(register))
+    html = _renderer().render(_peripheral(), _placed(register), FACTS)
     for text in ("a read clears it", "writing 1 clears the bit", "secure access only", "uint32_t"):
         assert text in html
 
 
 def test_it_notes_the_cluster_array_it_sits_in():
-    html = _renderer().render(_peripheral(), _placed(note="array of 4, 0x10 units apart"))
+    html = _renderer().render(_peripheral(), _placed(note="array of 4, 0x10 units apart"), FACTS)
     assert "array of 4, 0x10 units apart" in html
 
 
 def test_the_row_links_to_the_block():
-    row = _renderer().row(_peripheral(), _placed())
+    row = _renderer().row(_peripheral(), _placed(), FACTS)
     assert 'href="#P.CTRL"' in row and "Control register" in row and "0x0010" in row
+
+
+def test_offset_and_address_use_the_devices_digits():
+    facts = DeviceFacts(bus_width=16, address_digits=4, offset_digits=2)
+    html = _renderer().render(Peripheral("P", 0x2000), _placed(), facts)
+    assert "0x10" in html and "0x2010" in html
+    assert "0x10" in _renderer().row(Peripheral("P", 0x2000), _placed(), facts)

@@ -8,6 +8,7 @@ from regforge.ir import Device
 from regforge.provenance import Provenance
 from regforge.writers.html.context import ElementHtml, RenderContext
 from regforge.writers.html.cpu import CpuHtml
+from regforge.writers.html.device_facts import DeviceFacts
 from regforge.writers.html.facts import FactsHtml
 from regforge.writers.html.license_notice import LicenseHtml
 from regforge.writers.html.peripheral import PeripheralHtml
@@ -32,6 +33,7 @@ class DeviceHtml(ElementHtml):
 
     def render(self, device: Device, provenance: Provenance | None = None) -> Markup:
         """The whole document."""
+        device_facts = DeviceFacts.of(device)
         pairs = [
             ("Vendor", device.vendor),
             ("Series", device.series),
@@ -46,7 +48,7 @@ class DeviceHtml(ElementHtml):
             facts=self._facts.render("Device", [(k, v) for k, v in pairs if v]),
             cpu=self._cpu.render(device.cpu) if device.cpu is not None else Markup(""),
             license=self._license.render(device.license_text),
-            rows=[self._peripheral.row(p) for p in device.peripherals],
-            sections=[self._peripheral.render(p) for p in device.peripherals],
+            rows=[self._peripheral.row(p, device_facts) for p in device.peripherals],
+            sections=[self._peripheral.render(p, device_facts) for p in device.peripherals],
             provenance=self._provenance.render(provenance),
         )

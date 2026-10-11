@@ -7,6 +7,7 @@ from markupsafe import Markup
 from regforge.ir import Peripheral
 from regforge.writers.html.bit_map import BitMapHtml
 from regforge.writers.html.context import ElementHtml, RenderContext
+from regforge.writers.html.device_facts import DeviceFacts
 from regforge.writers.html.field import FieldHtml
 from regforge.writers.html.placement import PlacedRegister
 from regforge.writers.html.wording import (
@@ -31,7 +32,7 @@ class RegisterHtml(ElementHtml):
         self._bit_map = BitMapHtml(context)
         self._field = FieldHtml(context)
 
-    def render(self, peripheral: Peripheral, placed: PlacedRegister) -> Markup:
+    def render(self, peripheral: Peripheral, placed: PlacedRegister, facts: DeviceFacts) -> Markup:
         """The register's full block."""
         register = placed.register
         notes = effects(register)
@@ -46,8 +47,8 @@ class RegisterHtml(ElementHtml):
             anchor=anchor(peripheral.name, placed.path),
             path=placed.path,
             display_name=register.display_name,
-            offset=hex_(placed.offset, 4),
-            address=hex_(peripheral.base_address + placed.offset, 8),
+            offset=hex_(placed.offset, facts.offset_digits),
+            address=hex_(peripheral.base_address + placed.offset, facts.address_digits),
             size=NO_VALUE if register.size is None else f"{register.size} bits",
             access=access_label(register.access),
             reset=register_reset(register),
@@ -56,18 +57,18 @@ class RegisterHtml(ElementHtml):
             array_note=array,
             alternates=[n for n in register.alternates if n != register.name],
             notes=notes,
-            bit_map=self._bit_map.render(register),
+            bit_map=self._bit_map.render(register, facts),
             fields=[self._field.render(register, f) for f in register.fields],
         )
 
-    def row(self, peripheral: Peripheral, placed: PlacedRegister) -> Markup:
+    def row(self, peripheral: Peripheral, placed: PlacedRegister, facts: DeviceFacts) -> Markup:
         """The register's line in its peripheral's summary table."""
         register = placed.register
         return self._fill(
             "register_row.html.j2",
             anchor=anchor(peripheral.name, placed.path),
             path=placed.path,
-            offset=hex_(placed.offset, 4),
+            offset=hex_(placed.offset, facts.offset_digits),
             size=NO_VALUE if register.size is None else f"{register.size} bits",
             access=access_label(register.access),
             reset=register_reset(register),

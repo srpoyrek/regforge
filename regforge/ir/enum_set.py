@@ -10,6 +10,9 @@ from regforge.ir.enum_usage import EnumUsage
 if TYPE_CHECKING:
     from regforge.ir import EnumeratedValue
 
+#: The widest field whose every number is listed one by one; a wider one is not enumerated.
+MAX_LISTED_BITS = 16
+
 
 @dataclass
 class EnumSet:
@@ -97,18 +100,19 @@ class EnumSet:
         """Whether every number a ``bit_width``-bit field can hold is named.
 
         A catch-all entry names the rest, so it makes the set complete. A field wider than
-        16 bits is too wide to check number by number, so only a catch-all completes it.
+        ``MAX_LISTED_BITS`` is too wide to check number by number, so only a catch-all
+        completes it.
         """
         if self.default_entry is not None:
             return True
-        return bit_width <= 16 and not self.gaps(bit_width)
+        return bit_width <= MAX_LISTED_BITS and not self.gaps(bit_width)
 
     def gaps(self, bit_width: int) -> list[int]:
         """The numbers a ``bit_width``-bit field can hold that no entry names.
 
         Empty when a catch-all entry covers them. ``ValueError`` for a field wider
-        than 16 bits, which is too wide to list.
+        than ``MAX_LISTED_BITS``, which is too wide to list.
         """
-        if bit_width > 16:
+        if bit_width > MAX_LISTED_BITS:
             raise ValueError(f"{bit_width} bits is too wide to list the gaps")
         return [n for n in range(1 << bit_width) if self.entry_for(n) is None]
