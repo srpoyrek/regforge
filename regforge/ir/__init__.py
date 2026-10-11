@@ -20,6 +20,7 @@ from enum import Enum
 
 from regforge.ir.bit import Bit as Bit
 from regforge.ir.bit import bits as bits
+from regforge.ir.enumerated_value import EnumeratedValue as EnumeratedValue
 from regforge.ir.field import Field as Field
 
 # --- SVD schema defaults (used when the source omits an optional element) ---
@@ -38,21 +39,6 @@ class Access(Enum):
     READ_WRITE = "read-write"
     WRITE_ONCE = "writeOnce"
     READ_WRITE_ONCE = "read-writeOnce"
-
-
-@dataclass
-class EnumeratedValue:
-    """A named constant that a :class:`Field` may hold.
-
-    Attributes:
-        name: Identifier of the value, e.g. ``"OUTPUT"``.
-        value: The numeric value written to the field.
-        description: Optional human-readable description.
-    """
-
-    name: str
-    value: int
-    description: str | None = None
 
 
 @dataclass
