@@ -60,3 +60,28 @@ def test_fits_in_says_whether_the_number_fits_a_width():
     analog = EnumeratedValue("ANALOG", 3)
     assert analog.fits_in(2) and not analog.fits_in(1)
     assert not EnumeratedValue("BAD", -1).fits_in(8)
+
+
+def test_a_catch_all_entry_names_no_number_of_its_own():
+    other = EnumeratedValue("others", None, "Setting prohibited", is_default=True)
+    assert other.value is None and other.is_default
+    assert not other.matches(0) and other.fits_in(1)
+    assert other.label() == "other values"
+
+
+def test_a_pattern_names_every_number_that_agrees_on_the_bits_it_cares_about():
+    busy = EnumeratedValue("BUSY", 0b0100, dont_care=0b0011)  # 0b01xx
+    assert busy.is_pattern and not EnumeratedValue("OFF", 0).is_pattern
+    assert [n for n in range(8) if busy.matches(n)] == [4, 5, 6, 7]
+
+
+def test_a_pattern_fits_only_when_its_widest_bit_does():
+    busy = EnumeratedValue("BUSY", 0b0100, dont_care=0b0011)
+    assert busy.fits_in(3) and not busy.fits_in(2)
+
+
+def test_label_spells_a_number_in_hex_and_a_pattern_in_binary():
+    busy = EnumeratedValue("BUSY", 0b0100, dont_care=0b0011)
+    assert EnumeratedValue("A", 3).label() == "0x3"
+    assert busy.label() == "0b1xx" and busy.label(bit_width=4) == "0b01xx"
+    assert EnumeratedValue("Z", 0, dont_care=0b1).label(bit_width=3) == "0b00x"

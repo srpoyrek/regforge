@@ -103,3 +103,49 @@ def test_is_complete_when_every_number_is_named_or_caught():
     assert _mode().is_complete(1)
     assert not _mode().is_complete(2)  # 2 is missing
     assert EnumSet([EnumeratedValue("OTHER", 0, is_default=True)]).is_complete(8)
+
+
+def _with_catch_all() -> EnumSet:
+    return EnumSet(
+        [
+            EnumeratedValue("OFF", 0),
+            EnumeratedValue("ON", 1),
+            EnumeratedValue("others", None, is_default=True),
+        ]
+    )
+
+
+def test_a_number_nobody_names_falls_to_the_catch_all_entry():
+    assert _with_catch_all().name_of(1) == "ON"
+    assert _with_catch_all().name_of(3) == "others"
+
+
+def test_entry_for_can_leave_the_catch_all_out():
+    only_named = _with_catch_all().entry_for(1, include_default=False)
+    assert only_named is not None and only_named.name == "ON"
+    assert _with_catch_all().entry_for(3, include_default=False) is None
+
+
+def test_the_catch_all_has_no_number_to_look_up_by_name():
+    assert _with_catch_all().value_of("others") is None
+    assert _with_catch_all().numbers == [0, 1]
+
+
+def test_a_pattern_names_a_run_of_numbers():
+    busy = EnumSet([EnumeratedValue("IDLE", 0), EnumeratedValue("BUSY", 0b100, dont_care=0b011)])
+    assert [busy.name_of(n) for n in (0, 3, 4, 7)] == ["IDLE", None, "BUSY", "BUSY"]
+    assert busy.gaps(3) == [1, 2, 3]
+
+
+def test_two_patterns_can_cover_every_number():
+    low = EnumeratedValue("LOW", 0b000, dont_care=0b011)
+    high = EnumeratedValue("HIGH", 0b100, dont_care=0b011)
+    assert EnumSet([low, high]).is_complete(3)
+
+
+def test_oversized_ignores_the_catch_all_and_counts_the_widest_pattern_bit():
+    wide = EnumSet(
+        [EnumeratedValue("others", None, is_default=True), EnumeratedValue("P", 0b100, dont_care=1)]
+    )
+    assert [v.name for v in wide.oversized(2)] == ["P"]
+    assert wide.oversized(3) == []

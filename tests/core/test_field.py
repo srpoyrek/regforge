@@ -206,3 +206,17 @@ def test_a_field_is_write_once_by_its_access():
     assert Field("KEY", 0, 8, access=Access.READ_WRITE_ONCE).is_write_once
     assert not Field("EN", 0, 1, access=Access.READ_WRITE).is_write_once
     assert not Field("EN", 0, 1).is_write_once  # unresolved counts as read-write
+
+
+def test_accepts_does_not_count_the_catch_all_as_a_named_value():
+    named_or_other = EnumSet(
+        [EnumeratedValue("A", 0), EnumeratedValue("others", None, is_default=True)]
+    )
+    mode = Field(
+        "MODE",
+        0,
+        2,
+        enum_sets=[named_or_other],
+        write_constraint=WriteConstraint(use_enumerated_values=True),
+    )
+    assert [mode.accepts(v) for v in range(4)] == [True, False, False, False]

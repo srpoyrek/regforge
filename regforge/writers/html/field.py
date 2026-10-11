@@ -31,7 +31,7 @@ class FieldHtml(ElementHtml):
             notes.insert(0, array)
         several = len(field_.enum_sets) > 1
         sets = [
-            self._enum_set.render(s, s.usage.value if several else None)
+            self._enum_set.render(s, s.usage.value if several else None, field_.bit_width)
             for s in field_.enum_sets
             if s.values
         ]

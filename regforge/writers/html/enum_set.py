@@ -16,10 +16,15 @@ class EnumSetHtml(ElementHtml):
         super().__init__(context)
         self._value = EnumValueHtml(context)
 
-    def render(self, enum_set: EnumSet, label: str | None = None) -> Markup:
-        """The set's values; ``label`` names the direction when a field has several sets."""
+    def render(
+        self, enum_set: EnumSet, label: str | None = None, bit_width: int | None = None
+    ) -> Markup:
+        """The set's values; ``label`` names the direction when a field has several sets.
+
+        ``bit_width`` is the field's width, so a pattern is spelled to that many bits.
+        """
         return self._fill(
             "enum_set.html.j2",
             label=label,
-            values=[self._value.render(v) for v in enum_set.values],
+            values=[self._value.render(v, bit_width) for v in enum_set.values],
         )

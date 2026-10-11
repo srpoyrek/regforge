@@ -169,3 +169,16 @@ def test_an_enumerated_value_with_no_number_is_skipped(tmp_path):
         "</enumeratedValues>",
     )
     assert [e.name for e in field.enums] == ["OK"]
+
+
+def test_catch_all_and_dont_care_entries_read_instead_of_stopping_the_read(tmp_path):
+    field = _field_with_enums(
+        tmp_path,
+        "<enumeratedValues>"
+        "<enumeratedValue><name>BUSY</name><value>#01xx</value></enumeratedValue>"
+        "<enumeratedValue><name>others</name><isDefault>true</isDefault></enumeratedValue>"
+        "</enumeratedValues>",
+    )
+    busy, others = field.enum_sets[0].values
+    assert (busy.value, busy.dont_care) == (4, 3)
+    assert others.value is None and others.is_default

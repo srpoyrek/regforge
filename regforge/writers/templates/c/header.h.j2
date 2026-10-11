@@ -388,7 +388,7 @@ typedef {{ tname }} {{ prefix|lower }}{{ periph.name|lower }}_t;
 #define {{ fn }}_Pos ({{ field.bit_offset }}U)
 #define {{ fn }}_Msk ({{ field.mask|hex32 }}UL)
 {% endif %}
-{% for ev in field.enums %}
+{% for ev in field.enums if ev.value is not none and not ev.dont_care %}
 #define {{ fn }}_{{ ev.name|upper }} ({{ ev.value }}U)
 {% endfor %}
 {% endfor %}

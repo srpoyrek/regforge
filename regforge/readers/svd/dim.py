@@ -97,5 +97,7 @@ class DimParser(ElementParser):
             increment=increment,
             index=index,
             name=child_text(element, "dimName"),
-            array_index=self._value.parse_all(element, "./dimArrayIndex/enumeratedValue"),
+            array_index=self._value.parse_all(
+                element, "./dimArrayIndex/enumeratedValue", numbered_only=True
+            ),
         )

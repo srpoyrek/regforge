@@ -20,4 +20,5 @@ from regforge.readers.svd.dim import parse_dim_index as parse_dim_index
 from regforge.readers.svd.primitives import Radix as Radix
 from regforge.readers.svd.primitives import parse_svd_bool as parse_svd_bool
 from regforge.readers.svd.primitives import parse_svd_int as parse_svd_int
+from regforge.readers.svd.primitives import parse_svd_value as parse_svd_value
 from regforge.readers.svd.reader import SvdReader as SvdReader

@@ -193,7 +193,10 @@ class Field:
             return False
         if constraint.use_enumerated_values:
             enum_set = self.enum_set_for(EnumUsage.WRITE)
-            return enum_set is not None and enum_set.name_of(value) is not None
+            return (
+                enum_set is not None
+                and enum_set.entry_for(value, include_default=False) is not None
+            )
         return True
 
     # --- enumerated values ------------------------------------------------------

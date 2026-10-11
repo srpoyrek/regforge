@@ -16,7 +16,8 @@ class EnumSet:
     """The named values of a :class:`~regforge.ir.Field`, with the set's own settings.
 
     Each :class:`~regforge.ir.EnumeratedValue` names one number the field's bits can
-    hold; the set is the whole list plus what the SVD says about it as a group.
+    hold, a run of them, or (the catch-all entry) all the rest; the set is the whole list
+    plus what the SVD says about it as a group.
 
     Attributes:
         values: The entries, in the order the source wrote them.
@@ -38,12 +39,29 @@ class EnumSet:
     usage: EnumUsage = EnumUsage.READ_WRITE
     derived_from: str | None = None
 
+    @property
+    def default_entry(self) -> EnumeratedValue | None:
+        """The catch-all entry (SVD ``isDefault``), or ``None``."""
+        return next((v for v in self.values if v.is_default), None)
+
+    def entry_for(self, number: int, include_default: bool = True) -> EnumeratedValue | None:
+        """The entry that names ``number``: the first explicit match, else the catch-all.
+
+        ``include_default=False`` leaves the catch-all out, so only a number the file
+        names on purpose is found.
+        """
+        match = next((v for v in self.values if v.matches(number)), None)
+        if match is None and include_default:
+            return self.default_entry
+        return match
+
     def name_of(self, number: int) -> str | None:
-        """The name of the first entry holding ``number``, or ``None`` if none does."""
-        return next((v.name for v in self.values if v.value == number), None)
+        """The name of the entry that names ``number``, or ``None`` if none does."""
+        entry = self.entry_for(number)
+        return entry.name if entry is not None else None
 
     def value_of(self, name: str) -> int | None:
-        """The number of the entry called ``name``, or ``None`` if there is none."""
+        """The number of the entry called ``name``; ``None`` if none, or if it is a catch-all."""
         return next((v.value for v in self.values if v.name == name), None)
 
     def oversized(self, bit_width: int) -> list[EnumeratedValue]:
@@ -52,13 +70,8 @@ class EnumSet:
 
     @property
     def numbers(self) -> list[int]:
-        """The number of every entry, in order."""
-        return [v.value for v in self.values]
-
-    @property
-    def default_entry(self) -> EnumeratedValue | None:
-        """The catch-all entry (SVD ``isDefault``), or ``None``."""
-        return next((v for v in self.values if v.is_default), None)
+        """The number of every entry that has one, in order."""
+        return [v.value for v in self.values if v.value is not None]
 
     def duplicate_numbers(self) -> list[int]:
         """The numbers more than one entry names, in the order they first repeat."""
@@ -83,12 +96,12 @@ class EnumSet:
     def is_complete(self, bit_width: int) -> bool:
         """Whether every number a ``bit_width``-bit field can hold is named.
 
-        A catch-all entry names the rest, so it makes the set complete.
+        A catch-all entry names the rest, so it makes the set complete. A field wider than
+        16 bits is too wide to check number by number, so only a catch-all completes it.
         """
         if self.default_entry is not None:
             return True
-        named = {n for n in self.numbers if 0 <= n < (1 << bit_width)}
-        return len(named) == 1 << bit_width
+        return bit_width <= 16 and not self.gaps(bit_width)
 
     def gaps(self, bit_width: int) -> list[int]:
         """The numbers a ``bit_width``-bit field can hold that no entry names.
@@ -98,7 +111,4 @@ class EnumSet:
         """
         if bit_width > 16:
             raise ValueError(f"{bit_width} bits is too wide to list the gaps")
-        if self.default_entry is not None:
-            return []
-        named = set(self.numbers)
-        return [n for n in range(1 << bit_width) if n not in named]
+        return [n for n in range(1 << bit_width) if self.entry_for(n) is None]

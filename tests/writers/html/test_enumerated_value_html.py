@@ -22,3 +22,14 @@ def test_it_escapes_markup_in_the_text():
     html = _render(EnumeratedValue("A<B", 1, "x & <y>"))
     assert "A&lt;B" in html and "x &amp; &lt;y&gt;" in html
     assert "<y>" not in html
+
+
+def test_a_catch_all_entry_reads_as_other_values():
+    html = _render(EnumeratedValue("others", None, "Prohibited", is_default=True))
+    assert "other values" in html and "<b>others</b>" in html and "Prohibited" in html
+
+
+def test_a_pattern_is_spelled_in_binary_to_the_fields_width():
+    pattern = EnumeratedValue("BUSY", 0b0100, dont_care=0b0011)
+    html = EnumValueHtml(RenderContext.default()).render(pattern, 4)
+    assert "0b01xx" in html

@@ -11,11 +11,15 @@ from regforge.writers.html.context import ElementHtml
 class EnumValueHtml(ElementHtml):
     """Renders one :class:`~regforge.ir.EnumeratedValue` as a list item."""
 
-    def render(self, value: EnumeratedValue) -> Markup:
-        """The value's number, name and description."""
+    def render(self, value: EnumeratedValue, bit_width: int | None = None) -> Markup:
+        """The value's number, name and description.
+
+        A pattern is spelled in binary to ``bit_width``; the catch-all entry reads as
+        ``other values``.
+        """
         return self._fill(
             "enumerated_value.html.j2",
-            number=f"{value.value:#x}",
+            number=value.label(bit_width),
             name=value.name,
             description=value.description,
         )

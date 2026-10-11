@@ -31,6 +31,20 @@ def parse_svd_int(text: str) -> int:
     return int(token, Radix.DECIMAL)
 
 
+def parse_svd_value(text: str) -> tuple[int, int]:
+    """Parse an enumerated value's ``<value>`` into ``(value, dont_care)``.
+
+    Besides the integer forms, the schema lets a binary pattern write ``x`` for a bit
+    that may be either (``#01xx``; vendors also write ``0b01xx``). Those bits read as 0
+    in ``value`` and are set in ``dont_care``. A plain number has ``dont_care`` 0.
+    """
+    token = text.strip().lower()
+    digits = token[1:] if token.startswith("#") else token[2:] if token.startswith("0b") else ""
+    if "x" in digits and set(digits) <= set("01x"):
+        return int(digits.replace("x", "0"), 2), int(digits.replace("1", "0").replace("x", "1"), 2)
+    return parse_svd_int(text), 0
+
+
 def parse_svd_bool(text: str) -> bool | None:
     """Parse an SVD boolean, accepting both ``true``/``false`` and ``1``/``0``.
 

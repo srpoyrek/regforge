@@ -22,3 +22,9 @@ def test_it_names_the_direction_when_given_one():
 
 def test_it_names_no_direction_by_default():
     assert "values</li>" not in EnumSetHtml(RenderContext.default()).render(_set())
+
+
+def test_it_spells_patterns_to_the_given_width():
+    pattern = EnumSet([EnumeratedValue("BUSY", 0b100, dont_care=0b011)])
+    html = EnumSetHtml(RenderContext.default()).render(pattern, bit_width=3)
+    assert "0b1xx" in html
