@@ -47,6 +47,35 @@ def test_the_result_is_a_list_of_warnings():
     assert {finding.severity for finding in findings} == {Severity.WARNING}
 
 
+def test_a_run_of_shared_bits_is_one_finding():
+    assert _messages(_device(Field("A", 0, 8), Field("B", 4, 8), size=16)) == [
+        "P.R: bits 4..7 are claimed by A and B"
+    ]
+
+
+def test_separate_runs_are_separate_findings():
+    device = _device(Field("A", 0, 8), Field("B", 0, 1), Field("C", 6, 2))
+    assert _messages(device) == [
+        "P.R: bit 0 is claimed by A and B",
+        "P.R: bits 6..7 are claimed by A and C",
+    ]
+
+
+def test_three_claimants_on_a_bit_are_one_finding_per_pair():
+    device = _device(Field("A", 0, 4), Field("B", 2, 4), Field("C", 3, 1))
+    assert _messages(device) == [
+        "P.R: bits 2..3 are claimed by A and B",
+        "P.R: bit 3 is claimed by A and C",
+        "P.R: bit 3 is claimed by B and C",
+    ]
+
+
+def test_two_fields_that_share_a_name_are_still_two_claimants():
+    assert _messages(_device(Field("Reserved", 0, 4), Field("Reserved", 2, 4))) == [
+        "P.R: bits 2..3 are claimed by Reserved and Reserved"
+    ]
+
+
 def test_a_field_array_is_named_with_its_count():
     device = _device(Field("OD", 0, 1, dim=Dim(4, 1, array=True)), Field("X", 1, 1))
     assert _messages(device) == ["P.R: bit 1 is claimed by OD[4] and X"]

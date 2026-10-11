@@ -1,6 +1,6 @@
-"""BitResolution: what is wrong with who claims the bits of one register.
+"""BitResolution: one bit of a register, and how it compares with another bit.
 
-It is given plain data, the width and each bit's claimants, and knows nothing above a bit.
+It is given plain data, a position and a claimant's label, and knows nothing above a bit.
 """
 
 import inspect
@@ -9,74 +9,89 @@ from regforge.finding import Severity
 from regforge.resolution import BitResolution, bit
 
 
-def _resolution(claims: dict[int, list[str]], width: int = 8) -> BitResolution:
-    return BitResolution(width, claims, "P.R")
+def _bit(position: int, owner: str | None) -> BitResolution:
+    return BitResolution(position, owner, "P.R")
+
+
+def _run(owner: str, first: int, last: int) -> list[BitResolution]:
+    return [_bit(position, owner) for position in range(first, last + 1)]
 
 
 def _messages(findings):
     return [finding.message for finding in findings]
 
 
-def test_a_bit_with_two_claimants_is_a_warning():
-    resolution = _resolution({0: ["MODE"], 1: ["MODE", "STATE"], 2: ["STATE"]})
-    (finding,) = resolution.collisions()
+# --- one bit set beside another ----------------------------------------------------
+
+
+def test_two_claimants_on_one_bit_are_a_warning():
+    (finding,) = _bit(1, "MODE").compare(_bit(1, "STATE"))
     assert finding.severity is Severity.WARNING
     assert finding.message == "P.R: bit 1 is claimed by MODE and STATE"
 
 
-def test_a_run_of_shared_bits_is_one_finding():
-    claims = {position: ["A", "B"] for position in range(4, 8)}
-    assert _messages(_resolution(claims).collisions()) == ["P.R: bits 4..7 are claimed by A and B"]
+def test_bits_at_different_positions_do_not_collide():
+    assert _bit(1, "A").compare(_bit(2, "B")) == []
 
 
-def test_separate_runs_are_separate_findings():
-    claims = {0: ["A", "B"], 6: ["A", "C"], 7: ["A", "C"]}
-    assert _messages(_resolution(claims).collisions()) == [
-        "P.R: bit 0 is claimed by A and B",
-        "P.R: bits 6..7 are claimed by A and C",
+def test_an_unclaimed_bit_collides_with_nothing():
+    assert _bit(1, None).compare(_bit(1, "B")) == []
+    assert _bit(1, "A").compare(_bit(1, None)) == []
+    assert _bit(1, None).compare(_bit(1, None)) == []
+
+
+def test_the_bit_cannot_tell_two_fields_that_share_a_name_from_one():
+    # Comparing different claimants is the caller's job; the bit reports what it is given.
+    assert _messages(_bit(0, "Reserved").compare(_bit(0, "Reserved"))) == [
+        "P.R: bit 0 is claimed by Reserved and Reserved"
     ]
 
 
-def test_neighbouring_bits_with_different_claimants_are_different_runs():
-    claims = {2: ["A", "B"], 3: ["A", "C"]}
-    assert _messages(_resolution(claims).collisions()) == [
-        "P.R: bit 2 is claimed by A and B",
-        "P.R: bit 3 is claimed by A and C",
+def test_a_bit_alone_has_nothing_wrong():
+    bit_ = _bit(3, "A")
+    assert bit_.findings() == [] and str(bit_) == ""
+
+
+# --- two lists of bits ---------------------------------------------------------------
+
+
+def test_compare_all_pairs_the_bits_at_one_position_and_merges_a_run():
+    findings = BitResolution.compare_all(_run("A", 0, 3), _run("B", 2, 5))
+    assert _messages(findings) == ["P.R: bits 2..3 are claimed by A and B"]
+
+
+def test_compare_all_reports_separate_runs():
+    left = [_bit(0, "A"), _bit(1, "A"), _bit(5, "A")]
+    right = [_bit(0, "B"), _bit(1, "B"), _bit(5, "B")]
+    assert _messages(BitResolution.compare_all(left, right)) == [
+        "P.R: bits 0..1 are claimed by A and B",
+        "P.R: bit 5 is claimed by A and B",
     ]
 
 
-def test_every_claimant_is_named_in_the_order_given():
-    assert _messages(_resolution({3: ["A", "B", "C"]}).collisions()) == [
-        "P.R: bit 3 is claimed by A and B and C"
+def test_compare_all_does_not_depend_on_the_order_the_bits_are_given_in():
+    left = [_bit(3, "A"), _bit(2, "A")]
+    right = [_bit(2, "B"), _bit(3, "B")]
+    assert _messages(BitResolution.compare_all(left, right)) == [
+        "P.R: bits 2..3 are claimed by A and B"
     ]
 
 
-def test_bits_with_one_claimant_or_none_are_silent():
-    assert _resolution({0: ["A"], 1: ["A"], 5: ["B"]}).collisions() == []
-    assert _resolution({}).collisions() == []
+def test_compare_all_is_silent_when_the_lists_share_no_position():
+    assert BitResolution.compare_all(_run("A", 0, 1), _run("B", 4, 5)) == []
 
 
-def test_positions_at_or_beyond_the_width_are_not_bits_of_the_register():
-    assert _resolution({8: ["A", "B"], 9: ["A", "B"]}, width=8).collisions() == []
-    assert _messages(_resolution({7: ["A", "B"], 8: ["A", "B"]}, width=8).collisions()) == [
-        "P.R: bit 7 is claimed by A and B"
-    ]
+def test_compare_all_is_silent_for_an_empty_list():
+    assert BitResolution.compare_all([], _run("B", 0, 3)) == []
+    assert BitResolution.compare_all(_run("A", 0, 3), []) == []
 
 
-def test_the_findings_are_the_collisions():
-    resolution = _resolution({1: ["A", "B"]})
-    assert resolution.findings() == resolution.collisions()
+def test_the_claimants_are_named_left_then_right():
+    findings = BitResolution.compare_all(_run("STATE", 1, 1), _run("MODE", 1, 1))
+    assert _messages(findings) == ["P.R: bit 1 is claimed by STATE and MODE"]
 
 
-def test_str_is_the_report_one_finding_per_line():
-    resolution = _resolution({0: ["A", "B"], 6: ["A", "C"]})
-    assert str(resolution) == (
-        "warning: P.R: bit 0 is claimed by A and B\nwarning: P.R: bit 6 is claimed by A and C"
-    )
-
-
-def test_str_is_empty_when_nothing_is_wrong():
-    assert str(_resolution({0: ["A"]})) == ""
+# --- layering ----------------------------------------------------------------------
 
 
 def test_the_bit_class_imports_nothing_above_a_bit():

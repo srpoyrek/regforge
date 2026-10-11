@@ -30,22 +30,45 @@ def _label(field: Field) -> str:
     return f"{field.name}[{field.dim.length}]" if field.dim is not None else field.name
 
 
-def _claimants(register: Register) -> dict[int, list[str]]:
-    """For each bit position, the labels of the fields that claim it.
+def _copies_of_one_template(first: Field, second: Field) -> bool:
+    """Whether both fields are copies expanded from the same ``<dim>`` template."""
+    return first.expanded_from is not None and first.expanded_from == second.expanded_from
 
-    Two cases are not a collision of two fields, so each leaves the bit one claimant.
-    Copies of one ``<dim>`` template overlapping each other count as the template alone,
-    since expansion has already reported that; and a field array overlapping itself is
-    one field (``check_address_math`` reports it).
+
+def _bits(field: Field, positions: list[int], where: str) -> list[BitResolution]:
+    """The bits a field covers, as the bit class sees them: a position and a claimant."""
+    label = _label(field)
+    return [BitResolution(position, label, where) for position in sorted(positions)]
+
+
+def _collisions(register: Register, size: int, where: str) -> list[Finding]:
+    """Findings for the fields of ``register`` that share a bit, comparing their bits in pairs.
+
+    This walk is a stand-in for the classes of the levels above the bit: the register will
+    pick the pairs of fields and each field will hand the bit class its bits. Copies of one
+    ``<dim>`` template are not compared with each other, since expansion has already
+    reported them overlapping, and a field array overlapping itself is one field, which
+    ``check_address_math`` reports.
     """
-    found: dict[int, list[str]] = {}
+    positions: dict[int, list[int]] = {}
     for position, owners in claims(register).items():
-        template = owners[0].expanded_from
-        if template is not None and all(owner.expanded_from == template for owner in owners):
-            found[position] = [template]
-        else:
-            found[position] = [_label(owner) for owner in owners]
-    return found
+        if position < size:  # a position past the width is not a bit of the register
+            for owner in owners:
+                positions.setdefault(id(owner), []).append(position)
+    findings: list[Finding] = []
+    fields = register.fields
+    for index, first in enumerate(fields):
+        first_positions = positions.get(id(first), [])
+        for second in fields[index + 1 :]:
+            second_positions = positions.get(id(second), [])
+            if _copies_of_one_template(first, second):
+                continue
+            if not set(first_positions).intersection(second_positions):
+                continue
+            findings += BitResolution.compare_all(
+                _bits(first, first_positions, where), _bits(second, second_positions, where)
+            )
+    return findings
 
 
 def collect(device: Device) -> list[Finding]:
@@ -55,5 +78,5 @@ def collect(device: Device) -> list[Finding]:
         for where, register in _registers(peripheral):
             if register.size is None:
                 continue  # without its width there are no bits to check
-            findings += BitResolution(register.size, _claimants(register), where).findings()
+            findings += _collisions(register, register.size, where)
     return findings

@@ -8,19 +8,33 @@ the rule below is unchanged.
 
 A register is a row of bits, and a field names a run of them. A bit has no
 attributes of its own: it is a position, the field that claims it, and its value
-after reset. The rules about bits live in one class, `BitResolution`, which says
-what is wrong in words. It knows nothing above a bit: it is handed the register's
-width and, for each bit position, the labels of whoever claims it. `collect` is the
-one place that knows the whole device; it builds that data from the registers and
-fields, gathers what every element's class finds, and the command line prints it.
-The other elements still keep their rules in the checks; they move to a class of their
-own one at a time.
+after reset. The rules about bits live in one class, `BitResolution`, which stands for
+one bit and says what is wrong in words. It knows nothing above a bit: it is given the
+bit's position and the label of whoever claims it. A rule that needs two bits is a
+`compare` of two of them, and `compare_all` does it for two lists of bits at once.
+
+`compare` is not specific to bits. It comes from `CollisionResolution`
+(`regforge/resolution/collision.py`), the one rule every level that has collisions
+shares: two claimants on one position of some space, whether a bit, an address, an
+enumerated value's number or an interrupt vector. A class names its space (`unit`),
+how serious a collision is there (`severity`) and the positions it occupies, and gets
+the comparison, the joining of a run of positions into one finding and the message.
+Positions are integers and claimants are labels, so the shared rule knows no element.
+
+The levels above build on that, each knowing only itself and the level below: a field
+compares its bits with another field's by calling the bit class, a register decides
+which pairs of fields to compare, and so on up. Today only the bit exists, so
+`collect`, the one place that knows the whole device, does the walk of the levels above:
+it picks the pairs of fields, hands the bit class their bits, gathers what every
+element's class finds, and the command line prints it. The other elements still keep
+their rules in the checks; they move to a class of their own one at a time.
 
 Code: `regforge/ir/bit.py` (`Bit`, `bits`, `claims`), `regforge/resolution/bit.py`
-(`BitResolution`), `regforge/resolution/collector.py` (`collect`),
-`regforge/check.py` (`check_element_rules`).
+(`BitResolution`), `regforge/resolution/collision.py` (`CollisionResolution`),
+`regforge/resolution/collector.py` (`collect`), `regforge/check.py`
+(`check_element_rules`).
 Tests: `tests/core/test_bit.py`, `tests/resolution/test_bit_resolution.py`,
-`tests/resolution/test_collect.py`.
+`tests/resolution/test_collision.py`, `tests/resolution/test_collect.py`.
 
 ## Rule 1: the first declared field keeps a contested bit
 
@@ -54,7 +68,8 @@ In the HTML register reference, bit 1 reads `MODE` and `STATE` has bit 2 alone.
 ## Rule 2: two fields on one bit are a warning
 
 The file contradicts itself, but the hardware could still be as it says, so a human
-decides: a `WARNING`, one finding per run of shared bits, naming every field in the
+decides: a `WARNING`. Two bits are compared at a time, so the finding is per pair of
+fields: one finding per run of consecutive shared bits, naming the two fields in the
 order they were declared.
 
 ```
@@ -65,12 +80,13 @@ warn: TIM.CTRL: bit 1 is claimed by MODE and STATE
 |---|---|
 | `A` at bits 0..7 and `B` at bits 4..11 of a 16-bit register | `bits 4..7 are claimed by A and B`: one finding for the run |
 | `A` at 0..7, `B` at 0, `C` at 6..7 | two findings: `bit 0 ... A and B`, `bits 6..7 ... A and C` |
-| three fields on one bit | all three named, `A and B and C` |
+| three fields on one bit | one finding per pair: `A and B`, `A and C`, `B and C` |
+| two different fields with the same name | still two claimants: `Reserved and Reserved` |
 | a field array and a field | the array is named with its count, `OD[4] and X` |
 | fields that only touch (`A` at 0..1, `B` at 2..3) | nothing |
 
-Not reported here, because something else already reports it. The collector hands the
-bit class one claimant for each of the first two, since only it knows about fields:
+Not reported here, because something else already reports it. The collector does not
+compare those with each other, since only it knows about fields:
 
 | Case | Reported by |
 |---|---|
