@@ -1,8 +1,8 @@
-"""AlternateSet: registers that are different views of one word, like a C union."""
+"""AlternateSet: one word of the register map, holding one view or several like a C union."""
 
 import pytest
 
-from regforge.ir import AlternateSet, Field, Register, alternate_sets
+from regforge.ir import AlternateSet, Field, Peripheral, Register
 
 
 def _crc() -> list[Register]:
@@ -12,9 +12,6 @@ def _crc() -> list[Register]:
         Register("DR8", 0x0, size=8, fields=[Field("BYTE", 0, 8)]),
         Register("DR16", 0x0, size=16, fields=[Field("HALF", 0, 16)]),
     ]
-    names = tuple(view.name for view in views)
-    for view in views:
-        view.alternates = names  # what resolve_alternates does
     return views
 
 
@@ -79,30 +76,53 @@ def test_the_width_refuses_a_view_with_an_unresolved_size():
         _ = AlternateSet((Register("A", 0x0),)).width
 
 
-def test_alternate_sets_groups_linked_registers_in_the_order_their_primaries_appear():
-    lone = Register("LONE", 0x40, size=32)
-    first = _crc()
+def test_a_set_of_several_views_is_an_alternate_and_a_set_of_one_is_not():
+    assert AlternateSet(tuple(_crc())).is_alternate
+    assert not AlternateSet((Register("LONE", 0x0, size=32),)).is_alternate
+
+
+def test_a_set_declares_nothing_until_the_reader_says_so():
+    assert AlternateSet((Register("A", 0x0),)).joins is None
+    assert AlternateSet((Register("A", 0x0),), joins="B").joins == "B"
+
+
+def test_a_peripheral_holds_its_sets_and_reads_their_views_flat():
+    first, lone = _crc(), Register("LONE", 0x40, size=32)
     second = [Register("CC", 0x10, size=32), Register("CCI", 0x10, size=32)]
-    for view in second:
-        view.alternates = ("CC", "CCI")
-    found = alternate_sets([*first, lone, *second])
-    assert [[v.name for v in s.views] for s in found] == [["DR", "DR8", "DR16"], ["CC", "CCI"]]
+    peripheral = Peripheral(
+        "P",
+        0x0,
+        alternate_sets=[
+            AlternateSet(tuple(first)),
+            AlternateSet((lone,)),
+            AlternateSet(tuple(second)),
+        ],
+    )
+    assert [[v.name for v in s.views] for s in peripheral.alternate_sets] == [
+        ["DR", "DR8", "DR16"],
+        ["LONE"],
+        ["CC", "CCI"],
+    ]
+    assert [r.name for r in peripheral.registers] == ["DR", "DR8", "DR16", "LONE", "CC", "CCI"]
 
 
-def test_a_lone_register_belongs_to_no_set():
-    assert alternate_sets([Register("LONE", 0x0, size=32)]) == []
+def test_a_lone_register_is_a_set_of_one_view():
+    peripheral = Peripheral("P", 0x0, registers=[Register("LONE", 0x0, size=32)])
+    (only,) = peripheral.alternate_sets
+    assert [v.name for v in only.views] == ["LONE"] and not only.is_alternate
 
 
 def test_the_fixtures_crc_data_register_is_one_word_seen_three_ways(demo_device):
     crc = next(p for p in demo_device.peripherals if p.name == "CRC")
-    (union,) = alternate_sets(crc.registers)
+    (union,) = [s for s in crc.alternate_sets if s.is_alternate]
     assert [v.name for v in union.views] == ["DR", "DR8", "DR16"]
     assert union.width == 32
 
 
 def test_the_fixtures_pwm_has_three_sets(demo_device):
     pwma = next(p for p in demo_device.peripherals if p.name == "PWMA")
-    assert [s.primary.name for s in alternate_sets(pwma.registers)] == ["CC", "DT0", "DT1"]
+    found = [s.primary.name for s in pwma.alternate_sets if s.is_alternate]
+    assert sorted(found) == ["CC", "DT0", "DT1"]
 
 
 def test_names_lists_the_views_primary_first():

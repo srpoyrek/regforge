@@ -8,7 +8,11 @@ touches its own package.
 
 The hierarchy mirrors the structure of a memory-mapped device:
 
-``Device`` -> ``Peripheral`` -> (``Cluster`` ->) ``Register`` -> ``Field`` -> ``EnumeratedValue``
+``Device`` -> ``Peripheral`` -> (``Cluster`` ->) ``AlternateSet`` -> ``Register`` -> ``Field``
+-> ``EnumeratedValue``
+
+An ``AlternateSet`` is one word of the register map: a set of one view for a plain
+register, of several for registers that are different layouts of the same bits.
 """
 
 from __future__ import annotations
@@ -19,7 +23,6 @@ from dataclasses import field as dc_field  # `field` is also a submodule of this
 
 from regforge.ir.access import Access as Access
 from regforge.ir.alternate_set import AlternateSet as AlternateSet
-from regforge.ir.alternate_set import alternate_sets as alternate_sets
 from regforge.ir.array_group import ArrayGroup as ArrayGroup
 from regforge.ir.array_group import array_groups as array_groups
 from regforge.ir.array_group import compact as compact
@@ -36,6 +39,7 @@ from regforge.ir.modified_write_values import ModifiedWriteValues as ModifiedWri
 from regforge.ir.protection import Protection as Protection
 from regforge.ir.read_action import ReadAction as ReadAction
 from regforge.ir.register import Register as Register
+from regforge.ir.registers_of import RegistersOf as RegistersOf
 from regforge.ir.write_constraint import WriteConstraint as WriteConstraint
 
 # --- SVD schema defaults (used when the source omits an optional element) ---
@@ -70,7 +74,12 @@ class Cluster:
         default_access: Cluster-level default access policy.
         default_reset_value: Cluster-level default reset value.
         default_reset_mask: Cluster-level default reset mask.
-        registers: Registers belonging to the cluster.
+        alternate_sets: The cluster's registers, one :class:`AlternateSet` per word: a
+            set of one view for a plain register, of several for registers that are
+            different layouts of one word.
+        registers: The same registers read flat, the views of every set in order. Passing
+            ``registers=`` to the constructor, or assigning it, makes one set of one view
+            per register; see :class:`RegistersOf`.
         clusters: Clusters nested inside this one.
         dim: Array shape when the cluster is one of several copies (SVD
             ``<dim>``); ``None`` for a single cluster. After expansion only a
@@ -92,7 +101,8 @@ class Cluster:
     default_access: Access | None = None
     default_reset_value: int | None = None
     default_reset_mask: int | None = None
-    registers: list[Register] = dc_field(default_factory=list)
+    alternate_sets: list[AlternateSet] = dc_field(default_factory=list)
+    registers: RegistersOf = dc_field(default=RegistersOf(), repr=False, compare=False)
     clusters: list[Cluster] = dc_field(default_factory=list)
     dim: Dim | None = None
     expanded_from: str | None = None
@@ -186,7 +196,12 @@ class Peripheral:
         default_access: Peripheral-level default access policy.
         default_reset_value: Peripheral-level default reset value.
         default_reset_mask: Peripheral-level default reset mask.
-        registers: Registers belonging to the peripheral.
+        alternate_sets: The peripheral's registers, one :class:`AlternateSet` per word: a
+            set of one view for a plain register, of several for registers that are
+            different layouts of one word.
+        registers: The same registers read flat, the views of every set in order. Passing
+            ``registers=`` to the constructor, or assigning it, makes one set of one view
+            per register; see :class:`RegistersOf`.
         interrupts: Interrupt lines the peripheral raises (SVD ``<interrupt>``).
         address_blocks: Declared memory footprint(s) (SVD ``<addressBlock>``).
         clusters: Register groups (SVD ``<cluster>``), each emitted as a nested
@@ -212,7 +227,8 @@ class Peripheral:
     default_access: Access | None = None
     default_reset_value: int | None = None
     default_reset_mask: int | None = None
-    registers: list[Register] = dc_field(default_factory=list)
+    alternate_sets: list[AlternateSet] = dc_field(default_factory=list)
+    registers: RegistersOf = dc_field(default=RegistersOf(), repr=False, compare=False)
     interrupts: list[Interrupt] = dc_field(default_factory=list)
     address_blocks: list[AddressBlock] = dc_field(default_factory=list)
     clusters: list[Cluster] = dc_field(default_factory=list)

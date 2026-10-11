@@ -2,13 +2,18 @@
 
 import pytest
 
-from regforge.ir import Cluster, Device, Dim, Peripheral, Register
+from regforge.ir import AlternateSet, Cluster, Device, Dim, Peripheral, Register
 from regforge.layout import LayoutError, peripheral_layout, union_naming
 from regforge.resolve import expand_dim, resolve_alternates
 
 
-def _laid_out(*registers: Register, clusters: list[Cluster] | None = None):
-    peripheral = Peripheral("P", 0x0, registers=list(registers), clusters=list(clusters or []))
+def _alt(register: Register, of: str | None = None) -> AlternateSet:
+    """The set the reader makes for ``register``, which declared itself an alternate of ``of``."""
+    return AlternateSet((register,), joins=of)
+
+
+def _laid_out(*sets: AlternateSet, clusters: list[Cluster] | None = None):
+    peripheral = Peripheral("P", 0x0, alternate_sets=list(sets), clusters=list(clusters or []))
     device = Device(name="Chip", peripherals=[peripheral])
     expand_dim(device)
     resolve_alternates(device)
@@ -18,10 +23,10 @@ def _laid_out(*registers: Register, clusters: list[Cluster] | None = None):
 def test_union_slot_is_as_wide_as_its_widest_view():
     dr, dr8, dr16 = (
         Register("DR", 0x0, size=32),
-        Register("DR8", 0x0, size=8, alternate_register="DR"),
-        Register("DR16", 0x0, size=16, alternate_register="DR"),
+        Register("DR8", 0x0, size=8),
+        Register("DR16", 0x0, size=16),
     )
-    (slot,) = _laid_out(dr, dr8, dr16)
+    (slot,) = _laid_out(_alt(dr), _alt(dr8, of="DR"), _alt(dr16, of="DR"))
     assert slot.views == (dr, dr8, dr16) and slot.union == "DR"
     assert slot.view_names == ("DR", "DR8", "DR16")  # rule 2: 8 and 16 are not identifiers
     assert (slot.offset, slot.element_bytes, slot.size_bytes, slot.count) == (0, 4, 4, 1)
@@ -30,8 +35,8 @@ def test_union_slot_is_as_wide_as_its_widest_view():
 
 def test_common_prefix_names_the_union_and_the_views_keep_their_remainders():
     (slot,) = _laid_out(
-        Register("CCMR1_Output", 0x0, size=32),
-        Register("CCMR1_Input", 0x0, size=32, alternate_register="CCMR1_Output"),
+        _alt(Register("CCMR1_Output", 0x0, size=32)),
+        _alt(Register("CCMR1_Input", 0x0, size=32), of="CCMR1_Output"),
     )
     assert slot.union == "CCMR1" and slot.view_names == ("Output", "Input")
 
@@ -40,9 +45,9 @@ def test_prefix_used_by_a_sibling_falls_back_to_the_primary_name():
     ccr, x, y = (
         Register("CCR", 0x0, size=32),
         Register("CCR_X", 0x4, size=32),
-        Register("CCR_Y", 0x4, size=32, alternate_register="CCR_X"),
+        Register("CCR_Y", 0x4, size=32),
     )
-    _, slot = _laid_out(ccr, x, y)
+    _, slot = _laid_out(_alt(ccr), _alt(x), _alt(y, of="CCR_X"))
     assert slot.union == "CCR_X" and slot.view_names == ("CCR_X", "CCR_Y")
 
 
@@ -64,21 +69,21 @@ def test_undeclared_overlap_is_still_refused_with_the_alternate_hint():
     with pytest.raises(
         LayoutError, match=r"P\.B: register at offset 0x0 overlaps.*alternateRegister"
     ):
-        _laid_out(Register("A", 0x0, size=32), Register("B", 0x0, size=32))
+        _laid_out(_alt(Register("A", 0x0, size=32)), _alt(Register("B", 0x0, size=32)))
 
 
 def test_packed_union_array_is_one_slot():
     (slot,) = _laid_out(
-        Register("CC[%s]", 0x0, size=32, dim=Dim(4, 4)),
-        Register("CCI[%s]", 0x0, size=32, dim=Dim(4, 4), alternate_register="CC[%s]"),
+        _alt(Register("CC[%s]", 0x0, size=32, dim=Dim(4, 4))),
+        _alt(Register("CCI[%s]", 0x0, size=32, dim=Dim(4, 4)), of="CC[%s]"),
     )
     assert slot.union == "CC" and slot.count == 4 and slot.size_bytes == 16
 
 
 def test_unpacked_union_array_is_one_slot_per_element():
     slots = _laid_out(
-        Register("CC[%s]", 0x0, size=32, dim=Dim(2, 8)),
-        Register("CCI[%s]", 0x0, size=32, dim=Dim(2, 8), alternate_register="CC[%s]"),
+        _alt(Register("CC[%s]", 0x0, size=32, dim=Dim(2, 8))),
+        _alt(Register("CCI[%s]", 0x0, size=32, dim=Dim(2, 8)), of="CC[%s]"),
     )
     named = [(s.offset, s.name, s.index, s.union) for s in slots if s.views]
     assert named == [(0x0, "CC0", 0, "CC"), (0x8, "CC1", 1, "CC")]
@@ -88,8 +93,8 @@ def test_unpacked_union_array_is_one_slot_per_element():
 def test_union_array_with_a_stride_narrower_than_a_view_is_refused():
     with pytest.raises(LayoutError, match=r"P\.CC\[2\]: stride 2 byte\(s\) is smaller"):
         _laid_out(
-            Register("CC[%s]", 0x0, size=32, dim=Dim(2, 2)),
-            Register("CCI[%s]", 0x0, size=32, dim=Dim(2, 2), alternate_register="CC[%s]"),
+            _alt(Register("CC[%s]", 0x0, size=32, dim=Dim(2, 2))),
+            _alt(Register("CCI[%s]", 0x0, size=32, dim=Dim(2, 2)), of="CC[%s]"),
         )
 
 
@@ -98,12 +103,12 @@ def test_union_inside_a_cluster_fills_the_element():
         "CH",
         0x10,
         dim=Dim(2, 0x8),
-        registers=[
-            Register("CTRL", 0x0, size=32),
-            Register("XFER_Mem", 0x4, size=32),
-            Register("XFER_Periph", 0x4, size=32, alternate_register="XFER_Mem"),
+        alternate_sets=[
+            _alt(Register("CTRL", 0x0, size=32)),
+            _alt(Register("XFER_Mem", 0x4, size=32)),
+            _alt(Register("XFER_Periph", 0x4, size=32), of="XFER_Mem"),
         ],
     )
-    ch = _laid_out(Register("CFG", 0x0, size=32), clusters=[cluster])[-1]
+    ch = _laid_out(_alt(Register("CFG", 0x0, size=32)), clusters=[cluster])[-1]
     assert [m.union for m in ch.members] == [None, "XFER"]
     assert ch.element_bytes == 8 and not any(m.is_reserved for m in ch.members)

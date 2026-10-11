@@ -601,18 +601,17 @@ def check_alternate_registers(device: Device) -> list[Finding]:
     """
     findings: list[Finding] = []
     for peripheral in device.peripherals:
-        blocks = [(peripheral.name, peripheral.registers, peripheral.clusters)]
+        blocks = [(peripheral.name, peripheral.alternate_sets, peripheral.clusters)]
         blocks += [
-            (path, cluster.registers, cluster.clusters)
+            (path, cluster.alternate_sets, cluster.clusters)
             for path, cluster in walk_clusters(peripheral.clusters, peripheral.name)
         ]
-        for where, registers, clusters in blocks:
-            groups: dict[str, list[Register]] = {}
-            for register in registers:
-                if register.alternates:
-                    groups.setdefault(register.alternates[0], []).append(register)
-            for primary, views in groups.items():
-                views.sort(key=lambda view: view.name != primary)
+        for where, sets, clusters in blocks:
+            for alternate_set in sets:
+                if not alternate_set.is_alternate:
+                    continue
+                primary = alternate_set.primary.name
+                views = list(alternate_set.views)
                 resets = {v.name: v.reset_value for v in views if v.reset_value is not None}
                 if len(set(resets.values())) > 1:
                     listed = ", ".join(f"{name}=0x{value:X}" for name, value in resets.items())
@@ -623,12 +622,12 @@ def check_alternate_registers(device: Device) -> list[Finding]:
                             f"({listed}) -- one register has one reset",
                         )
                     )
-                siblings = {r.name for r in registers if not r.alternates} | {
-                    c.name for c in clusters
-                }
-                siblings |= {
-                    r.name for r in registers if r.alternates and r.alternates[0] != primary
-                }
+                siblings = {
+                    view.name
+                    for other in sets
+                    if other is not alternate_set
+                    for view in other.views
+                } | {c.name for c in clusters}
                 name, _, collision = union_naming(views, siblings)
                 if collision is not None:
                     findings.append(

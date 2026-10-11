@@ -27,17 +27,26 @@ _SVD = """<?xml version="1.0" encoding="utf-8"?>
 """
 
 
-def _registers(tmp_path):
+def _sets(tmp_path):
     path = tmp_path / "alt.svd"
     path.write_text(_SVD, encoding="utf-8")
-    return SvdReader().read(path).peripherals[0].registers
+    return SvdReader().read(path).peripherals[0].alternate_sets
+
+
+def _registers(tmp_path):
+    return [view for alternate_set in _sets(tmp_path) for view in alternate_set.views]
+
+
+def test_every_register_is_read_as_a_set_of_one_view(tmp_path):
+    sets = _sets(tmp_path)
+    assert [s.names for s in sets] == [("CCMR1_Output",), ("CCMR1_Input",)] + [("DR",)] * 3
+    assert not any(s.is_alternate for s in sets)  # merged by the resolve pass, not here
 
 
 def test_alternate_register_is_read_as_declared(tmp_path):
-    registers = {r.name: r for r in _registers(tmp_path)}
-    assert registers["CCMR1_Output"].alternate_register is None
-    assert registers["CCMR1_Input"].alternate_register == "CCMR1_Output"
-    assert registers["CCMR1_Input"].alternates == ()  # linked by the resolve pass, not here
+    joins = {s.primary.name: s.joins for s in _sets(tmp_path)}
+    assert joins["CCMR1_Output"] is None
+    assert joins["CCMR1_Input"] == "CCMR1_Output"
 
 
 def test_alternate_group_is_a_label_the_reader_neither_renames_nor_links(tmp_path):
@@ -45,4 +54,4 @@ def test_alternate_group_is_a_label_the_reader_neither_renames_nor_links(tmp_pat
     assert [r.name for r in (plain, cal, raw)] == ["DR", "DR", "DR"]
     assert [r.alternate_group for r in (plain, cal, raw)] == [None, "Cal", "Raw"]
     # Only what the file wrote is a link: an explicit alternateRegister beside the group.
-    assert [r.alternate_register for r in (plain, cal, raw)] == [None, None, "DR"]
+    assert [s.joins for s in _sets(tmp_path)[2:]] == [None, None, "DR"]

@@ -16,7 +16,9 @@ read from and the target it is emitted as.
                      └──────────────┘
 ```
 
-Today there is one of each: CMSIS-SVD in, C out. Adding a target means writing
+Today there is one input format, CMSIS-SVD, and two output targets: C, which has a
+page of its own, and an HTML register reference that presents the same model for
+people to read. Adding a target means writing
 `targets/<language>.md` and updating one link per rule. Adding an input format
 means writing `formats/<format>.md` and doing the same. No rule page is
 rewritten.

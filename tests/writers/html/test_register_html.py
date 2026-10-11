@@ -63,9 +63,8 @@ def test_it_contains_the_bit_map_and_the_field_table():
 
 
 def test_it_says_which_registers_share_its_address():
-    register = _ctrl()
-    register.alternates = ("CTRL", "CTRL_ALT")
-    html = _renderer().render(_peripheral(), _placed(register), FACTS)
+    placed = PlacedRegister(_ctrl(), "CTRL", 0x10, None, ("CTRL_ALT",))
+    html = _renderer().render(_peripheral(), placed, FACTS)
     assert "Shares this address with CTRL_ALT" in html
 
 

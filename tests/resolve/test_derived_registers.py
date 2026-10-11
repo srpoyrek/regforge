@@ -1,6 +1,6 @@
 """Register derivedFrom: a derived register inherits what it leaves unsaid from its base."""
 
-from regforge.ir import Access, Cluster, Device, Dim, Field, Peripheral, Register
+from regforge.ir import Access, AlternateSet, Cluster, Device, Dim, Field, Peripheral, Register
 from regforge.resolve import expand_dim, resolve_defaults, resolve_derived
 
 
@@ -63,10 +63,20 @@ def test_a_field_of_its_own_replaces_the_one_of_the_same_name_and_others_are_add
 def test_the_dim_and_the_alternate_declaration_are_not_inherited():
     base = _base()
     base.dim = Dim(count=2, increment=4, array=True)
-    base.alternate_register = "OTHER"
     derived = Register("CTRL2", 0x4, derived_from="CTRL")
-    resolve_derived(_device(base, derived))
-    assert derived.dim is None and derived.alternate_register is None
+    device = Device(
+        name="Chip",
+        peripherals=[
+            Peripheral(
+                "P",
+                0x1000,
+                alternate_sets=[AlternateSet((base,), joins="OTHER"), AlternateSet((derived,))],
+            )
+        ],
+    )
+    resolve_derived(device)
+    assert derived.dim is None
+    assert [s.joins for s in device.peripherals[0].alternate_sets] == ["OTHER", None]
 
 
 def test_a_chain_inherits_through_its_root_even_out_of_order():
@@ -175,7 +185,7 @@ def test_a_template_copy_takes_the_copy_of_the_same_index():
 def test_a_plain_register_naming_a_template_takes_its_first_copy_with_a_warning():
     device = _pmux()
     user = Register("MINE", 0x0, derived_from="PMUX0_%s")
-    device.peripherals[0].registers.append(user)
+    device.peripherals[0].alternate_sets.append(AlternateSet((user,)))
     expand_dim(device)
     warnings = resolve_derived(device)
     assert warnings == [

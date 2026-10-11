@@ -41,7 +41,7 @@ class ClusterParser(ElementParser):
             default_reset_value=child_int(element, "resetValue"),
             default_reset_mask=child_int(element, "resetMask"),
             default_protection=self._protection.parse(element),
-            registers=[self._register.parse(r) for r in element.findall("./register")],
+            alternate_sets=[self._register.parse_set(r) for r in element.findall("./register")],
             clusters=[self.parse(c) for c in element.findall("./cluster")],
             dim=self._dim.parse(element, name, element.get("derivedFrom") is not None),
         )

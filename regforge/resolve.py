@@ -38,6 +38,7 @@ from typing import NamedTuple, TypeVar
 from .check import Finding, Severity
 from .ir import (
     Access,
+    AlternateSet,
     Cluster,
     Device,
     Dim,
@@ -265,37 +266,56 @@ def _expand_fields(register: Register, where: str, findings: list[Finding]) -> N
     register.fields = expanded
 
 
+def _expand_register(register: Register, where: str, findings: list[Finding]) -> list[Register]:
+    """The registers that replace ``register``: itself, its copies, or none for ``<dim>`` 0."""
+    # Fields first, on the template, so every copy carries the expanded set.
+    _expand_fields(register, f"{where}.{register.name}", findings)
+    if register.dim is None or register.dim.array:
+        return [register]
+    path = f"{where}.{register.name}"
+    plan = _plan(register.dim, register.name, path, findings)
+    if plan is None:
+        _keep_one(register, register.name)
+        return [register]
+    if not plan:
+        return []
+    if _ARRAY in register.name:
+        _keep_as_array(register, where, findings)
+        return [register]
+    pattern = _pattern(register.name, plan, path, findings)
+    copies: list[Register] = []
+    for index, label in enumerate(plan):
+        clone = copy.deepcopy(register)
+        clone.dim = None
+        clone.expanded_from = register.name
+        clone.origin = DimOrigin(register.name, register.dim, index, label)
+        clone.name = pattern.replace(_COPY, label)
+        clone.address_offset = register.address_offset + index * register.dim.stride
+        copies.append(clone)
+    return copies
+
+
 def _expand_registers(
-    registers: list[Register], where: str, findings: list[Finding]
-) -> list[Register]:
-    """The register list with every ``%s`` template replaced by its copies, in place."""
-    expanded: list[Register] = []
-    for register in registers:
-        # Fields first, on the template, so every copy carries the expanded set.
-        _expand_fields(register, f"{where}.{register.name}", findings)
-        if register.dim is None or register.dim.array:
-            expanded.append(register)
+    sets: list[AlternateSet], where: str, findings: list[Finding]
+) -> list[AlternateSet]:
+    """The sets with every ``%s`` template replaced by its copies, each copy a set of its own.
+
+    A set as the reader makes it holds one view: a register and what the file declared
+    about it, which every copy of a template declares too.
+    """
+    expanded: list[AlternateSet] = []
+    for alternate_set in sets:
+        if alternate_set.is_alternate:
+            for view in alternate_set.views:
+                _expand_fields(view, f"{where}.{view.name}", findings)
+            expanded.append(alternate_set)
             continue
-        path = f"{where}.{register.name}"
-        plan = _plan(register.dim, register.name, path, findings)
-        if plan is None:
-            _keep_one(register, register.name)
-            expanded.append(register)
-        elif not plan:
-            continue
-        elif _ARRAY in register.name:
-            _keep_as_array(register, where, findings)
-            expanded.append(register)
+        register = alternate_set.primary
+        replacements = _expand_register(register, where, findings)
+        if len(replacements) == 1 and replacements[0] is register:
+            expanded.append(alternate_set)
         else:
-            pattern = _pattern(register.name, plan, path, findings)
-            for index, label in enumerate(plan):
-                clone = copy.deepcopy(register)
-                clone.dim = None
-                clone.expanded_from = register.name
-                clone.origin = DimOrigin(register.name, register.dim, index, label)
-                clone.name = pattern.replace(_COPY, label)
-                clone.address_offset = register.address_offset + index * register.dim.stride
-                expanded.append(clone)
+            expanded += [AlternateSet((r,), joins=alternate_set.joins) for r in replacements]
     return expanded
 
 
@@ -304,7 +324,7 @@ def _expand_clusters(clusters: list[Cluster], where: str, findings: list[Finding
     expanded: list[Cluster] = []
     for cluster in clusters:
         path = f"{where}.{cluster.name}"
-        cluster.registers = _expand_registers(cluster.registers, path, findings)
+        cluster.alternate_sets = _expand_registers(cluster.alternate_sets, path, findings)
         cluster.clusters = _expand_clusters(cluster.clusters, path, findings)
         if cluster.dim is None or cluster.dim.array:
             expanded.append(cluster)
@@ -420,7 +440,9 @@ def expand_dim(device: Device) -> list[Finding]:
     _inherit_dims(device, findings)
     expanded: list[Peripheral] = []
     for peripheral in device.peripherals:
-        peripheral.registers = _expand_registers(peripheral.registers, peripheral.name, findings)
+        peripheral.alternate_sets = _expand_registers(
+            peripheral.alternate_sets, peripheral.name, findings
+        )
         peripheral.clusters = _expand_clusters(peripheral.clusters, peripheral.name, findings)
         if peripheral.dim is None or peripheral.dim.array:
             expanded.append(peripheral)
@@ -544,7 +566,7 @@ def resolve_derived(device: Device) -> list[str]:
         # peripheral uses only its own <interrupt>. Inheriting the base's
         # verbatim would put two peripherals on one vector under the base's
         # name -- almost always a bug, surfaced by check_derived_interrupts().
-        peripheral.registers = [copy.deepcopy(register) for register in base.registers]
+        peripheral.alternate_sets = [copy.deepcopy(alt) for alt in base.alternate_sets]
         peripheral.clusters = [copy.deepcopy(cluster) for cluster in base.clusters]
         # The addressBlock IS inherited: the footprint (offset/size relative to
         # the base) is identical for every instance of a type.
@@ -903,7 +925,7 @@ def _same_shape(register: Register, other: Register) -> bool:
     return (register.dim.count, register.dim.increment) == (other.dim.count, other.dim.increment)
 
 
-def _name_groups(registers: list[Register]) -> dict[int, Register]:
+def _name_groups(sets: list[AlternateSet]) -> dict[int, Register]:
     """Rename the grouped registers whose name another register of the block shares.
 
     ``<alternateGroup>`` lets a name be used again in another group, so ``DR`` in group
@@ -911,11 +933,15 @@ def _name_groups(registers: list[Register]) -> dict[int, Register]:
     header, with the plain register its primary view. A group whose name nothing else in
     the block uses is only a label, and the register keeps the name it was declared with.
 
-    Returns, for each renamed register that names no ``alternateRegister`` of its own,
-    the register that kept the name when the two sit at one offset and share a shape:
-    the view that reusing the name implies. At another offset the registers are two
+    Returns, for each renamed register whose set declares no alternate of its own, the
+    register that kept the name when the two sit at one offset and share a shape: the
+    view that reusing the name implies. At another offset the registers are two
     different things that happen to share a name, and are only renamed.
     """
+    registers = [view for alternate_set in sets for view in alternate_set.views]
+    declared = {
+        id(view) for alternate_set in sets if alternate_set.joins for view in alternate_set.views
+    }
     by_name: dict[str, list[Register]] = {}
     for register in registers:
         by_name.setdefault(register.name, []).append(register)
@@ -931,7 +957,7 @@ def _name_groups(registers: list[Register]) -> dict[int, Register]:
         for register in grouped:
             if (
                 register is not primary
-                and register.alternate_register is None
+                and id(register) not in declared
                 and register.address_offset == primary.address_offset
                 and _same_shape(register, primary)
             ):
@@ -940,18 +966,21 @@ def _name_groups(registers: list[Register]) -> dict[int, Register]:
 
 
 def _alternate_target(
-    register: Register, registers: list[Register], where: str, findings: list[Finding]
+    register: Register,
+    wanted: str,
+    registers: list[Register],
+    where: str,
+    findings: list[Finding],
 ) -> Register | None:
-    """The register ``register.alternate_register`` names, or ``None`` with a finding.
+    """The register named ``wanted``, which ``register`` declared itself an alternate of.
 
-    Names are matched after expansion, so a copy expanded from ``DTR%s`` that
-    names ``DT%s`` pairs with the copy of the same index, and an array kept as
-    ``CCI`` that names ``CC[%s]`` pairs with ``CC``. Two views must share the
-    offset and, when arrays, the shape; a view naming itself, or a name no
-    register of the block carries, leaves the register an ordinary one.
+    Returns ``None`` with a finding when it cannot be one. Names are matched after
+    expansion, so a copy expanded from ``DTR%s`` that names ``DT%s`` pairs with the
+    copy of the same index, and an array kept as ``CCI`` that names ``CC[%s]`` pairs
+    with ``CC``. Two views must share the offset and, when arrays, the shape; a view
+    naming itself, or a name no register of the block carries, leaves the register an
+    ordinary one.
     """
-    wanted = register.alternate_register
-    assert wanted is not None  # only called for a register that declares one
     label = f"{where}.{register.name}"
     by_name = {candidate.name: candidate for candidate in registers}
     target: Register | None
@@ -1020,12 +1049,19 @@ def _alternate_target(
 
 
 def _link_alternates(
-    where: str,
-    registers: list[Register],
-    implied: dict[int, Register],
-    findings: list[Finding],
-) -> None:
-    """Union-find the declared and implied views of one block into sets, primary first."""
+    where: str, sets: list[AlternateSet], findings: list[Finding]
+) -> list[AlternateSet]:
+    """Merge the declared and implied views of one block into sets, primary first.
+
+    Union-find over the block's registers: views already sharing a set stay together,
+    and each set that declared itself an alternate (``joins``), or was implied by a
+    shared name (:func:`_name_groups`), joins the set of the register it points at. A
+    merged set sits where its first member stood, and holds the primary first and the
+    rest in file order. Every set that comes out has ``joins`` cleared, since it was
+    acted on.
+    """
+    implied = _name_groups(sets)
+    registers = [view for alternate_set in sets for view in alternate_set.views]
     parent: dict[int, int] = {id(register): id(register) for register in registers}
 
     def find(key: int) -> int:
@@ -1034,54 +1070,56 @@ def _link_alternates(
             key = parent[key]
         return key
 
+    for alternate_set in sets:
+        for view in alternate_set.views[1:]:
+            parent[find(id(view))] = find(id(alternate_set.primary))
     linked: set[int] = set()  # registers whose own declaration was accepted
-    for register in registers:
-        if register.alternate_register is not None:
-            target = _alternate_target(register, registers, where, findings)
-        else:
-            target = implied.get(id(register))
-        if target is None:
-            continue
-        linked.add(id(register))
-        parent[find(id(register))] = find(id(target))
+    for alternate_set in sets:
+        for register in alternate_set.views:
+            if alternate_set.joins is not None:
+                target = _alternate_target(
+                    register, alternate_set.joins, registers, where, findings
+                )
+            else:
+                target = implied.get(id(register))
+            if target is None:
+                continue
+            linked.add(id(register))
+            parent[find(id(register))] = find(id(target))
     groups: dict[int, list[Register]] = {}
     for register in registers:
         groups.setdefault(find(id(register)), []).append(register)
+    merged: list[AlternateSet] = []
     for members in groups.values():
-        if len(members) < 2:
-            continue
         # The primary is the view nothing points away from; a cycle (A alt B,
         # B alt A) has none, and file order decides.
         primary = next((member for member in members if id(member) not in linked), members[0])
-        names = (primary.name, *(member.name for member in members if member is not primary))
-        for member in members:
-            member.alternates = names
+        merged.append(AlternateSet((primary, *(m for m in members if m is not primary))))
+    return merged
 
 
 def resolve_alternates(device: Device) -> list[Finding]:
-    """Link every ``alternateRegister`` into its set of views, block by block.
+    """Merge every ``alternateRegister`` into one set of views, block by block.
 
     Runs after ``expand_dim`` and ``resolve_derived`` so the names it matches
     are the final ones. A register in an ``alternateGroup`` whose name another
     register of its block shares is renamed ``NAME_GROUP`` first (see
-    :func:`_name_groups`); the group of any other register stays a label. Each
-    register of a set gets ``alternates``: every
-    view's name, the primary first, so the layout can emit one union for the
-    word and the checks can compare the views. A declaration that cannot be
-    honoured -- a missing target (``ERROR``), a self-reference, another
-    offset, another shape (``WARNING``) -- leaves the register an ordinary
-    one, and an undeclared overlap is then refused by the layout as it always
-    was. Mutates ``device`` in place and returns the findings.
+    :func:`_name_groups`); the group of any other register stays a label. The
+    peripheral's and each cluster's ``alternate_sets`` are replaced by the merged
+    sets, the primary view first, so the layout can emit one union for the word and
+    the checks can compare the views. A declaration that cannot be honoured -- a
+    missing target (``ERROR``), a self-reference, another offset, another shape
+    (``WARNING``) -- leaves the register a set of its own, and an undeclared overlap
+    is then refused by the layout as it always was. Mutates ``device`` in place and
+    returns the findings.
     """
     findings: list[Finding] = []
     for peripheral in device.peripherals:
-        blocks = [(peripheral.name, peripheral.registers)]
-        blocks += [
-            (path, cluster.registers)
-            for path, cluster in walk_clusters(peripheral.clusters, peripheral.name)
-        ]
-        for where, registers in blocks:
-            _link_alternates(where, registers, _name_groups(registers), findings)
+        peripheral.alternate_sets = _link_alternates(
+            peripheral.name, peripheral.alternate_sets, findings
+        )
+        for path, cluster in walk_clusters(peripheral.clusters, peripheral.name):
+            cluster.alternate_sets = _link_alternates(path, cluster.alternate_sets, findings)
     return findings
 
 

@@ -42,14 +42,10 @@ def test_two_registers_do_not_share_one_field_list():
     assert Register("A", 0x0).fields is not Register("B", 0x4).fields
 
 
-def test_a_register_is_the_only_view_of_its_word_by_default():
+def test_a_register_does_not_know_which_registers_share_its_word():
+    # The peripheral or cluster that holds it keeps that, in an AlternateSet.
     register = Register("CR", 0x0)
-    assert register.alternate_register is None
-    assert register.alternates == ()
-
-
-def test_alternate_register_names_the_primary_view():
-    assert Register("CR_ALT", 0x0, alternate_register="CR").alternate_register == "CR"
+    assert not hasattr(register, "alternate_register") and not hasattr(register, "alternates")
 
 
 def test_a_register_array_carries_its_dim_and_a_copy_remembers_its_template():

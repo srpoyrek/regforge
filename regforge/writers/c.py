@@ -23,7 +23,16 @@ from jinja2 import Environment, FileSystemLoader
 from ..arch import NVIC_REGISTER_BANKS, is_cortex_m
 from ..families import Family, cluster_signature, group_families
 from ..interrupts import all_interrupts, shared_vectors
-from ..ir import Access, Cluster, Device, Dim, Peripheral, Register, walk_clusters
+from ..ir import (
+    Access,
+    AlternateSet,
+    Cluster,
+    Device,
+    Dim,
+    Peripheral,
+    Register,
+    walk_clusters,
+)
 from ..layout import (
     BITS_PER_BYTE,
     LayoutEntry,
@@ -140,6 +149,13 @@ def _all_registers(peripheral: Peripheral) -> Iterator[Register]:
     yield from peripheral.registers
     for _, cluster in walk_clusters(peripheral.clusters, peripheral.name):
         yield from cluster.registers
+
+
+def _all_sets(peripheral: Peripheral) -> Iterator[AlternateSet]:
+    """Every alternate set of ``peripheral``, clusters included."""
+    yield from peripheral.alternate_sets
+    for _, cluster in walk_clusters(peripheral.clusters, peripheral.name):
+        yield from cluster.alternate_sets
 
 
 def _unexpanded_name(peripheral: Peripheral) -> str | None:
@@ -529,6 +545,13 @@ def _accessors(
     every view's macro names the other views so a reader finds them.
     """
     result: list[dict] = []
+    # The other views of each register that shares its word, for the macro's comment.
+    others = {
+        id(view): [name for name in alternate_set.names if name != view.name]
+        for alternate_set in _all_sets(peripheral)
+        if alternate_set.is_alternate
+        for view in alternate_set.views
+    }
 
     def visit(
         register: Register,
@@ -562,7 +585,7 @@ def _accessors(
                 "unpacked": id(register) in unpacked,
                 "register": register,
                 "count": f"{stem}_COUNT" if register.dim is not None else None,
-                "alternates": [n for n in register.alternates if n != register.name],
+                "alternates": others.get(id(register), []),
             }
         )
 

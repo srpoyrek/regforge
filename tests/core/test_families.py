@@ -1,7 +1,7 @@
 """Peripheral family grouping: one type per family, divergent members split."""
 
 from regforge.families import group_families
-from regforge.ir import AddressBlock, Cluster, Device, Dim, Peripheral, Register
+from regforge.ir import AddressBlock, AlternateSet, Cluster, Device, Dim, Peripheral, Register
 from regforge.layout import asserted_struct_size
 from regforge.resolve import resolve_defaults, resolve_derived
 
@@ -280,8 +280,11 @@ def test_alternate_sets_are_part_of_the_layout_signature():
     from regforge.resolve import resolve_alternates
 
     def peripheral(name: str, alternate: bool) -> Peripheral:
-        second = Register("DR_Raw", 0x0, size=32, alternate_register="DR" if alternate else None)
-        return Peripheral(name, 0x0, registers=[Register("DR", 0x0, size=32), second])
+        second = AlternateSet(
+            (Register("DR_Raw", 0x0, size=32),), joins="DR" if alternate else None
+        )
+        first = AlternateSet((Register("DR", 0x0, size=32),))
+        return Peripheral(name, 0x0, alternate_sets=[first, second])
 
     device = Device(
         name="Chip",

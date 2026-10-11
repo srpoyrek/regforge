@@ -44,7 +44,6 @@ def test_an_alternate_group_is_kept_as_a_label_and_nothing_is_renamed_or_linked(
         )
     )
     assert (register.name, register.alternate_group) == ("CTRL", "G")
-    assert register.alternate_register is None
 
 
 def test_a_register_with_no_alternate_group_has_none():
@@ -54,18 +53,22 @@ def test_a_register_with_no_alternate_group_has_none():
     assert register.alternate_group is None
 
 
-def test_an_alternate_register_beside_a_group_is_kept_as_written():
-    register = RegisterParser(ParseContext()).parse(
+def test_a_register_is_read_as_a_set_of_one_view_that_keeps_what_it_declared():
+    alternate_set = RegisterParser(ParseContext()).parse_set(
         _el(
             "<register><name>DR</name><alternateGroup>Raw</alternateGroup>"
             "<alternateRegister>DR</alternateRegister><addressOffset>0x0</addressOffset></register>"
         )
     )
-    assert (register.name, register.alternate_group, register.alternate_register) == (
-        "DR",
-        "Raw",
-        "DR",
+    (view,) = alternate_set.views
+    assert (view.name, view.alternate_group, alternate_set.joins) == ("DR", "Raw", "DR")
+
+
+def test_a_register_that_declares_no_alternate_is_a_set_that_joins_nothing():
+    alternate_set = RegisterParser(ParseContext()).parse_set(
+        _el("<register><name>R</name><addressOffset>0</addressOffset></register>")
     )
+    assert alternate_set.joins is None and not alternate_set.is_alternate
 
 
 def test_a_derived_from_attribute_is_kept_as_written():

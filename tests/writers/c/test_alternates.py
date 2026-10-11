@@ -2,7 +2,7 @@
 
 import re
 
-from regforge.ir import Access, Cluster, Device, Dim, Peripheral, Register
+from regforge.ir import Access, AlternateSet, Cluster, Device, Dim, Peripheral, Register
 from regforge.resolve import expand_dim, resolve_alternates, resolve_defaults
 from regforge.writers.c import CWriter
 
@@ -11,12 +11,17 @@ def _squash(text: str) -> str:
     return re.sub(r" +", " ", text)
 
 
-def _render(*registers: Register, clusters: list[Cluster] | None = None) -> str:
+def _alt(register: Register, of: str | None = None) -> AlternateSet:
+    """The set the reader makes for ``register``, which declared itself an alternate of ``of``."""
+    return AlternateSet((register,), joins=of)
+
+
+def _render(*sets: AlternateSet, clusters: list[Cluster] | None = None) -> str:
     device = Device(
         name="Chip",
         header_prefix="DC_",
         peripherals=[
-            Peripheral("TIM", 0x40000000, registers=list(registers), clusters=list(clusters or []))
+            Peripheral("TIM", 0x40000000, alternate_sets=list(sets), clusters=list(clusters or []))
         ],
     )
     expand_dim(device)
@@ -27,14 +32,11 @@ def _render(*registers: Register, clusters: list[Cluster] | None = None) -> str:
 
 def test_pair_becomes_a_named_union_with_constants_asserts_and_a_macro_per_view():
     output = _render(
-        Register("CR1", 0x0, size=32),
-        Register("CCMR1_Output", 0x18, size=32, description="Capture/compare mode (output)"),
-        Register(
-            "CCMR1_Input",
-            0x18,
-            size=32,
-            description="Capture/compare mode (input)",
-            alternate_register="CCMR1_Output",
+        _alt(Register("CR1", 0x0, size=32)),
+        _alt(Register("CCMR1_Output", 0x18, size=32, description="Capture/compare mode (output)")),
+        _alt(
+            Register("CCMR1_Input", 0x18, size=32, description="Capture/compare mode (input)"),
+            of="CCMR1_Output",
         ),
     )
     squashed = _squash(output)
@@ -68,9 +70,9 @@ def test_pair_becomes_a_named_union_with_constants_asserts_and_a_macro_per_view(
 
 def test_views_keep_their_own_qualifiers_and_types():
     output = _render(
-        Register("DR", 0x4, size=32),
-        Register("RXD", 0x4, size=32, access=Access.READ_ONLY, alternate_register="DR"),
-        Register("DR8", 0x4, size=8, alternate_register="DR"),
+        _alt(Register("DR", 0x4, size=32)),
+        _alt(Register("RXD", 0x4, size=32, access=Access.READ_ONLY), of="DR"),
+        _alt(Register("DR8", 0x4, size=8), of="DR"),
     )
     squashed = _squash(output)
     assert "volatile uint32_t DR;" in squashed
@@ -84,8 +86,8 @@ def test_views_keep_their_own_qualifiers_and_types():
 
 def test_union_array_is_indexed_like_a_register_array():
     output = _render(
-        Register("CC[%s]", 0x10, size=32, dim=Dim(4, 4)),
-        Register("CCI[%s]", 0x10, size=32, dim=Dim(4, 4), alternate_register="CC[%s]"),
+        _alt(Register("CC[%s]", 0x10, size=32, dim=Dim(4, 4))),
+        _alt(Register("CCI[%s]", 0x10, size=32, dim=Dim(4, 4)), of="CC[%s]"),
     )
     squashed = _squash(output)
     assert "} CC[DC_TIM_CC_COUNT]; /* 0x10 one register, 2 views */" in squashed
@@ -102,8 +104,8 @@ def test_union_array_is_indexed_like_a_register_array():
 
 def test_unpacked_union_array_is_flat_unions_with_an_address_macro():
     output = _render(
-        Register("CC[%s]", 0x10, size=32, dim=Dim(2, 8)),
-        Register("CCI[%s]", 0x10, size=32, dim=Dim(2, 8), alternate_register="CC[%s]"),
+        _alt(Register("CC[%s]", 0x10, size=32, dim=Dim(2, 8))),
+        _alt(Register("CCI[%s]", 0x10, size=32, dim=Dim(2, 8)), of="CC[%s]"),
     )
     squashed = _squash(output)
     assert "} CC0; /* 0x10 one register, 2 views */" in squashed
@@ -126,13 +128,13 @@ def test_union_inside_a_cluster_array_is_reached_through_both():
         "CH[%s]",
         0x10,
         dim=Dim(2, 0x8),
-        registers=[
-            Register("CTRL", 0x0, size=32),
-            Register("XFER_Mem", 0x4, size=32),
-            Register("XFER_Periph", 0x4, size=32, alternate_register="XFER_Mem"),
+        alternate_sets=[
+            _alt(Register("CTRL", 0x0, size=32)),
+            _alt(Register("XFER_Mem", 0x4, size=32)),
+            _alt(Register("XFER_Periph", 0x4, size=32), of="XFER_Mem"),
         ],
     )
-    output = _render(Register("CFG", 0x0, size=32), clusters=[cluster])
+    output = _render(_alt(Register("CFG", 0x0, size=32)), clusters=[cluster])
     squashed = _squash(output)
     assert "#define DC_TIM_CH_XFER_SIZE (0x00000004UL)" in squashed
     assert "} XFER; /* 0x04 one register, 2 views */" in squashed
@@ -150,4 +152,4 @@ def test_unrelated_registers_at_one_offset_are_refused_with_the_hint():
     from regforge.writers.base import EmitError
 
     with pytest.raises(EmitError, match=r"overlaps the preceding member \(add <alternateRegister>"):
-        _render(Register("A", 0x0, size=32), Register("B", 0x0, size=32))
+        _render(_alt(Register("A", 0x0, size=32)), _alt(Register("B", 0x0, size=32)))

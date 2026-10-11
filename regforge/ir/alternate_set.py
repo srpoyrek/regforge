@@ -1,4 +1,4 @@
-"""An alternate set: registers that are different views of one word."""
+"""An alternate set: the container of one word, holding one view or several."""
 
 from __future__ import annotations
 
@@ -11,25 +11,38 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class AlternateSet:
-    """Two or more registers at one offset: different layouts over the same bits.
+    """One word of a peripheral or cluster, holding one view or several.
 
-    Like a C ``union``, the views overlay one word, and writing through one changes
-    what the others read. Unlike a union, each view stays a full
-    :class:`~regforge.ir.Register` with its own fields, access, reset value and side
-    effects. The C writer emits the set as a union; a test double keeps one integer per
-    word and reads and writes it through the views, see :meth:`read` and :meth:`write`.
+    A register that has no alternates is a set of one view. Registers that are different
+    layouts over the same bits are a set of two or more. Like a C ``union``, the views
+    overlay one word, and writing through one changes what the others read. Unlike a
+    union, each view stays a full :class:`~regforge.ir.Register` with its own fields,
+    access, reset value and side effects. The C writer emits a set of several views as a
+    union; a test double keeps one integer per word and reads and writes it through the
+    views, see :meth:`read` and :meth:`write`.
 
-    A derived view built by :func:`alternate_sets`; the IR never stores one.
+    The reader stores every register in a set of its own. ``resolve_alternates`` then
+    merges the sets whose views the file declared to be alternates of one another.
 
     Attributes:
         views: The registers in the set, the primary view first.
+        joins: What the file said about a set of one view that has not been merged yet:
+            the name of the register it declared itself an alternate of (SVD
+            ``<alternateRegister>``), as written. ``None`` when it declared none, and
+            after ``resolve_alternates`` has acted on it.
     """
 
     views: tuple[Register, ...]
+    joins: str | None = None
 
     def __post_init__(self) -> None:
         if not self.views:
             raise ValueError("an alternate set needs at least one view")
+
+    @property
+    def is_alternate(self) -> bool:
+        """Whether the word has more than one view, so it is a union of layouts."""
+        return len(self.views) > 1
 
     @property
     def primary(self) -> Register:
@@ -87,19 +100,3 @@ class AlternateSet:
         The other views see the change, because they share the word.
         """
         return self._field(view, field).insert(word, value)
-
-
-def alternate_sets(registers: list[Register]) -> list[AlternateSet]:
-    """The alternate sets among ``registers``, in the order their primaries appear.
-
-    Run it after ``resolve_alternates``, which links the views: each linked register's
-    ``alternates`` names the whole set, the primary first. A register that is the only
-    view of its word belongs to no set.
-    """
-    by_name = {register.name: register for register in registers}
-    sets = []
-    for register in registers:
-        if len(register.alternates) > 1 and register.alternates[0] == register.name:
-            views = tuple(by_name[name] for name in register.alternates if name in by_name)
-            sets.append(AlternateSet(views))
-    return sets

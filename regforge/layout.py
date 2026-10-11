@@ -25,7 +25,7 @@ import os.path
 import re
 from dataclasses import dataclass, field
 
-from .ir import AddressBlock, Cluster, Peripheral, Register
+from .ir import AddressBlock, AlternateSet, Cluster, Peripheral, Register
 
 #: Bits in one byte. The layout math and every byte-addressable writer share it.
 BITS_PER_BYTE = 8
@@ -417,33 +417,23 @@ def _cluster_slot(where: str, cluster: Cluster, address_unit_bits: int) -> Layou
 
 def _block_layout(
     where: str,
-    registers: list[Register],
+    sets: list[AlternateSet],
     clusters: list[Cluster],
     buffers: list[AddressBlock],
     address_unit_bits: int,
     pad_to_bytes: int | None,
 ) -> list[LayoutEntry]:
     slots: list[LayoutEntry] = []
-    # Declared alternate views of one word become one union slot, emitted where
-    # the first view stands; every other register is a slot of its own.
-    unions: dict[str, list[Register]] = {}
-    for register in registers:
-        if register.alternates:
-            unions.setdefault(register.alternates[0], []).append(register)
-    for views in unions.values():
-        views.sort(key=lambda view: view.name != view.alternates[0])  # primary first
-    plain = {register.name for register in registers if not register.alternates}
-    for register in registers:
-        if not register.alternates:
-            slots += _register_slots(where, register, address_unit_bits)
+    # A word with several views becomes one union slot; every other register is a slot
+    # of its own. The union's siblings are the names of every other member of the block.
+    for alternate_set in sets:
+        if not alternate_set.is_alternate:
+            slots += _register_slots(where, alternate_set.primary, address_unit_bits)
             continue
-        views = unions[register.alternates[0]]
-        if register is views[0]:
-            siblings = plain | {cluster.name for cluster in clusters}
-            siblings |= {
-                other.name for group in unions.values() if group is not views for other in group
-            }
-            slots += _union_slots(where, views, address_unit_bits, siblings)
+        siblings = {
+            view.name for other in sets if other is not alternate_set for view in other.views
+        } | {cluster.name for cluster in clusters}
+        slots += _union_slots(where, list(alternate_set.views), address_unit_bits, siblings)
     slots += [_cluster_slot(where, cluster, address_unit_bits) for cluster in clusters]
     for block in buffers:
         size = units_to_bytes(block.size, address_unit_bits)
@@ -501,7 +491,9 @@ def cluster_layout(cluster: Cluster, address_unit_bits: int, where: str = "") ->
         raise LayoutError(
             f"{path}: cluster has no registers (a cluster derivedFrom is not resolved yet)"
         )
-    members = _block_layout(path, cluster.registers, cluster.clusters, [], address_unit_bits, None)
+    members = _block_layout(
+        path, cluster.alternate_sets, cluster.clusters, [], address_unit_bits, None
+    )
     if cluster.dim is not None:
         natural = _end(members)
         stride = units_to_bytes(cluster.dim.stride, address_unit_bits)
@@ -539,7 +531,7 @@ def peripheral_layout(
     buffers = [block for block in peripheral.address_blocks if block.is_buffer]
     return _block_layout(
         peripheral.name,
-        peripheral.registers,
+        peripheral.alternate_sets,
         peripheral.clusters,
         buffers,
         address_unit_bits,

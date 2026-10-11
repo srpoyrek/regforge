@@ -739,11 +739,11 @@ typedef dc_pwm_t dc_pwmb_t;
 /* PWMA.DT0 - Dead time  [alternate: DTR0] */
 #define DC_PWMA_DT0 (DC_PWMA->DT0.DT0)
 
-/* PWMA.DT1 - Dead time  [alternate: DTR1] */
-#define DC_PWMA_DT1 (DC_PWMA->DT1.DT1)
-
 /* PWMA.DTR0 - Dead time (raw view)  [alternate: DT0] */
 #define DC_PWMA_DTR0 (DC_PWMA->DT0.DTR0)
+
+/* PWMA.DT1 - Dead time  [alternate: DTR1] */
+#define DC_PWMA_DT1 (DC_PWMA->DT1.DT1)
 
 /* PWMA.DTR1 - Dead time (raw view)  [alternate: DT1] */
 #define DC_PWMA_DTR1 (DC_PWMA->DT1.DTR1)
@@ -768,11 +768,11 @@ typedef dc_pwm_t dc_pwmb_t;
 /* PWMB.DT0 - Dead time  [alternate: DTR0] */
 #define DC_PWMB_DT0 (DC_PWMB->DT0.DT0)
 
-/* PWMB.DT1 - Dead time  [alternate: DTR1] */
-#define DC_PWMB_DT1 (DC_PWMB->DT1.DT1)
-
 /* PWMB.DTR0 - Dead time (raw view)  [alternate: DT0] */
 #define DC_PWMB_DTR0 (DC_PWMB->DT0.DTR0)
+
+/* PWMB.DT1 - Dead time  [alternate: DTR1] */
+#define DC_PWMB_DT1 (DC_PWMB->DT1.DT1)
 
 /* PWMB.DTR1 - Dead time (raw view)  [alternate: DT1] */
 #define DC_PWMB_DTR1 (DC_PWMB->DT1.DTR1)

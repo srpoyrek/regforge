@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from regforge.ir import Cluster, Peripheral, Register
+from regforge.ir import AlternateSet, Cluster, Peripheral, Register
 from regforge.writers.html.wording import array_note
 
 
@@ -17,12 +17,14 @@ class PlacedRegister:
         path: Its name with the clusters around it, ``CH.CTRL``.
         offset: Its distance from the peripheral's base, in address units.
         note: What the clusters around it are, when they are arrays; else ``None``.
+        alternates: The names of the other views of its word, when it shares it with any.
     """
 
     register: Register
     path: str
     offset: int
     note: str | None
+    alternates: tuple[str, ...] = ()
 
 
 def placed_registers(peripheral: Peripheral) -> list[PlacedRegister]:
@@ -30,28 +32,34 @@ def placed_registers(peripheral: Peripheral) -> list[PlacedRegister]:
     placed: list[PlacedRegister] = []
 
     def visit(
-        registers: list[Register],
+        sets: list[AlternateSet],
         clusters: list[Cluster],
         prefix: str,
         base: int,
         note: str | None,
     ) -> None:
-        for register in registers:
-            placed.append(
-                PlacedRegister(
-                    register, prefix + register.name, base + register.address_offset, note
+        for alternate_set in sets:
+            for register in alternate_set.views:
+                others = tuple(n for n in alternate_set.names if n != register.name)
+                placed.append(
+                    PlacedRegister(
+                        register,
+                        prefix + register.name,
+                        base + register.address_offset,
+                        note,
+                        others,
+                    )
                 )
-            )
         for cluster in clusters:
             own = array_note(cluster, "units")
             joined = " -- ".join(n for n in (note, own) if n) or None
             visit(
-                cluster.registers,
+                cluster.alternate_sets,
                 cluster.clusters,
                 prefix + cluster.name + ".",
                 base + cluster.address_offset,
                 joined,
             )
 
-    visit(peripheral.registers, peripheral.clusters, "", 0, None)
+    visit(peripheral.alternate_sets, peripheral.clusters, "", 0, None)
     return placed

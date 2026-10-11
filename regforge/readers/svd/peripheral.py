@@ -44,7 +44,9 @@ class PeripheralParser(ElementParser):
             default_reset_value=child_int(element, "resetValue"),
             default_reset_mask=child_int(element, "resetMask"),
             default_protection=self._protection.parse(element),
-            registers=[self._register.parse(r) for r in element.findall("./registers/register")],
+            alternate_sets=[
+                self._register.parse_set(r) for r in element.findall("./registers/register")
+            ],
             interrupts=[self._interrupt.parse(i) for i in element.findall("./interrupt")],
             address_blocks=[
                 self._address_block.parse(b) for b in element.findall("./addressBlock")

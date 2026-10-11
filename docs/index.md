@@ -1,7 +1,7 @@
 # regforge
 
-Converts a register description in one format into source code in another.
-Today that is CMSIS-SVD in and a C header out.
+Converts a register description in one format into source code or documentation.
+Today that is CMSIS-SVD in, and a C header or an HTML register reference out.
 
 ## Where to start
 
@@ -15,7 +15,8 @@ Today that is CMSIS-SVD in and a C header out.
 
 ```
 pip install regforge
-regforge device.svd -o device.h
+regforge device.svd -o device.h        # C header
+regforge device.svd -o device.html     # HTML register reference
 ```
 
 The full command reference and compiler support table are in the

@@ -12,10 +12,12 @@ describes the same offset twice, the second register naming the first as its
 `alternateRegister`. STM32 timers do this on every `TIM`. The two are one
 register: regforge keeps both descriptions and emits one union for the word.
 
-Code: `regforge/resolve.py` (`resolve_alternates`), `regforge/layout.py`
-(`union_naming`, the union slot), `regforge/check.py`
-(`check_alternate_registers`), `regforge/writers/c.py`.
-Tests: `tests/resolve/test_alternates.py`, `tests/core/test_alternates_layout.py`,
+Code: `regforge/ir/alternate_set.py` (`AlternateSet`), `regforge/ir/registers_of.py`,
+`regforge/resolve.py` (`resolve_alternates`), `regforge/layout.py` (`union_naming`,
+the union slot), `regforge/check.py` (`check_alternate_registers`),
+`regforge/writers/c.py`.
+Tests: `tests/core/test_alternate_set.py`, `tests/core/test_registers_of.py`,
+`tests/resolve/test_alternates.py`, `tests/core/test_alternates_layout.py`,
 `tests/check/test_alternates.py`, `tests/writers/c/test_alternates.py`.
 
 ## Rule 1: views are linked by final name, within their own block
@@ -37,10 +39,19 @@ declaration is not inherited across a register-level `derivedFrom`: a view of
 another word is a fact about the register that declares it (see
 [derived.md](derived.md#rule-1-what-is-inherited)).
 
-The result on every register of a set is `alternates`: all the views' names,
-the primary first. The primary is the view nothing points away from; a cycle
-(`A` alternate `B`, `B` alternate `A`) has none, and file order decides. A
-chain `A` alternate `B`, `B` alternate `C` is one set of three, `C` first.
+The result is stored on the peripheral or cluster that holds the registers, as
+its `alternate_sets`: one `AlternateSet` per word. A register that is the only
+view of its word is a set of one view; registers that are alternates of one
+another are a set of several, the primary first. The reader makes every register
+a set of one view and keeps what the file declared in its `joins`;
+`resolve_alternates` merges the sets and clears `joins`. `Register` itself holds
+no link, and `registers` on a peripheral or cluster is the same registers read
+flat, the views of every set in order, so a set sits where its first member
+stood and its views are listed together.
+
+The primary is the view nothing points away from; a cycle (`A` alternate `B`,
+`B` alternate `A`) has none, and file order decides. A chain `A` alternate `B`,
+`B` alternate `C` is one set of three, `C` first.
 
 ## Rule 2: one set is one union, as wide as its widest view
 

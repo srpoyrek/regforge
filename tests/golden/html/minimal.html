@@ -1201,9 +1201,9 @@ Licensed under the Apache License, Version 2.0.</pre>
 
 <tr><td class="mono">0x020</td><td><a href="#PWMA.DT0">DT0</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time</td></tr>
 
-<tr><td class="mono">0x028</td><td><a href="#PWMA.DT1">DT1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time</td></tr>
-
 <tr><td class="mono">0x020</td><td><a href="#PWMA.DTR0">DTR0</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time (raw view)</td></tr>
+
+<tr><td class="mono">0x028</td><td><a href="#PWMA.DT1">DT1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time</td></tr>
 
 <tr><td class="mono">0x028</td><td><a href="#PWMA.DTR1">DTR1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time (raw view)</td></tr>
 
@@ -1286,26 +1286,6 @@ Licensed under the Apache License, Version 2.0.</pre>
 
 </article>
 
-<article class="register" id="PWMA.DT1">
-<h3>DT1</h3>
-<div class="meta">
-<span>Offset <b class="mono">0x028</b></span>
-<span>Address <b class="mono">0x40015028</b></span>
-<span>Size <b>32 bits</b></span>
-<span>Access <b>RW</b></span>
-<span>Reset <b class="mono">–</b></span>
-</div>
-<p class="desc">Dead time</p>
-<p class="alt">copy 2 of 2 of DT%s</p>
-<p class="alt">Shares this address with DTR1: the same bits, a different layout.</p>
-<table class="bitmap">
-<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
-<tr class="fields"><td colspan="32" class="reserved"></td></tr>
-<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
-</table>
-
-</article>
-
 <article class="register" id="PWMA.DTR0">
 <h3>DTR0</h3>
 <div class="meta">
@@ -1318,6 +1298,26 @@ Licensed under the Apache License, Version 2.0.</pre>
 <p class="desc">Dead time (raw view)</p>
 <p class="alt">copy 1 of 2 of DTR%s</p>
 <p class="alt">Shares this address with DT0: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="PWMA.DT1">
+<h3>DT1</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x028</b></span>
+<span>Address <b class="mono">0x40015028</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Dead time</p>
+<p class="alt">copy 2 of 2 of DT%s</p>
+<p class="alt">Shares this address with DTR1: the same bits, a different layout.</p>
 <table class="bitmap">
 <tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
 <tr class="fields"><td colspan="32" class="reserved"></td></tr>
@@ -1373,9 +1373,9 @@ Licensed under the Apache License, Version 2.0.</pre>
 
 <tr><td class="mono">0x020</td><td><a href="#PWMB.DT0">DT0</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time</td></tr>
 
-<tr><td class="mono">0x028</td><td><a href="#PWMB.DT1">DT1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time</td></tr>
-
 <tr><td class="mono">0x020</td><td><a href="#PWMB.DTR0">DTR0</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time (raw view)</td></tr>
+
+<tr><td class="mono">0x028</td><td><a href="#PWMB.DT1">DT1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time</td></tr>
 
 <tr><td class="mono">0x028</td><td><a href="#PWMB.DTR1">DTR1</a></td><td>32 bits</td><td>RW</td><td class="mono">–</td><td>Dead time (raw view)</td></tr>
 
@@ -1458,26 +1458,6 @@ Licensed under the Apache License, Version 2.0.</pre>
 
 </article>
 
-<article class="register" id="PWMB.DT1">
-<h3>DT1</h3>
-<div class="meta">
-<span>Offset <b class="mono">0x028</b></span>
-<span>Address <b class="mono">0x40015128</b></span>
-<span>Size <b>32 bits</b></span>
-<span>Access <b>RW</b></span>
-<span>Reset <b class="mono">–</b></span>
-</div>
-<p class="desc">Dead time</p>
-<p class="alt">copy 2 of 2 of DT%s</p>
-<p class="alt">Shares this address with DTR1: the same bits, a different layout.</p>
-<table class="bitmap">
-<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
-<tr class="fields"><td colspan="32" class="reserved"></td></tr>
-<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
-</table>
-
-</article>
-
 <article class="register" id="PWMB.DTR0">
 <h3>DTR0</h3>
 <div class="meta">
@@ -1490,6 +1470,26 @@ Licensed under the Apache License, Version 2.0.</pre>
 <p class="desc">Dead time (raw view)</p>
 <p class="alt">copy 1 of 2 of DTR%s</p>
 <p class="alt">Shares this address with DT0: the same bits, a different layout.</p>
+<table class="bitmap">
+<tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+</article>
+
+<article class="register" id="PWMB.DT1">
+<h3>DT1</h3>
+<div class="meta">
+<span>Offset <b class="mono">0x028</b></span>
+<span>Address <b class="mono">0x40015128</b></span>
+<span>Size <b>32 bits</b></span>
+<span>Access <b>RW</b></span>
+<span>Reset <b class="mono">–</b></span>
+</div>
+<p class="desc">Dead time</p>
+<p class="alt">copy 2 of 2 of DT%s</p>
+<p class="alt">Shares this address with DTR1: the same bits, a different layout.</p>
 <table class="bitmap">
 <tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
 <tr class="fields"><td colspan="32" class="reserved"></td></tr>

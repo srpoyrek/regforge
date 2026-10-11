@@ -55,7 +55,7 @@ class RegisterHtml(ElementHtml):
             reset_mask=register_reset_mask(register),
             description=register.description,
             array_note=array,
-            alternates=[n for n in register.alternates if n != register.name],
+            alternates=list(placed.alternates),
             notes=notes,
             bit_map=self._bit_map.render(register, facts),
             fields=[self._field.render(register, f) for f in register.fields],

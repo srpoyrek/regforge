@@ -58,16 +58,13 @@ class Register:
             ``derivedFrom``): a name, or a dotted path through the peripheral and
             clusters (``PORT.PMUX0_%s``). A reference, kept as written: the resolve
             pass copies the base's fields and settings in, as it does for a peripheral.
-        alternate_register: The register this one is another view of, as
-            declared (SVD ``<alternateRegister>``); ``None`` when the file names none.
         alternate_group: The group the register belongs to (SVD ``<alternateGroup>``),
             as written. A label, not a link: it says which mode or function the
             register serves, and a register in a group need not be a view of any other.
             ``resolve_alternates`` renames it ``NAME_GROUP`` only when its name collides
-            with another register's in the same block.
-        alternates: Every name in this register's alternate set, the primary
-            first, once ``resolve_alternates`` has linked them; empty for a
-            register that is the only view of its word.
+            with another register's in the same block. Which registers are views of one
+            word is not kept here: the owning peripheral or cluster holds them in an
+            :class:`~regforge.ir.AlternateSet`.
         display_name: SVD ``displayName`` -- a human-readable name, when the vendor
             gives one.
         data_type: The C type the register is meant to be accessed as (SVD
@@ -92,9 +89,7 @@ class Register:
     dim: Dim | None = None
     expanded_from: str | None = None
     derived_from: str | None = None
-    alternate_register: str | None = None
     alternate_group: str | None = None
-    alternates: tuple[str, ...] = ()
     display_name: str | None = None
     data_type: DataType | None = None
     protection: Protection | None = None

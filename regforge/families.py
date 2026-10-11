@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .ir import Cluster, Device, Peripheral, Register
+from .ir import AlternateSet, Cluster, Device, Peripheral, Register
 
 
 @dataclass
@@ -78,14 +78,23 @@ def _shape(dim) -> tuple[int, int] | None:
     return (dim.count, dim.increment) if dim is not None else None
 
 
-def _register_signature(register: Register) -> tuple:
+def _register_signature(register: Register, alternates: tuple[str, ...]) -> tuple:
     return (
         register.name,
         register.address_offset,
         register.size,
         register.access,
         _shape(register.dim),
-        register.alternates,
+        alternates,
+    )
+
+
+def _register_signatures(sets: list[AlternateSet]) -> tuple:
+    """Each register's signature, in offset order, with the views that share its word."""
+    return tuple(
+        _register_signature(view, alternate_set.names if alternate_set.is_alternate else ())
+        for alternate_set in sorted(sets, key=lambda alternate_set: alternate_set.address_offset)
+        for view in alternate_set.views
     )
 
 
@@ -93,10 +102,7 @@ def cluster_signature(cluster: Cluster) -> tuple:
     """A cluster's shape: its name, offset and array shape, then its registers and
     nested clusters. Slices ``[2:]`` describe the contents alone, which is what two
     clusters must share to share one emitted type."""
-    registers = tuple(
-        _register_signature(register)
-        for register in sorted(cluster.registers, key=lambda r: r.address_offset)
-    )
+    registers = _register_signatures(cluster.alternate_sets)
     clusters = tuple(
         cluster_signature(inner)
         for inner in sorted(cluster.clusters, key=lambda c: c.address_offset)
@@ -116,10 +122,7 @@ def layout_signature(peripheral: Peripheral) -> tuple:
     Identical registers behind different blocks are different types, and
     merging them would size one from the other's footprint.
     """
-    registers = tuple(
-        _register_signature(register)
-        for register in sorted(peripheral.registers, key=lambda r: r.address_offset)
-    )
+    registers = _register_signatures(peripheral.alternate_sets)
     clusters = tuple(
         cluster_signature(cluster)
         for cluster in sorted(peripheral.clusters, key=lambda c: c.address_offset)
