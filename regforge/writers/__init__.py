@@ -16,6 +16,7 @@ from pathlib import Path
 
 from .base import EmitError, Writer
 from .c import CWriter
+from .html import HtmlWriter
 
 _WRITERS: dict[str, type[Writer]] = {}
 
@@ -69,10 +70,12 @@ def writer_for_path(path: str | Path) -> Writer:
 
 
 register_writer(CWriter)
+register_writer(HtmlWriter)
 
 __all__ = [
     "Writer",
     "CWriter",
+    "HtmlWriter",
     "EmitError",
     "register_writer",
     "available_writers",

@@ -1,0 +1,7 @@
+<table class="bitmap">
+{% for row in rows %}
+<tr class="numbers">{% for n in row.numbers %}<td>{{ n }}</td>{% endfor %}</tr>
+<tr class="fields">{% for cell in row.cells %}<td colspan="{{ cell.span }}" class="{{ 'field' if cell.claimed else 'reserved' }}">{{ cell.label }}</td>{% endfor %}</tr>
+<tr class="resets">{% for v in row.resets %}<td>{{ v }}</td>{% endfor %}</tr>
+{% endfor %}
+</table>

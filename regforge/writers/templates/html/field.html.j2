@@ -1,0 +1,15 @@
+<tr><td class="mono">{{ bits }}</td><td>{{ name }}</td><td>{{ access }}</td><td class="mono">{{ reset }}</td><td>
+{% if description %}
+<div class="desc">{{ description }}</div>
+{% endif %}
+{% for enum_set in enum_sets %}
+{{ enum_set }}
+{% endfor %}
+{% if notes %}
+<ul class="notes">
+{% for note in notes %}
+<li>{{ note }}</li>
+{% endfor %}
+</ul>
+{% endif %}
+</td></tr>

@@ -1,0 +1,40 @@
+:root { --ink: #1c2530; --muted: #5d6b7a; --line: #d5dce4; --accent: #1f5fa8; --soft: #f3f6fa; --warn: #8a4b00; }
+* { box-sizing: border-box; }
+body { font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); margin: 0 auto; max-width: 1100px; padding: 24px; }
+h1 { font-size: 2rem; margin: 0 0 4px; }
+h2 { font-size: 1.5rem; margin: 40px 0 6px; border-bottom: 2px solid var(--accent); padding-bottom: 4px; }
+h3 { font-size: 1.15rem; margin: 28px 0 4px; }
+h3 small { font-weight: 400; color: var(--muted); font-size: .85em; margin-left: 8px; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+p, .desc { margin: 6px 0; white-space: pre-line; }
+code, .mono { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: .92em; }
+table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+th, td { border: 1px solid var(--line); padding: 5px 9px; text-align: left; vertical-align: top; }
+th { background: var(--soft); font-weight: 600; }
+table.facts { width: auto; }
+table.facts th { width: 11em; }
+table.facts caption { text-align: left; font-weight: 600; margin-bottom: 2px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 6px 0; color: var(--muted); }
+.meta b { color: var(--ink); font-weight: 600; }
+ul.notes { margin: 6px 0 6px 18px; padding: 0; color: var(--warn); }
+ul.enums { margin: 6px 0 2px 18px; padding: 0; list-style: none; }
+ul.enums li { margin: 1px 0; }
+ul.enums li.group { color: var(--muted); font-style: italic; }
+.alt { color: var(--muted); }
+article.register { margin-bottom: 20px; }
+table.bitmap { width: auto; table-layout: fixed; margin: 8px 0 12px; }
+table.bitmap td { text-align: center; min-width: 2.2em; padding: 3px 4px; font-size: .85em; }
+table.bitmap tr.numbers td { background: var(--soft); color: var(--muted); }
+table.bitmap td.field { background: #e4eefb; font-weight: 600; }
+table.bitmap td.reserved { background: #fafafa; color: var(--muted); }
+table.bitmap tr.resets td { color: var(--muted); }
+footer { margin-top: 48px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: .85em; }
+details { margin: 8px 0; color: var(--muted); }
+details pre { white-space: pre-wrap; }
+@media print {
+  body { max-width: none; padding: 0; font-size: 11px; }
+  section.peripheral { break-before: page; }
+  article.register { break-inside: avoid; }
+  a { color: inherit; }
+}

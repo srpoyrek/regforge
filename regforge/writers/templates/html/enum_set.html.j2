@@ -1,0 +1,8 @@
+<ul class="enums">
+{% if label %}
+<li class="group">{{ label }} values</li>
+{% endif %}
+{% for value in values %}
+{{ value }}
+{% endfor %}
+</ul>

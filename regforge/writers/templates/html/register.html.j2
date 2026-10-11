@@ -1,0 +1,38 @@
+<article class="register" id="{{ anchor }}">
+<h3>{{ path }}{% if display_name %}<small>{{ display_name }}</small>{% endif %}</h3>
+<div class="meta">
+<span>Offset <b class="mono">{{ offset }}</b></span>
+<span>Address <b class="mono">{{ address }}</b></span>
+<span>Size <b>{{ size }}</b></span>
+<span>Access <b>{{ access }}</b></span>
+<span>Reset <b class="mono">{{ reset }}</b></span>
+{% if reset_mask %}
+<span>Reset mask <b class="mono">{{ reset_mask }}</b></span>
+{% endif %}
+</div>
+{% if description %}
+<p class="desc">{{ description }}</p>
+{% endif %}
+{% if array_note %}
+<p class="alt">{{ array_note }}</p>
+{% endif %}
+{% if alternates %}
+<p class="alt">Shares this address with {{ alternates|join(", ") }}: the same bits, a different layout.</p>
+{% endif %}
+{% if notes %}
+<ul class="notes">
+{% for note in notes %}
+<li>{{ note }}</li>
+{% endfor %}
+</ul>
+{% endif %}
+{{ bit_map }}
+{% if fields %}
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+{% for field in fields %}
+{{ field }}
+{% endfor %}
+</table>
+{% endif %}
+</article>

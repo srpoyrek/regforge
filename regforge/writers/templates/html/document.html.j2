@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ name }} register reference</title>
+<style>
+{% include "style.css.j2" %}
+</style>
+</head>
+<body>
+<header>
+<h1>{{ name }}</h1>
+{% if description %}
+<p class="desc">{{ description }}</p>
+{% endif %}
+{{ facts }}
+{{ cpu }}
+{{ license }}
+</header>
+<nav>
+<h2>Peripherals</h2>
+<table>
+<tr><th>Peripheral</th><th>Base address</th><th>Interrupts</th><th>Description</th></tr>
+{% for row in rows %}
+{{ row }}
+{% endfor %}
+</table>
+</nav>
+{% for section in sections %}
+{{ section }}
+{% endfor %}
+{{ provenance }}
+</body>
+</html>

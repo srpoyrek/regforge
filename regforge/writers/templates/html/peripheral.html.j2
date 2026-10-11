@@ -1,0 +1,48 @@
+<section class="peripheral" id="{{ anchor }}">
+<h2>{{ name }}</h2>
+<div class="meta">
+<span>Base address <b class="mono">{{ base }}</b></span>
+{% if group %}
+<span>Group <b>{{ group }}</b></span>
+{% endif %}
+{% if derived_from %}
+<span>Same layout as <a href="#{{ derived_anchor }}">{{ derived_from }}</a></span>
+{% endif %}
+{% if array_note %}
+<span>{{ array_note }}</span>
+{% endif %}
+</div>
+{% if description %}
+<p class="desc">{{ description }}</p>
+{% endif %}
+{% if blocks %}
+<h3>Address blocks</h3>
+<table>
+<tr><th>Offset</th><th>Size</th><th>Usage</th></tr>
+{% for block in blocks %}
+{{ block }}
+{% endfor %}
+</table>
+{% endif %}
+{% if interrupts %}
+<h3>Interrupts</h3>
+<table>
+<tr><th>Name</th><th>Vector</th><th>Description</th></tr>
+{% for interrupt in interrupts %}
+{{ interrupt }}
+{% endfor %}
+</table>
+{% endif %}
+{% if summary %}
+<h3>Registers</h3>
+<table>
+<tr><th>Offset</th><th>Register</th><th>Size</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+{% for row in summary %}
+{{ row }}
+{% endfor %}
+</table>
+{% endif %}
+{% for register in registers %}
+{{ register }}
+{% endfor %}
+</section>
