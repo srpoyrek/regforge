@@ -12,7 +12,8 @@ level below it, the [bit](bits.md): it is given the register's width as a number
 register's path, and knows nothing of the register itself. Which pairs of fields to
 compare is for the level above, the register, which will take that walk over from
 `collect`. A field is also a participant in the shared collision rule
-(`CollisionResolution`), with bits as its space.
+(`CollisionResolution`), with bits as its space. It also holds the field's enumerated
+sets, which it hands to the set class one by one and in pairs; see [enums.md](enums.md).
 
 Code: `regforge/resolution/field.py` (`FieldResolution`), `regforge/ir/field.py`
 (`Field`, `runs`, `fits_in`), `regforge/resolution/collector.py` (`collect`),
@@ -75,5 +76,5 @@ Not compared with each other, because something else already reports it:
 
 These field matters stay in their present place until their own element is converted:
 the stride of a field array against its width and the expansion of `%s` fields (the `dim`
-rules), a field's inherited `access` (the defaults), and enumerated values that do not
-fit the field (the enumerated-value rules).
+rules), and a field's inherited `access` (the defaults). Enumerated values that do not
+fit the field are reported now, by the set class (see [enums.md](enums.md)).

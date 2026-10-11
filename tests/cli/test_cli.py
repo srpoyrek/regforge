@@ -189,3 +189,24 @@ def test_colliding_fields_are_warned_about_on_the_command_line(tmp_path, capsys)
     )
     assert main([str(svd), "--no-provenance"]) == ExitCode.OK  # a warning, not a refusal
     assert "warn: TIM.CTRL: bit 1 is claimed by MODE and STATE" in capsys.readouterr().err
+
+
+def test_a_repeated_enumerated_name_is_warned_about_on_the_command_line(tmp_path, capsys):
+    svd = tmp_path / "enum.svd"
+    svd.write_text(
+        "<device><name>C</name><peripherals><peripheral><name>TIM</name>"
+        "<baseAddress>0x0</baseAddress><registers><register><name>CTRL</name>"
+        "<addressOffset>0x0</addressOffset><size>8</size><access>read-write</access><fields>"
+        "<field><name>MODE</name><bitOffset>0</bitOffset><bitWidth>2</bitWidth>"
+        "<enumeratedValues>"
+        "<enumeratedValue><name>FAST</name><value>1</value></enumeratedValue>"
+        "<enumeratedValue><name>FAST</name><value>2</value></enumeratedValue>"
+        "<enumeratedValue><name>BIG</name><value>9</value></enumeratedValue>"
+        "</enumeratedValues></field>"
+        "</fields></register></registers></peripheral></peripherals></device>",
+        encoding="utf-8",
+    )
+    assert main([str(svd), "--no-provenance"]) == ExitCode.OK  # findings never refuse a header
+    err = capsys.readouterr().err
+    assert "warn: TIM.CTRL.MODE: the name FAST is used by 2 entries (0x1, 0x2)" in err
+    assert "error: TIM.CTRL.MODE: BIG = 0x9 does not fit the 2-bit field" in err

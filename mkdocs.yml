@@ -50,6 +50,7 @@ nav:
       - Derived registers and sets: rules/derived.md
       - Bits: rules/bits.md
       - Fields: rules/fields.md
+      - Enumerated values: rules/enums.md
   - Input formats:
       - CMSIS-SVD: rules/formats/svd.md
   - Output targets:

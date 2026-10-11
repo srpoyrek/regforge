@@ -1,7 +1,16 @@
 """collect: the one place that knows the device; it feeds the bit class and gathers findings."""
 
 from regforge.finding import Finding, Severity
-from regforge.ir import Cluster, Device, Dim, Field, Peripheral, Register
+from regforge.ir import (
+    Cluster,
+    Device,
+    Dim,
+    EnumeratedValue,
+    EnumSet,
+    Field,
+    Peripheral,
+    Register,
+)
 from regforge.resolution import collect
 
 
@@ -117,3 +126,17 @@ def test_a_field_past_the_register_width_is_an_error():
 
 def test_a_register_with_no_resolved_size_is_skipped():
     assert _messages(_device(Field("A", 0, 2), Field("B", 1, 2), size=None)) == []
+
+
+def test_the_enumerated_sets_of_a_field_are_judged_too():
+    entries = [EnumeratedValue("A", 1), EnumeratedValue("A", 2), EnumeratedValue("BIG", 9)]
+    device = _device(Field("MODE", 0, 2, enum_sets=[EnumSet(entries)]))
+    assert _messages(device) == [
+        "P.R.MODE: BIG = 0x9 does not fit the 2-bit field",
+        "P.R.MODE: the name A is used by 2 entries (0x1, 0x2)",
+    ]
+
+
+def test_a_register_whose_fields_are_sound_has_no_findings():
+    device = _device(Field("EN", 0, 1, enum_sets=[EnumSet([EnumeratedValue("OFF", 0)])]))
+    assert _messages(device) == []

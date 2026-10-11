@@ -6,7 +6,7 @@ import pytest
 
 import regforge.resolution.field as field_module
 from regforge.finding import Severity
-from regforge.ir import Dim, Field
+from regforge.ir import Dim, EnumeratedValue, EnumSet, EnumUsage, Field
 from regforge.resolution import BitResolution, FieldResolution
 
 
@@ -196,6 +196,80 @@ def test_the_bit_class_judges_the_shared_bits():
 def test_a_field_is_compared_only_with_another_field():
     with pytest.raises(TypeError, match="another field"):
         _res(Field("A", 0, 1)).compare(BitResolution(0, "B", "P.R"))
+
+
+# --- the field's enumerated sets ------------------------------------------------------
+
+
+def _with_sets(*sets: EnumSet, name: str = "F", **field_args) -> Field:
+    return Field(name, 0, 2, enum_sets=list(sets), **field_args)
+
+
+def test_a_field_without_sets_has_no_enum_findings():
+    assert _res(Field("F", 0, 2)).enum_findings() == []
+
+
+def test_a_name_used_twice_in_a_set_is_reported_at_the_fields_path():
+    field = _with_sets(EnumSet([EnumeratedValue("A", 1), EnumeratedValue("A", 2)]))
+    assert _messages(_res(field).findings()) == [
+        "P.R.F: the name A is used by 2 entries (0x1, 0x2)"
+    ]
+
+
+def test_the_sets_are_judged_against_the_fields_width_not_the_registers():
+    field = _with_sets(EnumSet([EnumeratedValue("BIG", 5)]))  # fits an 8-bit register, not 2 bits
+    assert _messages(_res(field, width=8).findings()) == [
+        "P.R.F: BIG = 0x5 does not fit the 2-bit field"
+    ]
+
+
+def test_two_sets_describing_one_direction_are_reported_for_the_pair():
+    field = _with_sets(
+        EnumSet([EnumeratedValue("A", 0)], name="FIRST", usage=EnumUsage.READ),
+        EnumSet([EnumeratedValue("B", 0)], name="SECOND", usage=EnumUsage.READ),
+    )
+    assert _messages(_res(field).findings()) == ["P.R.F: FIRST and SECOND both describe reads"]
+
+
+def test_a_read_set_and_a_write_set_are_fine():
+    field = _with_sets(
+        EnumSet([EnumeratedValue("A", 0)], usage=EnumUsage.READ),
+        EnumSet([EnumeratedValue("A", 0)], usage=EnumUsage.WRITE),
+    )
+    assert _res(field).findings() == []
+
+
+def test_an_array_names_the_path_with_its_count():
+    field = _with_sets(
+        EnumSet([EnumeratedValue("A", 1), EnumeratedValue("A", 2)]),
+        name="OD",
+        dim=Dim(4, 2, array=True),
+    )
+    assert _messages(_res(field).findings()) == [
+        "P.R.OD[4]: the name A is used by 2 entries (0x1, 0x2)"
+    ]
+
+
+def test_the_width_finding_comes_before_the_enum_findings():
+    field = Field(
+        "F", 6, 4, enum_sets=[EnumSet([EnumeratedValue("A", 1), EnumeratedValue("A", 2)])]
+    )
+    assert _messages(_res(field).findings()) == [
+        "P.R.F: bits 6..9 run past the 8-bit register",
+        "P.R.F: the name A is used by 2 entries (0x1, 0x2)",
+    ]
+
+
+def test_each_copy_of_a_template_has_its_own_sets_judged():
+    def copy(name: str) -> Field:
+        entries = [EnumeratedValue("A", 1), EnumeratedValue("A", 2)]
+        return Field(name, 0, 2, enum_sets=[EnumSet(list(entries))], expanded_from="M%s")
+
+    findings = FieldResolution.check_all([_res(copy("M0")), _res(copy("M1"))])
+    assert _messages(findings) == [
+        "P.R.M0: the name A is used by 2 entries (0x1, 0x2)",
+        "P.R.M1: the name A is used by 2 entries (0x1, 0x2)",
+    ]
 
 
 # --- layering ----------------------------------------------------------------------
