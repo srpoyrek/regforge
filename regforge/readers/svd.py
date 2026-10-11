@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import re
 import xml.etree.ElementTree as ET
-from enum import IntEnum
-from typing import overload
+from enum import Enum, IntEnum
+from typing import TypeVar, overload
 
 from ..ir import (
     DEFAULT_ADDRESS_UNIT_BITS,
@@ -26,6 +26,7 @@ from ..ir import (
     AddressBlock,
     Cluster,
     Cpu,
+    DataType,
     Device,
     Dim,
     EnumeratedValue,
@@ -33,8 +34,12 @@ from ..ir import (
     EnumUsage,
     Field,
     Interrupt,
+    ModifiedWriteValues,
     Peripheral,
+    Protection,
+    ReadAction,
     Register,
+    WriteConstraint,
 )
 from .base import Reader, Source
 
@@ -119,6 +124,36 @@ def _access(element: ET.Element, tag: str = "access") -> Access | None:
         return Access(raw)
     except ValueError:
         return None
+
+
+_E = TypeVar("_E", bound=Enum)
+
+
+def _choice(element: ET.Element, tag: str, kind: type[_E]) -> _E | None:
+    """Return ``element``'s ``tag`` child as a member of the closed vocabulary ``kind``.
+
+    ``None`` when the child is absent or holds a spelling the schema does not list.
+    """
+    raw = _text(element, tag)
+    if raw is None:
+        return None
+    try:
+        return kind(raw)
+    except ValueError:
+        return None
+
+
+def _write_constraint(element: ET.Element) -> WriteConstraint | None:
+    """Return the :class:`~regforge.ir.WriteConstraint` of ``element``, or ``None``."""
+    node = element.find("writeConstraint")
+    if node is None:
+        return None
+    return WriteConstraint(
+        write_as_read=_bool(node, "writeAsRead"),
+        use_enumerated_values=_bool(node, "useEnumeratedValues"),
+        minimum=_int(node, "range/minimum"),
+        maximum=_int(node, "range/maximum"),
+    )
 
 
 _RANGE = re.compile(r"(\d+)-(\d+)|([A-Za-z])-([A-Za-z])")
@@ -254,6 +289,7 @@ def _build_enum_set(set_element: ET.Element) -> EnumSet:
                 name=_text(value_element, "name") or "",
                 value=parse_svd_int(_text(value_element, "value") or "0"),
                 description=_text(value_element, "description"),
+                is_default=_bool(value_element, "isDefault") or False,
             )
             for value_element in set_element.findall("enumeratedValue")
             if _text(value_element, "value") is not None
@@ -277,6 +313,9 @@ def _build_field(field_element: ET.Element, warnings: list[str]) -> Field:
         access=_access(field_element),
         enum_sets=enum_sets,
         dim=_dim(field_element, name, warnings),
+        modified_write_values=_choice(field_element, "modifiedWriteValues", ModifiedWriteValues),
+        read_action=_choice(field_element, "readAction", ReadAction),
+        write_constraint=_write_constraint(field_element),
     )
 
 
@@ -303,6 +342,12 @@ def _build_register(register_element: ET.Element, warnings: list[str]) -> Regist
         access=_access(register_element),
         fields=[_build_field(f, warnings) for f in register_element.findall("./fields/field")],
         dim=_dim(register_element, name, warnings),
+        display_name=_text(register_element, "displayName"),
+        data_type=_choice(register_element, "dataType", DataType),
+        protection=_choice(register_element, "protection", Protection),
+        modified_write_values=_choice(register_element, "modifiedWriteValues", ModifiedWriteValues),
+        read_action=_choice(register_element, "readAction", ReadAction),
+        write_constraint=_write_constraint(register_element),
     )
 
 
@@ -320,6 +365,7 @@ def _build_cluster(cluster_element: ET.Element, warnings: list[str]) -> Cluster:
         default_access=_access(cluster_element),
         default_reset_value=_int(cluster_element, "resetValue"),
         default_reset_mask=_int(cluster_element, "resetMask"),
+        default_protection=_choice(cluster_element, "protection", Protection),
         registers=[_build_register(r, warnings) for r in cluster_element.findall("./register")],
         clusters=[_build_cluster(c, warnings) for c in cluster_element.findall("./cluster")],
         dim=_dim(cluster_element, name, warnings, cluster_element.get("derivedFrom") is not None),
@@ -369,6 +415,7 @@ def _build_peripheral(peripheral_element: ET.Element, warnings: list[str]) -> Pe
         default_access=_access(peripheral_element),
         default_reset_value=_int(peripheral_element, "resetValue"),
         default_reset_mask=_int(peripheral_element, "resetMask"),
+        default_protection=_choice(peripheral_element, "protection", Protection),
         registers=[
             _build_register(r, warnings) for r in peripheral_element.findall("./registers/register")
         ],
@@ -423,6 +470,7 @@ class SvdReader(Reader):
             default_access=_access(root),
             default_reset_value=_int(root, "resetValue"),
             default_reset_mask=_int(root, "resetMask"),
+            default_protection=_choice(root, "protection", Protection),
             peripherals=[
                 _build_peripheral(p, self.warnings)
                 for p in root.findall("./peripherals/peripheral")

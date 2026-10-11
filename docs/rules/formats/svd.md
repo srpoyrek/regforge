@@ -174,6 +174,15 @@ read and judged by expansion (dropped, or kept as one instance), and a
 The stride is not judged here. Whether `<dimIncrement>` fits the element needs
 the resolved register size, which exists only after defaults resolution.
 
+## Kept, not yet acted on
+
+These are read into the IR, but no output uses them yet. On a register: `<displayName>`,
+`<dataType>`, `<protection>`, `<modifiedWriteValues>`, `<readAction>` and
+`<writeConstraint>` (`writeAsRead`, `useEnumeratedValues`, `range`). On a field: the last
+three. At device, peripheral and cluster level: `<protection>`, as the default for the
+registers below. On an enumerated value: `<isDefault>`. A value outside the schema's list
+is read as absent.
+
 ## Not read
 
 These are in the SVD schema but do not affect output today:
@@ -182,10 +191,8 @@ These are in the SVD schema but do not affect output today:
 |---|---|
 | `alternateCluster` | not parsed |
 | `alternatePeripheral` | not parsed; see [ir/address-blocks.md](../address-blocks.md) |
-| `<protection>` | not parsed |
 | `<prependToName>`, `<appendToName>` | not applied |
 | `<headerSystemFilename>` | not applied |
-| `<writeConstraint>`, `<readAction>`, `<modifiedWriteValues>` | not parsed |
 
 `<vendorExtensions>` is kept as text so nothing is lost, but its contents are
 never interpreted.
