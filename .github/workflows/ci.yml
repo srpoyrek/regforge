@@ -42,19 +42,35 @@ jobs:
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Install cppcheck (Windows)
+      # The MISRA check is cppcheck's misra.py addon. The Linux package ships it;
+      # the Windows installer ships no addons at all, so take the three files from the
+      # tag matching the installed binary into .cppcheck/addons, the same
+      # git-ignored directory the noxfile searches locally. Deriving the tag from
+      # --version keeps addon and binary in step: the addon parses the binary's dump
+      # format, and a mismatch fails rather than passing quietly.
+      - name: Install cppcheck and its MISRA addon (Windows)
         if: runner.os == 'Windows'
         run: |
           choco install cppcheck --no-progress -y
-          echo "C:\Program Files\Cppcheck" >> $env:GITHUB_PATH
+          $dir = "C:\Program Files\Cppcheck"
+          Add-Content -Path $env:GITHUB_PATH -Value $dir
+          $version = (& "$dir\cppcheck.exe" --version).Split(" ")[1]
+          New-Item -ItemType Directory -Force ".cppcheck\addons" | Out-Null
+          foreach ($file in "misra.py", "misra_9.py", "cppcheckdata.py") {
+            $url = "https://raw.githubusercontent.com/danmar/cppcheck/$version/addons/$file"
+            Invoke-WebRequest -Uri $url -OutFile ".cppcheck\addons\$file"
+          }
 
       # uv makes each nox session's environment several times faster to build;
       # the noxfile falls back to virtualenv if it is ever missing.
       - name: Install nox
         run: pip install nox uv
 
-      - name: Tests + lint + types + MISRA C:2012
-        run: nox -s tests lint types misra
+      - name: Tests + lint + types
+        run: nox -s tests lint types
+
+      - name: MISRA C:2012
+        run: nox -s misra
 
       - name: Size report (Linux)
         if: runner.os == 'Linux'

@@ -1,5 +1,7 @@
 [build-system]
-requires = ["setuptools>=64"]
+# 77 is the first setuptools that accepts an SPDX `license` string and
+# `license-files`; the table form it replaces stops building in Feb 2027.
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,12 +10,12 @@ version = "0.0.1"
 description = "Convert register descriptions between formats (CMSIS-SVD to C and beyond)."
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 keywords = ["svd", "cmsis", "embedded", "codegen", "registers", "firmware"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Topic :: Software Development :: Code Generators",
     "Topic :: Software Development :: Embedded Systems",

@@ -548,17 +548,53 @@ those macros is not affected.
 The generated header satisfies every required rule of MISRA C:2012, and CI
 proves it on every push: `nox -s misra` runs cppcheck's MISRA addon over both
 golden headers with `--std=c99 --platform=unix32` (a 32-bit MCU ABI for the
-essential-type rules) and fails on any finding. Locally it needs cppcheck on
-PATH, or `REGFORGE_CPPCHECK` pointing at one.
+essential-type rules) and fails on any finding.
 
-Six advisory rules are deviated from, each the case its own guideline names,
-and the header says so in its preamble:
+The check is the addon, `misra.py`, not the cppcheck binary alone. CI runs it on
+Linux and on Windows. The Linux packages ship the addon, so `apt install
+cppcheck` is enough; the Windows installer ships no addons at all, and the
+workflow fetches the three files for the tag that matches the binary it
+installed. Locally, do the same: take them from the release that matches
+`cppcheck --version` and put them where cppcheck looks:
 
-| Rule | Deviation |
-|---|---|
-| 11.4 | Integer to pointer: memory-mapped registers have no other spelling. Every such cast is a `_BASE` constant or an architecturally fixed NVIC address, through `uintptr_t`. |
-| 19.2 | A union only where the source declares two layouts of one word ([alternates.md](../alternates.md)). |
-| 2.3, 2.4, 2.5, 8.9 | Unused types, tags, macros and file-scope objects are judged per translation unit; a definitions header is used piecemeal by design. |
+```text
+misra.py, misra_9.py, cppcheckdata.py   ->  .cppcheck/addons/
+  from https://raw.githubusercontent.com/danmar/cppcheck/<version>/addons/
+```
+
+`.cppcheck/` is git-ignored: the addon is cppcheck's own, GPL-3, and is never
+committed here. The workflow's Windows job does exactly this, deriving the tag
+from the binary it installed. An `addons` directory beside the cppcheck binary
+works too, since that is where cppcheck itself looks, and `REGFORGE_MISRA_ADDON`
+names a `misra.py` kept anywhere else. All three files must come from one
+release, because the addon parses the binary's dump format; a mismatch is
+reported as one rather than failing obscurely. `REGFORGE_CPPCHECK` names a
+binary that is not on PATH.
+
+Nothing is suppressed: the session passes no `--suppress`, and the header carries
+no suppression comment. Every finding the addon produces fails the session. On
+the two golden headers the addon reports exactly five rules, all advisory:
+
+| Rule | Findings on `minimal.h` | What it flags |
+|---|---|---|
+| 2.5 unused macro | 140 | every `_OFFSET`, `_STRIDE`, `_COUNT`, accessor and field macro |
+| 2.3 unused type | 76 | every `dc_*_t` |
+| 2.4 unused tag | 11 | the struct tags behind them |
+| 19.2 union | 16 | the `alternateRegister` overlays ([alternates.md](../alternates.md)) |
+| 11.4 integer to pointer | 8 | the NVIC bank pointers, dereferenced inside the helpers |
+
+Every other rule the addon implements, required and advisory, passes. The
+first three are project-scope rules, *a project should not contain unused*
+types, tags and macros: checking a definitions header on its own makes every
+definition it offers look unused, and they would clear against a translation
+unit that used the whole device. The last two are properties of what the
+header is. Memory-mapped access has no conforming spelling, and the union
+exists only where the source itself declares two layouts of one word; MISRA's
+own process handles both with a written deviation, and none is recorded here.
+
+A sixth, 8.9 (an object referenced from one function should be block-scope),
+applied while the peripheral instances were `static T *const` variables and
+stopped when they became macros ([Instance names](#instance-names)).
 
 Everything else is spelled to the rules: unsigned literals carry `U`, device
 macros that meet unsigned operands are unsigned (`DEMOMCU_NUM_IRQS (32U)`),

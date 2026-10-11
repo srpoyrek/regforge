@@ -20,7 +20,7 @@ def test_top_of_file_blocks_come_in_the_fixed_order(golden_header_path):
         [
             " * DemoMCU register definitions.",
             " * Source:  minimal.svd",
-            " * MISRA C:2012: every required rule holds",  # a paragraph of the banner
+            " * MISRA C:2012: every required rule holds.",  # a paragraph of the banner
             "#ifndef REGFORGE_DEMOMCU_H",
             "#include <stdint.h>",
             "/* Compiler compatibility */",

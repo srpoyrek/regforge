@@ -232,3 +232,7 @@ desktop.ini
 # Locally generated headers from ad-hoc runs (test fixtures are committed separately)
 /*.h
 /out/
+
+# A local copy of cppcheck's MISRA addon, for platforms whose package omits it
+# (see docs/rules/targets/c.md). Not ours to redistribute: never committed.
+/.cppcheck/

@@ -18,6 +18,7 @@ import os
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 import nox
 
@@ -110,52 +111,114 @@ def compilers(session: nox.Session) -> None:
     )
 
 
-#: MISRA C:2012 advisory rules the generated header deviates from, each documented
-#: in the header's own preamble: 11.4 (integer to pointer, memory-mapped I/O),
-#: 19.2 (a union for alternateRegister overlays), 2.3 / 2.4 / 2.5 / 8.9 (rules
-#: scoped to one translation unit, meaningless for a definitions header).
-MISRA_DEVIATIONS = ("2.3", "2.4", "2.5", "8.9", "11.4", "19.2")
+#: Where this repository keeps a copy of the addon for platforms whose cppcheck
+#: package omits it (the Windows installer ships no addons). Git-ignored: the
+#: addon is cppcheck's, GPL-3, and is never committed here.
+MISRA_ADDON_LOCAL = ".cppcheck/addons/misra.py"
+
+#: The layouts a cppcheck distribution uses for its own addons, relative to the
+#: binary or absolute. Anywhere else is machine-specific and belongs in
+#: ``REGFORGE_MISRA_ADDON``, not here.
+MISRA_ADDON_PATHS = (
+    "addons/misra.py",
+    "../share/cppcheck/addons/misra.py",
+    "../share/Cppcheck/addons/misra.py",
+    "/usr/share/cppcheck/addons/misra.py",
+    "/usr/local/share/cppcheck/addons/misra.py",
+)
+
+
+def _misra_addon(cppcheck: str) -> str:
+    """The ``--addon`` argument to use: an absolute misra.py, else the bare name.
+
+    ``REGFORGE_MISRA_ADDON`` wins, then the usual places beside the binary and
+    under ``share/cppcheck``. Falling back to the bare ``misra`` lets cppcheck
+    search its own install directory, which is how the Linux packages work.
+    """
+    explicit = os.environ.get("REGFORGE_MISRA_ADDON")
+    if explicit:
+        return explicit
+    local = Path(__file__).parent / MISRA_ADDON_LOCAL
+    if local.is_file():
+        return str(local.resolve())
+    binary = Path(cppcheck).resolve().parent
+    for relative in MISRA_ADDON_PATHS:
+        candidate = Path(relative)
+        candidate = candidate if candidate.is_absolute() else binary / candidate
+        if candidate.is_file():
+            return str(candidate.resolve())
+    return "misra"
 
 
 @nox.session(venv_backend="none")
 def misra(session: nox.Session) -> None:
     """Check the golden headers against MISRA C:2012 with cppcheck's MISRA addon.
 
-    cppcheck is an external tool (apt / choco / brew install cppcheck); set
-    ``REGFORGE_CPPCHECK`` to point at a binary that is not on PATH. Every
-    required rule must hold; the advisory deviations above are suppressed.
-    ``--platform=unix32`` gives essential-type analysis a 32-bit MCU ABI.
+    cppcheck is an external tool (``apt install cppcheck``, ``brew install
+    cppcheck``); set ``REGFORGE_CPPCHECK`` for a binary that is not on PATH.
+    The check is the addon, ``misra.py``, which ships with the Linux packages
+    but not with the Windows installer. Where it is missing, take ``misra.py``,
+    ``misra_9.py`` and ``cppcheckdata.py`` from the cppcheck release that
+    matches the binary and either put them in an ``addons`` directory beside
+    it, which is where cppcheck itself looks, or point
+    ``REGFORGE_MISRA_ADDON`` at the ``misra.py`` wherever you keep it. All
+    three must come from that one release: the addon parses the binary's dump
+    format, and a mismatch is reported as one.
+
+    No rule is turned off: the session passes no suppression of any kind, so
+    every finding the addon produces fails it. ``--platform=unix32`` gives the
+    essential-type rules a 32-bit MCU ABI, and ``--enable=style`` is what
+    surfaces the addon's findings at all -- without it cppcheck reports none.
     """
     cppcheck = os.environ.get("REGFORGE_CPPCHECK") or shutil.which("cppcheck")
     if cppcheck is None:
         session.error(
-            "cppcheck is not on PATH. Install it (apt install cppcheck, choco install "
-            "cppcheck, winget install Cppcheck.Cppcheck, brew install cppcheck) or set "
-            "REGFORGE_CPPCHECK to the binary"
+            "cppcheck is not on PATH. Install it (apt install cppcheck, brew install "
+            "cppcheck, winget install Cppcheck.Cppcheck) or set REGFORGE_CPPCHECK to "
+            "the binary"
         )
-    # A cppcheck bundled inside another tool (Strawberry Perl ships one) can have
-    # its configuration directory baked to a path that exists only on the build
-    # machine; it then fails on every file. Say so, rather than echo its message.
+    addon = _misra_addon(cppcheck)
+    # Probe on one of the headers this session checks, so a broken install or a
+    # mismatched addon is reported as itself rather than as a wall of cppcheck
+    # output. A toy source would not exercise the addon far enough to tell.
     probe = subprocess.run(
-        [cppcheck, "--quiet", "tests/golden/c/minimal.h"], capture_output=True, text=True
+        [
+            cppcheck,
+            f"--addon={addon}",
+            f"--addon-python={sys.executable}",
+            "--quiet",
+            "tests/golden/c/minimal.h",
+        ],
+        capture_output=True,
+        text=True,
     )
-    if "Failed to load" in probe.stdout + probe.stderr:
+    trouble = probe.stdout + probe.stderr
+    if "Failed to load" in trouble:
         session.error(
             f"{cppcheck} cannot find its own configuration files (a broken build, "
             "typically one bundled inside another tool). Install the official cppcheck "
             "so it comes first on PATH, or set REGFORGE_CPPCHECK to a working binary"
         )
+    if "Did not find addon" in trouble:
+        session.error(
+            f"{cppcheck} ships no misra.py (the Windows installer does not). Download "
+            "addons/misra.py and addons/cppcheckdata.py from the cppcheck release that "
+            "matches this binary and set REGFORGE_MISRA_ADDON to the misra.py"
+        )
+    if "Failed to execute addon" in trouble or "internalError" in trouble:
+        session.error(
+            f"{addon} could not run against {cppcheck}. The usual cause is a version mismatch: "
+            "the addon parses the binary's dump format, so misra.py must come from the "
+            f"same cppcheck release. cppcheck said: {trouble.strip().splitlines()[0]}"
+        )
     session.run(
         cppcheck,
-        "--addon=misra",
+        f"--addon={addon}",
         f"--addon-python={sys.executable}",
         "--std=c99",
         "--platform=unix32",
         "--enable=style",
         "--error-exitcode=1",
-        "--suppress=missingIncludeSystem",
-        "--suppress=unusedStructMember",  # cppcheck's own per-TU check, not MISRA
-        *(f"--suppress=misra-c2012-{rule}" for rule in MISRA_DEVIATIONS),
         "--template={file}:{line}: {id} {message}",
         "tests/golden/c/minimal.h",
         "tests/golden/c/lint_demo.h",
