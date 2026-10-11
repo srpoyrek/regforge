@@ -23,10 +23,10 @@ Positions are integers and claimants are labels, so the shared rule knows no ele
 
 The levels above build on that, each knowing only itself and the level below: a field
 compares its bits with another field's by calling the bit class, a register decides
-which pairs of fields to compare, and so on up. Today only the bit exists, so
-`collect`, the one place that knows the whole device, does the walk of the levels above:
-it picks the pairs of fields, hands the bit class their bits, gathers what every
-element's class finds, and the command line prints it. The other elements still keep
+which pairs of fields to compare, and so on up. Today the bit and the field exist, so
+`collect`, the one place that knows the whole device, does the walk of the register
+level: it picks the pairs of fields, gathers what every element's class finds, and the
+command line prints it. The other elements still keep
 their rules in the checks; they move to a class of their own one at a time.
 
 Code: `regforge/ir/bit.py` (`Bit`, `bits`, `claims`), `regforge/resolution/bit.py`
@@ -100,8 +100,7 @@ compare those with each other, since only it knows about fields:
 A bit beyond the width has no storage: an `ERROR`. Copies of one `<dim>` template are
 reported together, since the template is what needs fixing, and an array is measured
 to its last element. This compares a field with its register, which is above a bit, so
-`check_address_math` still reports it; it moves to the field's class when that one is
-converted.
+it is the [field's](fields.md) rule, reported by `FieldResolution`.
 
 ```
 error: P.R.F: bits 30..33 run past the 32-bit register
@@ -114,7 +113,7 @@ error: P.R.M%s: M8..M8 (1 of its 9 copies) run past the 32-bit register
 | # | Input | Result |
 |---|---|---|
 | 1 | a field exactly reaching the last bit | fits; nothing |
-| 2 | two fields both past the width | Rule 3 for each (from `check_address_math`); no collision, since the bits do not exist |
+| 2 | two fields both past the width | Rule 3 for each (from the field class); no collision, since the bits do not exist |
 | 3 | a copy of a template and a plain field on one bit | Rule 2, the copy named by its own name |
 | 4 | an unresolved register size | silent: both rules need the width |
 | 5 | a vendor file with a `Reserved` field over a real one | Rule 2; in the corpus 108 of 109,520 registers, in 13 of 88 files |

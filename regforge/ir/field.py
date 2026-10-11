@@ -143,6 +143,20 @@ class Field:
             and other.bit_offset < self.bit_offset + self.bit_width
         )
 
+    def runs(self) -> list[tuple[int, int]]:
+        """The runs of bits the field covers, as ``(first, last)``, one run per copy of an array.
+
+        A field with no ``dim`` is one run. A copy may reach past a register's width;
+        whoever knows the width decides what to do about that.
+        """
+        if self.dim is None:
+            starts = [self.bit_offset]
+        else:
+            starts = [
+                self.bit_offset + element * self.dim.stride for element in range(self.dim.length)
+            ]
+        return [(start, start + self.bit_width - 1) for start in starts]
+
     def fits_in(self, register_size: int) -> bool:
         """Whether every copy of the field lies within a register ``register_size`` bits wide."""
         end = self.bit_offset + self.bit_width

@@ -49,6 +49,7 @@ nav:
       - Alternate registers: rules/alternates.md
       - Derived registers and sets: rules/derived.md
       - Bits: rules/bits.md
+      - Fields: rules/fields.md
   - Input formats:
       - CMSIS-SVD: rules/formats/svd.md
   - Output targets:

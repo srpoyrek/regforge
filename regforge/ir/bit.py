@@ -62,14 +62,8 @@ def claims(register: Register) -> dict[int, list[Field]]:
     """
     found: dict[int, list[Field]] = {}
     for field in register.fields:
-        if field.dim is None:
-            starts = [field.bit_offset]
-        else:
-            starts = [
-                field.bit_offset + element * field.dim.stride for element in range(field.dim.length)
-            ]
-        for start in starts:
-            for position in range(start, start + field.bit_width):
+        for first, last in field.runs():
+            for position in range(first, last + 1):
                 owners = found.setdefault(position, [])
                 if not any(owner is field for owner in owners):
                     owners.append(field)

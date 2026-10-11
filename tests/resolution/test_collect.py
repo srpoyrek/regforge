@@ -101,12 +101,18 @@ def test_fields_that_only_touch_do_not_collide():
 
 
 def test_bits_beyond_the_register_are_not_a_collision():
-    # Both fields run past an 8-bit register; check_address_math reports that.
-    assert _messages(_device(Field("A", 6, 4), Field("B", 8, 4))) == []
+    # Both fields run past an 8-bit register: two errors, no collision on bits that do not exist.
+    assert _messages(_device(Field("A", 6, 4), Field("B", 8, 4))) == [
+        "P.R.A: bits 6..9 run past the 8-bit register",
+        "P.R.B: bits 8..11 run past the 8-bit register",
+    ]
 
 
-def test_a_field_past_the_register_width_is_not_this_collectors_to_report():
-    assert _messages(_device(Field("F", 6, 4))) == []
+def test_a_field_past_the_register_width_is_an_error():
+    findings = collect(_device(Field("F", 6, 4)))
+    assert [(f.severity, f.message) for f in findings] == [
+        (Severity.ERROR, "P.R.F: bits 6..9 run past the 8-bit register")
+    ]
 
 
 def test_a_register_with_no_resolved_size_is_skipped():

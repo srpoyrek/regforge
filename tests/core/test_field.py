@@ -220,3 +220,20 @@ def test_accepts_does_not_count_the_catch_all_as_a_named_value():
         write_constraint=WriteConstraint(use_enumerated_values=True),
     )
     assert [mode.accepts(v) for v in range(4)] == [True, False, False, False]
+
+
+def test_runs_of_a_plain_field_is_its_one_range():
+    assert Field("A", 4, 3).runs() == [(4, 6)]
+
+
+def test_runs_of_an_array_is_one_range_per_copy():
+    assert Field("OD", 1, 2, dim=Dim(3, 4, array=True)).runs() == [(1, 2), (5, 6), (9, 10)]
+
+
+def test_runs_may_reach_past_a_register_for_the_caller_to_judge():
+    assert Field("A", 30, 4).runs() == [(30, 33)]
+
+
+def test_runs_agree_with_fits_in():
+    field = Field("A", 0, 4, dim=Dim(9, 4, array=True))
+    assert field.runs()[-1][1] == 35 and not field.fits_in(32) and field.fits_in(36)
