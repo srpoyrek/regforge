@@ -140,3 +140,28 @@ def test_the_enumerated_sets_of_a_field_are_judged_too():
 def test_a_register_whose_fields_are_sound_has_no_findings():
     device = _device(Field("EN", 0, 1, enum_sets=[EnumSet([EnumeratedValue("OFF", 0)])]))
     assert _messages(device) == []
+
+
+def test_two_fields_with_one_name_are_reported_even_when_their_bits_are_apart():
+    assert _messages(_device(Field("MODE", 0, 2), Field("MODE", 4, 2))) == [
+        "P.R: the name MODE is used by two fields (bits 0..1 and bits 4..5)"
+    ]
+
+
+def test_a_name_used_three_times_is_one_finding_per_pair():
+    device = _device(Field("X", 0, 1), Field("X", 2, 1), Field("X", 4, 1))
+    assert _messages(device) == [
+        "P.R: the name X is used by two fields (bit 0 and bit 2)",
+        "P.R: the name X is used by two fields (bit 0 and bit 4)",
+        "P.R: the name X is used by two fields (bit 2 and bit 4)",
+    ]
+
+
+def test_a_register_may_repeat_reserved_fields():
+    device = _device(Field("Reserved", 0, 2), Field("Reserved", 3, 2), Field("Reserved", 6, 2))
+    assert _messages(device) == []
+
+
+def test_a_set_may_repeat_reserved_entries():
+    entries = [EnumeratedValue("Reserved", 2), EnumeratedValue("Reserved", 3)]
+    assert _messages(_device(Field("MODE", 0, 2, enum_sets=[EnumSet(entries)]))) == []

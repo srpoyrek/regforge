@@ -198,6 +198,80 @@ def test_a_field_is_compared_only_with_another_field():
         _res(Field("A", 0, 1)).compare(BitResolution(0, "B", "P.R"))
 
 
+# --- two fields with one name -----------------------------------------------------------
+
+
+def test_two_fields_with_one_name_are_a_warning():
+    (finding,) = _res(Field("MODE", 0, 2)).compare(_res(Field("MODE", 4, 2)))
+    assert finding.severity is Severity.WARNING
+    assert finding.message == "P.R: the name MODE is used by two fields (bits 0..1 and bits 4..5)"
+
+
+def test_the_two_fields_are_placed_in_the_order_compared():
+    findings = _res(Field("X", 6, 2)).compare(_res(Field("X", 0, 2)))
+    assert _messages(findings) == [
+        "P.R: the name X is used by two fields (bits 6..7 and bits 0..1)"
+    ]
+
+
+def test_a_single_bit_is_placed_as_one_bit():
+    findings = _res(Field("EN", 0, 1)).compare(_res(Field("EN", 7, 1)))
+    assert _messages(findings) == ["P.R: the name EN is used by two fields (bit 0 and bit 7)"]
+
+
+def test_an_array_is_placed_from_its_first_bit_to_its_last_copy():
+    array = _res(Field("OD", 0, 1, dim=Dim(4, 2, array=True)))  # bits 0, 2, 4 and 6
+    assert _messages(array.compare(_res(Field("OD", 7, 1)))) == [
+        "P.R: the name OD is used by two fields (bits 0..6 and bit 7)"
+    ]
+
+
+def test_the_places_named_are_as_declared_even_past_the_register_width():
+    findings = _res(Field("A", 6, 4)).compare(_res(Field("A", 8, 4)))
+    assert _messages(findings) == [
+        "P.R: the name A is used by two fields (bits 6..9 and bits 8..11)"
+    ]
+
+
+def test_different_names_are_not_a_clash():
+    assert _res(Field("A", 0, 2)).compare(_res(Field("B", 4, 2))) == []
+
+
+def test_names_are_compared_as_written():
+    assert _res(Field("Mode", 0, 2)).compare(_res(Field("MODE", 4, 2))) == []
+
+
+def test_a_placeholder_name_may_repeat():
+    assert _res(Field("Reserved", 0, 2)).compare(_res(Field("Reserved", 4, 2))) == []
+    assert _res(Field("RESERVED_", 0, 2)).compare(_res(Field("RESERVED_", 4, 2))) == []
+
+
+def test_a_field_called_reserved_is_a_placeholder():
+    assert _res(Field("Reserved", 0, 2)).is_placeholder()
+    assert not _res(Field("MODE", 0, 2)).is_placeholder()
+
+
+def test_one_name_on_one_bit_is_two_findings_the_name_first():
+    findings = _res(Field("X", 0, 4)).compare(_res(Field("X", 2, 4)))
+    assert _messages(findings) == [
+        "P.R: the name X is used by two fields (bits 0..3 and bits 2..5)",
+        "P.R: bits 2..3 are claimed by X and X",
+    ]
+
+
+def test_copies_of_one_template_are_not_compared_for_names_either():
+    first = _res(Field("M0", 0, 2, expanded_from="M%s"))
+    second = _res(Field("M0", 4, 2, expanded_from="M%s"))
+    assert first.compare(second) == []
+
+
+def test_a_copy_and_a_field_of_another_origin_with_one_name_are_reported():
+    copy = _res(Field("M0", 0, 2, expanded_from="M%s"))
+    assert _messages(copy.compare(_res(Field("M0", 4, 2)))) == [
+        "P.R: the name M0 is used by two fields (bits 0..1 and bits 4..5)"
+    ]
+
+
 # --- the field's enumerated sets ------------------------------------------------------
 
 

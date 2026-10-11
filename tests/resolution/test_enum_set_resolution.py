@@ -144,6 +144,25 @@ def test_a_large_set_is_not_compared_pair_by_pair():
     assert _set(*entries, width=12).findings() == []
 
 
+def test_a_placeholder_name_may_repeat():
+    entries = [_plain("Reserved", 8), _plain("Reserved", 9), _plain("reserved", 10)]
+    entries.append(_plain("reserved", 11))
+    assert _set(*entries).names() == []
+    assert _set(*entries).findings() == []
+
+
+def test_a_real_name_repeated_beside_placeholders_is_still_reported():
+    entries = [_plain("Reserved", 8), _plain("ON", 1), _plain("Reserved", 9), _plain("ON", 2)]
+    assert _messages(_set(*entries).names()) == [
+        "P.R.F: the name ON is used by 2 entries (0x1, 0x2)"
+    ]
+
+
+def test_placeholders_still_collide_on_a_number():
+    findings = _set(_plain("Reserved", 8), _plain("Reserved", 8)).findings()
+    assert _messages(findings) == ["P.R.F: value 0x8 is claimed by Reserved and Reserved"]
+
+
 # --- one set beside another -----------------------------------------------------------
 
 

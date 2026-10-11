@@ -3,8 +3,8 @@
 A field knows its own element and the levels below it, the bits and the enumerated sets. It
 is given the register's width as a number and the register's path, and knows nothing of the
 register: which pairs of fields to compare is for the level above. Comparing two fields
-hands the bits they share to the bit class, which judges them; the field's sets are judged
-by the set class, one by one and in pairs.
+reports the name they share and hands the bits they share to the bit class, which judges
+them; the field's sets are judged by the set class, one by one and in pairs.
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ from regforge.ir import Field
 from regforge.resolution.bit import BitResolution
 from regforge.resolution.collision import CollisionResolution
 from regforge.resolution.enum_set import EnumSetResolution
+from regforge.resolution.placeholder import is_placeholder_name
 
 
 def _label(field: Field) -> str:
@@ -26,14 +27,17 @@ def _label(field: Field) -> str:
 class FieldResolution(CollisionResolution):
     """One field of a register, as the rules see it.
 
-    Three rules. A field that reaches past the register's width has no storage there
+    Four rules. A field that reaches past the register's width has no storage there
     (``ERROR``). Two different fields on one bit contradict each other, though the hardware
     could still be as the file says (``WARNING``): the bit map gives the bit to the first
-    declared. And the field's enumerated sets must be sound, each alone and as a pair, which
-    is the business of :class:`~regforge.resolution.EnumSetResolution`; the sets are
-    judged against the field's own width. Copies of one ``<dim>`` template overlapping each
-    other are reported when the template is expanded, and a field array overlapping itself by
-    ``check_address_math``, so neither is repeated here.
+    declared. Two fields with one name contradict each other too (``WARNING``), since the
+    constants made from them would repeat; a placeholder name such as ``Reserved``, which
+    vendors give to every unused run of bits, is not a clash. And the field's enumerated sets
+    must be sound, each alone and as a pair, which is the business of
+    :class:`~regforge.resolution.EnumSetResolution`; the sets are judged against the field's
+    own width. Copies of one ``<dim>`` template overlapping each other are reported when the
+    template is expanded, and a field array overlapping itself by ``check_address_math``, so
+    neither is repeated here.
 
     Attributes:
         field: The field.
@@ -130,17 +134,49 @@ class FieldResolution(CollisionResolution):
             )
         return findings
 
+    def is_placeholder(self) -> bool:
+        """Whether the field's name only marks unused bits, as ``Reserved`` does."""
+        return is_placeholder_name(self.field.name)
+
+    def _extent(self) -> str:
+        """Where the field sits, as a message says it: ``bit 5`` or ``bits 0..3``.
+
+        An array is placed from its first bit to the last bit of its last copy.
+        """
+        first = self.field.bit_offset
+        last = max((end for _, end in self.field.runs()), default=self.field.msb)
+        return f"bit {first}" if first == last else f"bits {first}..{last}"
+
+    def same_name(self, other: FieldResolution) -> list[Finding]:
+        """The name this field shares with ``other``, which would make one constant twice.
+
+        A placeholder name is not a clash, however often a register repeats it.
+        """
+        if self.field.name != other.field.name or self.is_placeholder():
+            return []
+        return [
+            Finding(
+                Severity.WARNING,
+                f"{self.where}: the name {self.field.name} is used by two fields "
+                f"({self._extent()} and {other._extent()})",
+            )
+        ]
+
+    def _shared_bits(self, other: FieldResolution) -> list[Finding]:
+        """The bits this field shares with ``other``, judged by the bit class."""
+        if not any(a <= d and c <= b for a, b in self.ranges() for c, d in other.ranges()):
+            return []
+        return BitResolution.compare_all(self.bits(), other.bits())
+
     def compare(self, other: CollisionResolution) -> list[Finding]:
-        """Cross-verify this field with another: the bits they share, judged by the bit class.
+        """Cross-verify this field with another: the name they share, then the bits.
 
         Two copies of one template are not compared with each other, and a pair with no
-        bit in common is not looked at further.
+        bit in common is not looked at further for bits.
         """
         if not isinstance(other, FieldResolution):
             raise TypeError("a field is compared with another field")
         template = self.field.expanded_from
         if template is not None and template == other.field.expanded_from:
             return []
-        if not any(a <= d and c <= b for a, b in self.ranges() for c, d in other.ranges()):
-            return []
-        return BitResolution.compare_all(self.bits(), other.bits())
+        return self.same_name(other) + self._shared_bits(other)

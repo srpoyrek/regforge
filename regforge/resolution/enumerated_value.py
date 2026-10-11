@@ -6,6 +6,7 @@ from regforge.finding import Finding, Severity
 from regforge.ir import EnumeratedValue
 from regforge.ir.enum_set import MAX_LISTED_BITS
 from regforge.resolution.collision import CollisionResolution
+from regforge.resolution.placeholder import is_placeholder_name
 
 
 def _runs(numbers: list[int]) -> list[tuple[int, int]]:
@@ -38,7 +39,8 @@ class EnumeratedValueResolution(CollisionResolution):
     contradict each other, though the hardware could still be as the file says
     (``WARNING``). An entry whose number the field cannot hold is impossible
     (``ERROR``). A pattern with more x bits than ``MAX_LISTED_BITS`` is not expanded, as
-    the set's gaps are not listed beyond that width.
+    the set's gaps are not listed beyond that width. An entry called ``Reserved`` only marks
+    an unused number (:meth:`is_placeholder`), so its name may repeat.
 
     Attributes:
         entry: The enumerated value.
@@ -80,3 +82,7 @@ class EnumeratedValueResolution(CollisionResolution):
                 f"the {self.width}-bit field",
             )
         ]
+
+    def is_placeholder(self) -> bool:
+        """Whether the entry's name only marks an unused number, as ``Reserved`` does."""
+        return is_placeholder_name(self.entry.name)

@@ -210,3 +210,42 @@ def test_a_repeated_enumerated_name_is_warned_about_on_the_command_line(tmp_path
     err = capsys.readouterr().err
     assert "warn: TIM.CTRL.MODE: the name FAST is used by 2 entries (0x1, 0x2)" in err
     assert "error: TIM.CTRL.MODE: BIG = 0x9 does not fit the 2-bit field" in err
+
+
+def _fields_svd(tmp_path, fields: str):
+    svd = tmp_path / "fields.svd"
+    svd.write_text(
+        "<device><name>C</name><peripherals><peripheral><name>TIM</name>"
+        "<baseAddress>0x0</baseAddress><registers><register><name>CTRL</name>"
+        "<addressOffset>0x0</addressOffset><size>8</size><access>read-write</access><fields>"
+        + fields
+        + "</fields></register></registers></peripheral></peripherals></device>",
+        encoding="utf-8",
+    )
+    return svd
+
+
+def test_two_fields_with_one_name_are_warned_about_on_the_command_line(tmp_path, capsys):
+    svd = _fields_svd(
+        tmp_path,
+        "<field><name>MODE</name><bitOffset>0</bitOffset><bitWidth>2</bitWidth></field>"
+        "<field><name>MODE</name><bitOffset>4</bitOffset><bitWidth>2</bitWidth></field>",
+    )
+    assert main([str(svd), "--no-provenance"]) == ExitCode.OK  # a warning, not a refusal
+    err = capsys.readouterr().err
+    assert "warn: TIM.CTRL: the name MODE is used by two fields (bits 0..1 and bits 4..5)" in err
+
+
+def test_repeated_reserved_names_are_not_warned_about_on_the_command_line(tmp_path, capsys):
+    svd = _fields_svd(
+        tmp_path,
+        "<field><name>Reserved</name><bitOffset>0</bitOffset><bitWidth>2</bitWidth></field>"
+        "<field><name>MODE</name><bitOffset>2</bitOffset><bitWidth>2</bitWidth>"
+        "<enumeratedValues>"
+        "<enumeratedValue><name>Reserved</name><value>2</value></enumeratedValue>"
+        "<enumeratedValue><name>Reserved</name><value>3</value></enumeratedValue>"
+        "</enumeratedValues></field>"
+        "<field><name>Reserved</name><bitOffset>4</bitOffset><bitWidth>2</bitWidth></field>",
+    )
+    assert main([str(svd), "--no-provenance"]) == ExitCode.OK
+    assert "the name" not in capsys.readouterr().err

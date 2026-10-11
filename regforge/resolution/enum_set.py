@@ -21,9 +21,10 @@ class EnumSetResolution(Resolution):
     are judged together. Two entries naming one number, or a ``0b01xx`` pattern covering
     another entry's number, contradict each other (``WARNING``, the shared collision rule).
     A name given to two entries is a ``WARNING`` too, since the constants made from them
-    would repeat. A set can have only one catch-all entry, which names the rest
-    (``WARNING``). Numbers are bucketed so a large set is not compared pair by pair; only
-    patterns are compared with every entry.
+    would repeat; a placeholder name such as ``Reserved``, which vendors give to every
+    unused number, may repeat. A set can have only one catch-all entry, which names the
+    rest (``WARNING``). Numbers are bucketed so a large set is not compared pair by pair;
+    only patterns are compared with every entry.
 
     Attributes:
         enum_set: The set.
@@ -59,10 +60,11 @@ class EnumSetResolution(Resolution):
         ]
 
     def names(self) -> list[Finding]:
-        """A name used by more than one entry, one finding per name."""
+        """A name used by more than one entry, one finding per name; placeholders may repeat."""
         by_name: dict[str, list[EnumeratedValue]] = {}
         for entry in self.enum_set.values:
-            by_name.setdefault(entry.name, []).append(entry)
+            if not self._value(entry).is_placeholder():
+                by_name.setdefault(entry.name, []).append(entry)
         findings = []
         for name, entries in by_name.items():
             if len(entries) > 1:

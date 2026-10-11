@@ -587,8 +587,10 @@ def check_alternate_registers(device: Device) -> list[Finding]:
 def check_element_rules(device: Device) -> list[Finding]:
     """The rules each element carries itself, collected from :mod:`regforge.resolution`.
 
-    Today that is the fields and their bits: a field past its register's width, and two
-    fields on one bit. The other elements keep their rules in the checks above until they
+    Today that is the fields, their bits and their enumerated sets: a field past its
+    register's width, two fields on one bit or with one name, and in each field's sets an
+    entry the field cannot hold, entries on one number, a repeated entry name and two sets
+    of one direction. The other elements keep their rules in the checks above until they
     get a resolution class of their own.
     """
     return collect(device)

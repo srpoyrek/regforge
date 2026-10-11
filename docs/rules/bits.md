@@ -81,7 +81,7 @@ warn: TIM.CTRL: bit 1 is claimed by MODE and STATE
 | `A` at bits 0..7 and `B` at bits 4..11 of a 16-bit register | `bits 4..7 are claimed by A and B`: one finding for the run |
 | `A` at 0..7, `B` at 0, `C` at 6..7 | two findings: `bit 0 ... A and B`, `bits 6..7 ... A and C` |
 | three fields on one bit | one finding per pair: `A and B`, `A and C`, `B and C` |
-| two different fields with the same name | still two claimants: `Reserved and Reserved` |
+| two different fields with the same name | still two claimants on the bit: `Reserved and Reserved`; the shared name is the [field's](fields.md) own rule |
 | a field array and a field | the array is named with its count, `OD[4] and X` |
 | fields that only touch (`A` at 0..1, `B` at 2..3) | nothing |
 

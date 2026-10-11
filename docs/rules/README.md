@@ -39,7 +39,7 @@ rewritten.
 | [alternates.md](alternates.md) | Two layouts of one word: `alternateRegister` as a union |
 | [derived.md](derived.md) | A register or an enumerated set that is another one: what `derivedFrom` copies |
 | [bits.md](bits.md) | Which field owns a bit, and two claimants on one bit |
-| [fields.md](fields.md) | A field past the register's width, two fields on one bit |
+| [fields.md](fields.md) | A field past the register's width, two fields on one bit, two fields with one name |
 | [enums.md](enums.md) | An entry the field cannot hold, two entries on one number, a repeated name, two sets of one direction |
 
 ## Input formats

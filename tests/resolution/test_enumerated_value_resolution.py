@@ -101,6 +101,19 @@ def test_two_entries_with_one_name_are_still_two_claimants():
     ]
 
 
+# --- the entry's name -----------------------------------------------------------------
+
+
+def test_an_entry_called_reserved_is_a_placeholder():
+    for name in ("Reserved", "RESERVED_", "reserved2"):
+        assert _res(EnumeratedValue(name, 3)).is_placeholder()
+
+
+def test_any_other_name_is_a_real_one():
+    assert not _res(EnumeratedValue("ENABLED", 1)).is_placeholder()
+    assert not _res(EnumeratedValue("REST", None, is_default=True)).is_placeholder()
+
+
 # --- layering ----------------------------------------------------------------------
 
 

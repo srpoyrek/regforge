@@ -23,11 +23,13 @@ each its width and path, and compares its sets in pairs. Collisions use the shar
 [bits.md](bits.md): two claimants on one position of a space, here numbers and directions.
 
 Code: `regforge/resolution/enumerated_value.py`, `regforge/resolution/enum_usage.py`,
-`regforge/resolution/enum_set.py`, `regforge/resolution/field.py` (`sets`, `enum_findings`),
-`regforge/ir/enumerated_value.py`, `regforge/ir/enum_set.py`.
+`regforge/resolution/enum_set.py`, `regforge/resolution/placeholder.py`,
+`regforge/resolution/field.py` (`sets`, `enum_findings`), `regforge/ir/enumerated_value.py`,
+`regforge/ir/enum_set.py`.
 Tests: `tests/resolution/test_enumerated_value_resolution.py`,
 `tests/resolution/test_enum_usage_resolution.py`,
-`tests/resolution/test_enum_set_resolution.py`, `tests/resolution/test_field_resolution.py`.
+`tests/resolution/test_enum_set_resolution.py`, `tests/resolution/test_placeholder.py`,
+`tests/resolution/test_field_resolution.py`.
 
 ## Rule 1: an entry the field cannot hold is an error
 
@@ -84,6 +86,14 @@ repeat is reported with the numbers it names, one finding per name.
 warn: SYSCON.SYSMEMREMAP.MAP: the name USER_FLASH_MODE_INT is used by 2 entries (0x2, 0x3)
 ```
 
+A placeholder name is not a repeat. Vendors call every unused number of a set `Reserved`,
+so one set holds the name many times, and that is not two entries sharing a name. A name
+is a placeholder when it is `reserved` in any case, optionally followed by `_` or digits
+(`Reserved`, `RESERVED_`, `reserved3`); `Reserved_BITS` is a real name. This is the test
+the [field rules](fields.md) use for repeated field names. Placeholder entries are still
+compared on their numbers (Rule 2). It decides only what is reported: the header still
+defines the constant of every entry, repeated ones included.
+
 ## Rule 4: a set has at most one catch-all entry
 
 An `isDefault` entry names every number the set does not. Two of them cannot both name
@@ -115,13 +125,13 @@ warn: P.R.F: the read-write set and the read set both describe reads
 ## In your files
 
 Across the 88 vendor files in the survey (118,598 fields with sets, 123,872 sets, 326,064
-entries), the rules find 156 repeated names in 154 sets (5 files), 14 entries that do not
-fit their field (2 files, for instance a 1-bit field with entries named `10` and `11`) and
-6 numbers named twice (1 file: two entries both called `10`). Of the 156 repeated names, 87
-are placeholders (`Reserved`, `reserved`, `RESERVED`, `RESERVED_`: several unused numbers of
-one set, each called Reserved), which this rule does not exempt; the other 69 are names such
-as `ENABLED` and `TRISTATED`. Two catch-alls and clashing usages do not occur, and no pattern
-collides with another entry. The clean fixture reports nothing.
+entries), the rules find 69 repeated names in 69 sets (4 files, names such as `ENABLED` and
+`TRISTATED`), 14 entries that do not fit their field (2 files, for instance a 1-bit field
+with entries named `10` and `11`) and 6 numbers named twice (1 file: two entries both
+called `10`). A further 87 repeated names are placeholders (`Reserved`, `reserved`,
+`RESERVED`, `RESERVED_`, in 3 files), which are not reported. Two catch-alls and clashing
+usages do not occur, and no pattern collides with another entry. The clean fixture
+reports nothing.
 
 ## Not here yet
 
