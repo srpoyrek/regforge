@@ -37,6 +37,11 @@ class Bit:
     field: Field | None = None
     reset: int | None = None
 
+    @property
+    def is_claimed(self) -> bool:
+        """Whether a field names this bit."""
+        return self.field is not None
+
 
 def _reset_bit(register: Register, position: int) -> int | None:
     """The bit's value after reset, or ``None`` when the register does not define it."""

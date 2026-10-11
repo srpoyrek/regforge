@@ -16,14 +16,27 @@ from __future__ import annotations
 from collections.abc import Iterator
 from dataclasses import dataclass
 from dataclasses import field as dc_field  # `field` is also a submodule of this package
-from enum import Enum
 
+from regforge.ir.access import Access as Access
+from regforge.ir.alternate_set import AlternateSet as AlternateSet
+from regforge.ir.alternate_set import alternate_sets as alternate_sets
+from regforge.ir.array_group import ArrayGroup as ArrayGroup
+from regforge.ir.array_group import array_groups as array_groups
+from regforge.ir.array_group import compact as compact
 from regforge.ir.bit import Bit as Bit
 from regforge.ir.bit import bits as bits
+from regforge.ir.data_type import DataType as DataType
+from regforge.ir.dim import Dim as Dim
+from regforge.ir.dim_origin import DimOrigin as DimOrigin
 from regforge.ir.enum_set import EnumSet as EnumSet
 from regforge.ir.enum_usage import EnumUsage as EnumUsage
 from regforge.ir.enumerated_value import EnumeratedValue as EnumeratedValue
 from regforge.ir.field import Field as Field
+from regforge.ir.modified_write_values import ModifiedWriteValues as ModifiedWriteValues
+from regforge.ir.protection import Protection as Protection
+from regforge.ir.read_action import ReadAction as ReadAction
+from regforge.ir.register import Register as Register
+from regforge.ir.write_constraint import WriteConstraint as WriteConstraint
 
 # --- SVD schema defaults (used when the source omits an optional element) ---
 #: Default bits per address unit (8 => byte-addressable).
@@ -31,132 +44,6 @@ DEFAULT_ADDRESS_UNIT_BITS = 8
 #: Default data bus width in bits (SVD ``<width>``; also the register-size
 #: last resort in the defaults resolution pass).
 DEFAULT_BUS_WIDTH = 32
-
-
-class Access(Enum):
-    """Register/field access policy, spelled as in SVD."""
-
-    READ_ONLY = "read-only"
-    WRITE_ONLY = "write-only"
-    READ_WRITE = "read-write"
-    WRITE_ONCE = "writeOnce"
-    READ_WRITE_ONCE = "read-writeOnce"
-
-
-@dataclass
-class Dim:
-    """An array of copies (SVD ``<dim>``, ``<dimIncrement>``, ``<dimIndex>``).
-
-    A peripheral, cluster, register or field carrying a ``Dim`` is a template:
-    ``count`` copies of it exist, ``increment`` apart, and each copy's name is
-    the template's name with ``%s`` replaced by one of :attr:`labels`. The
-    reader stores it as parsed; :func:`regforge.resolve.expand_dim` turns a
-    ``%s`` template into its copies, and keeps a ``[%s]`` template as one
-    element with ``dim`` still set so a writer can emit it as an array.
-
-    Attributes:
-        count: Number of copies (``<dim>``); ``None`` for a derived element that
-            leaves it to its base template, filled in before expansion.
-        increment: Distance between the starts of two neighbouring copies
-            (``<dimIncrement>``): address units for a peripheral, cluster or
-            register, like every other offset in the IR; bits for a field.
-            ``None`` when the source omits it: expansion reports that and
-            keeps one instance, so no ``Dim`` that survives expansion lacks it.
-        index: The labels that replace ``%s``, in order (``<dimIndex>``);
-            ``None`` when the source omits it and the copies are numbered from 0.
-        array: Whether the template stays one array element (``NAME[%s]``)
-            instead of expanding into copies. Set by expansion; a ``Dim`` that
-            survives expansion always carries it.
-        name: A name for the element type the copies share (``<dimName>``);
-            ranks below ``headerStructName`` and above ``groupName`` when a
-            type is named. ``None`` when absent.
-        array_index: Names for the indices of an array (``<dimArrayIndex>``),
-            each an :class:`EnumeratedValue`; empty when absent. A writer may
-            emit them as index constants beside the array.
-    """
-
-    count: int | None
-    increment: int | None
-    index: list[str] | None = None
-    array: bool = False
-    name: str | None = None
-    array_index: list[EnumeratedValue] = dc_field(default_factory=list)
-
-    @property
-    def labels(self) -> list[str]:
-        """One label per copy: ``index`` as given, else ``"0"``, ``"1"``, ..."""
-        if self.index is not None:
-            return list(self.index)
-        return [str(i) for i in range(self.length)]
-
-    @property
-    def stride(self) -> int:
-        """``increment`` once expansion has vouched for it.
-
-        A template without a ``<dimIncrement>`` is never expanded, so every
-        ``Dim`` the layout, the checks and the writers see has one.
-        """
-        assert self.increment is not None
-        return self.increment
-
-    @property
-    def length(self) -> int:
-        """``count`` once it is known.
-
-        A partial ``Dim`` (count left to a ``derivedFrom`` base) is filled in
-        before expansion, so nothing after that sees ``None``.
-        """
-        assert self.count is not None
-        return self.count
-
-
-@dataclass
-class Register:
-    """A single addressable register within a :class:`Peripheral`.
-
-    The ``size``, ``reset_value``, ``reset_mask``, and ``access`` fields hold
-    the register's own declared value (``None`` when the source is silent).
-    The defaults resolution pass then fills them from the inheritance chain, so
-    every emitter sees fully-resolved values and never re-derives them.
-
-    Attributes:
-        name: Identifier of the register.
-        address_offset: Offset from the owning peripheral's base, in address units.
-        size: Width of the register in bits (resolved).
-        reset_value: Value the register holds after reset (resolved; may be
-            ``None`` if unspecified at every level).
-        reset_mask: Which bits of ``reset_value`` are defined (resolved).
-        description: Optional human-readable description.
-        access: Access policy (resolved).
-        fields: Bit fields defined within the register.
-        dim: Array shape when the register is one of several copies (SVD
-            ``<dim>``); ``None`` for a single register. After expansion only a
-            ``[%s]`` array keeps it, and ``name`` is then the bare array name.
-            Its stride is compared to the resolved ``size`` only after defaults
-            resolution, in the checks and the layout, never here.
-        expanded_from: The ``<dim>`` template this element was expanded from
-            (``UART%s``), so a report can point at the one declaration behind
-            several copies; ``None`` when written out by hand.
-        alternate_register: The register this one is another view of, as
-            declared (SVD ``<alternateRegister>``; an ``<alternateGroup>`` is
-            read as the same thing, the view renamed ``NAME_GROUP``).
-        alternates: Every name in this register's alternate set, the primary
-            first, once ``resolve_alternates`` has linked them; empty for a
-            register that is the only view of its word.
-    """
-
-    name: str
-    address_offset: int
-    size: int | None = None
-    reset_value: int | None = None
-    reset_mask: int | None = None
-    description: str | None = None
-    access: Access | None = None
-    fields: list[Field] = dc_field(default_factory=list)
-    dim: Dim | None = None
-    expanded_from: str | None = None
-    alternate_register: str | None = None
-    alternates: tuple[str, ...] = ()
 
 
 @dataclass
@@ -191,6 +78,9 @@ class Cluster:
         expanded_from: The ``<dim>`` template this element was expanded from
             (``UART%s``), so a report can point at the one declaration behind
             several copies; ``None`` when written out by hand.
+        default_protection: Cluster-level default protection.
+        origin: The array declaration this element was unrolled from, with its count,
+            step and labels; ``None`` for an element written out by hand or kept whole.
     """
 
     name: str
@@ -206,6 +96,8 @@ class Cluster:
     clusters: list[Cluster] = dc_field(default_factory=list)
     dim: Dim | None = None
     expanded_from: str | None = None
+    default_protection: Protection | None = None
+    origin: DimOrigin | None = None
 
 
 #: The ``usage`` values CMSIS-SVD defines for an ``<addressBlock>``. A block that
@@ -305,6 +197,9 @@ class Peripheral:
         expanded_from: The ``<dim>`` template this element was expanded from
             (``UART%s``), so a report can point at the one declaration behind
             several copies; ``None`` when written out by hand.
+        default_protection: Peripheral-level default protection.
+        origin: The array declaration this element was unrolled from, with its count,
+            step and labels; ``None`` for an element written out by hand or kept whole.
     """
 
     name: str
@@ -323,6 +218,8 @@ class Peripheral:
     clusters: list[Cluster] = dc_field(default_factory=list)
     dim: Dim | None = None
     expanded_from: str | None = None
+    default_protection: Protection | None = None
+    origin: DimOrigin | None = None
 
 
 @dataclass
@@ -390,6 +287,7 @@ class Device:
         default_reset_value: Device-level default reset value.
         default_reset_mask: Device-level default reset mask.
         peripherals: Peripherals defined by the device.
+        default_protection: Device-level default protection.
     """
 
     name: str
@@ -408,6 +306,7 @@ class Device:
     default_reset_value: int | None = None
     default_reset_mask: int | None = None
     peripherals: list[Peripheral] = dc_field(default_factory=list)
+    default_protection: Protection | None = None
 
 
 def walk_clusters(clusters: list[Cluster], where: str) -> Iterator[tuple[str, Cluster]]:

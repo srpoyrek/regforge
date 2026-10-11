@@ -18,8 +18,15 @@ class EnumeratedValue:
         name: Identifier of the value, e.g. ``"OUTPUT"``.
         value: The numeric value written to the field.
         description: Optional human-readable description.
+        is_default: Whether this is the catch-all entry (SVD ``isDefault``): it names
+            every number the other entries do not.
     """
 
     name: str
     value: int
     description: str | None = None
+    is_default: bool = False
+
+    def fits_in(self, bit_width: int) -> bool:
+        """Whether the number fits in a field ``bit_width`` bits wide."""
+        return 0 <= self.value < (1 << bit_width)

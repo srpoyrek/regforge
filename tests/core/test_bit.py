@@ -72,3 +72,8 @@ def test_first_declared_field_keeps_a_contested_bit():
 def test_unresolved_size_is_refused():
     with pytest.raises(ValueError, match="CTRL"):
         bits(Register("CTRL", 0x0))
+
+
+def test_is_claimed_says_whether_a_field_names_the_bit():
+    claimed = [b.is_claimed for b in bits(_ctrl())]
+    assert claimed == [True, True, True, False, False, False, False, False]

@@ -15,3 +15,13 @@ class EnumUsage(Enum):
     READ = "read"
     WRITE = "write"
     READ_WRITE = "read-write"
+
+    @property
+    def covers_read(self) -> bool:
+        """Whether the set describes what a read returns."""
+        return self in (EnumUsage.READ, EnumUsage.READ_WRITE)
+
+    @property
+    def covers_write(self) -> bool:
+        """Whether the set describes what a write accepts."""
+        return self in (EnumUsage.WRITE, EnumUsage.READ_WRITE)

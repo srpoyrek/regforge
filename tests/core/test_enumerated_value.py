@@ -49,3 +49,14 @@ def test_a_field_carries_its_enumerated_values_in_order():
 
 def test_it_is_the_same_class_from_the_package_and_from_its_own_module():
     assert EnumeratedValueFromModule is EnumeratedValue
+
+
+def test_is_default_is_false_unless_marked():
+    assert EnumeratedValue("A", 0).is_default is False
+    assert EnumeratedValue("OTHER", 0, is_default=True).is_default is True
+
+
+def test_fits_in_says_whether_the_number_fits_a_width():
+    analog = EnumeratedValue("ANALOG", 3)
+    assert analog.fits_in(2) and not analog.fits_in(1)
+    assert not EnumeratedValue("BAD", -1).fits_in(8)

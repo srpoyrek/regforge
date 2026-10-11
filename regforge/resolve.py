@@ -35,7 +35,17 @@ import re
 from typing import NamedTuple, TypeVar
 
 from .check import Finding, Severity
-from .ir import Access, Cluster, Device, Dim, Field, Peripheral, Register, walk_clusters
+from .ir import (
+    Access,
+    Cluster,
+    Device,
+    Dim,
+    DimOrigin,
+    Field,
+    Peripheral,
+    Register,
+    walk_clusters,
+)
 
 _T = TypeVar("_T")
 
@@ -242,6 +252,7 @@ def _expand_fields(register: Register, where: str, findings: list[Finding]) -> N
                 clone = copy.deepcopy(field_)
                 clone.dim = None
                 clone.expanded_from = field_.name
+                clone.origin = DimOrigin(field_.name, field_.dim, index, label)
                 clone.name = pattern.replace(_COPY, label)
                 clone.bit_offset = field_.bit_offset + index * field_.dim.stride
                 expanded.append(clone)
@@ -275,6 +286,7 @@ def _expand_registers(
                 clone = copy.deepcopy(register)
                 clone.dim = None
                 clone.expanded_from = register.name
+                clone.origin = DimOrigin(register.name, register.dim, index, label)
                 clone.name = pattern.replace(_COPY, label)
                 clone.address_offset = register.address_offset + index * register.dim.stride
                 expanded.append(clone)
@@ -309,6 +321,7 @@ def _expand_clusters(clusters: list[Cluster], where: str, findings: list[Finding
                 clone = copy.deepcopy(cluster)
                 clone.dim = None
                 clone.expanded_from = cluster.name
+                clone.origin = DimOrigin(cluster.name, cluster.dim, index, label)
                 clone.name = pattern.replace(_COPY, label)
                 clone.address_offset = cluster.address_offset + index * cluster.dim.stride
                 clone.header_struct_name = type_name
@@ -446,6 +459,7 @@ def expand_dim(device: Device) -> list[Finding]:
             clone = copy.deepcopy(peripheral)
             clone.dim = None
             clone.expanded_from = peripheral.name
+            clone.origin = DimOrigin(peripheral.name, peripheral.dim, index, label)
             clone.name = pattern.replace(_COPY, label)
             clone.base_address = peripheral.base_address + index * peripheral.dim.stride
             # dimName names the type below headerStructName and above groupName;

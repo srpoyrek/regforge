@@ -1,5 +1,7 @@
 """EnumSet: the named values of one field, and what can be asked of them."""
 
+import pytest
+
 from regforge.ir import EnumeratedValue, EnumSet, EnumUsage
 
 
@@ -56,3 +58,48 @@ def test_a_set_can_be_a_write_set_that_derives_from_another():
 
 def test_usage_is_spelled_as_in_svd():
     assert [u.value for u in EnumUsage] == ["read", "write", "read-write"]
+
+
+def test_numbers_lists_every_entrys_number():
+    assert _mode().numbers == [0, 1, 3]
+
+
+def test_default_entry_is_the_catch_all_or_none():
+    catch_all = EnumeratedValue("OTHER", 0, is_default=True)
+    assert EnumSet([EnumeratedValue("A", 1), catch_all]).default_entry is catch_all
+    assert _mode().default_entry is None
+
+
+def test_duplicates_are_listed_once_in_the_order_they_first_repeat():
+    messy = EnumSet(
+        [
+            EnumeratedValue("A", 1),
+            EnumeratedValue("B", 1),
+            EnumeratedValue("A", 2),
+            EnumeratedValue("A", 1),
+        ]
+    )
+    assert messy.duplicate_numbers() == [1]
+    assert messy.duplicate_names() == ["A"]
+    assert _mode().duplicate_numbers() == [] and _mode().duplicate_names() == []
+
+
+def test_gaps_lists_the_numbers_no_entry_names():
+    assert _mode().gaps(2) == [2]
+    assert _mode().gaps(1) == []  # 0 and 1 are named; 3 is oversized, not a gap
+
+
+def test_a_catch_all_entry_leaves_no_gaps():
+    catch_all = EnumSet([EnumeratedValue("A", 1), EnumeratedValue("OTHER", 0, is_default=True)])
+    assert catch_all.gaps(2) == []
+
+
+def test_gaps_refuses_a_field_too_wide_to_list():
+    with pytest.raises(ValueError, match="too wide"):
+        _mode().gaps(17)
+
+
+def test_is_complete_when_every_number_is_named_or_caught():
+    assert _mode().is_complete(1)
+    assert not _mode().is_complete(2)  # 2 is missing
+    assert EnumSet([EnumeratedValue("OTHER", 0, is_default=True)]).is_complete(8)

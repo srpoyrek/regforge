@@ -48,4 +48,57 @@ class EnumSet:
 
     def oversized(self, bit_width: int) -> list[EnumeratedValue]:
         """The entries whose number does not fit in ``bit_width`` bits."""
-        return [v for v in self.values if not 0 <= v.value < (1 << bit_width)]
+        return [v for v in self.values if not v.fits_in(bit_width)]
+
+    @property
+    def numbers(self) -> list[int]:
+        """The number of every entry, in order."""
+        return [v.value for v in self.values]
+
+    @property
+    def default_entry(self) -> EnumeratedValue | None:
+        """The catch-all entry (SVD ``isDefault``), or ``None``."""
+        return next((v for v in self.values if v.is_default), None)
+
+    def duplicate_numbers(self) -> list[int]:
+        """The numbers more than one entry names, in the order they first repeat."""
+        seen: set[int] = set()
+        repeated: list[int] = []
+        for number in self.numbers:
+            if number in seen and number not in repeated:
+                repeated.append(number)
+            seen.add(number)
+        return repeated
+
+    def duplicate_names(self) -> list[str]:
+        """The names more than one entry uses, in the order they first repeat."""
+        seen: set[str] = set()
+        repeated: list[str] = []
+        for v in self.values:
+            if v.name in seen and v.name not in repeated:
+                repeated.append(v.name)
+            seen.add(v.name)
+        return repeated
+
+    def is_complete(self, bit_width: int) -> bool:
+        """Whether every number a ``bit_width``-bit field can hold is named.
+
+        A catch-all entry names the rest, so it makes the set complete.
+        """
+        if self.default_entry is not None:
+            return True
+        named = {n for n in self.numbers if 0 <= n < (1 << bit_width)}
+        return len(named) == 1 << bit_width
+
+    def gaps(self, bit_width: int) -> list[int]:
+        """The numbers a ``bit_width``-bit field can hold that no entry names.
+
+        Empty when a catch-all entry covers them. ``ValueError`` for a field wider
+        than 16 bits, which is too wide to list.
+        """
+        if bit_width > 16:
+            raise ValueError(f"{bit_width} bits is too wide to list the gaps")
+        if self.default_entry is not None:
+            return []
+        named = set(self.numbers)
+        return [n for n in range(1 << bit_width) if n not in named]
