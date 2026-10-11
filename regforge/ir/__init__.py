@@ -17,6 +17,9 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from enum import Enum
 
+from regforge.ir.bit import Bit as Bit
+from regforge.ir.bit import bits as bits
+
 # --- SVD schema defaults (used when the source omits an optional element) ---
 #: Default bits per address unit (8 => byte-addressable).
 DEFAULT_ADDRESS_UNIT_BITS = 8
