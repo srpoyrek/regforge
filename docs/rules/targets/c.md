@@ -571,9 +571,11 @@ release, because the addon parses the binary's dump format; a mismatch is
 reported as one rather than failing obscurely. `REGFORGE_CPPCHECK` names a
 binary that is not on PATH.
 
-Nothing is suppressed: the session passes no `--suppress`, and the header carries
-no suppression comment. Every finding the addon produces fails the session. On
-the two golden headers the addon reports exactly five rules, all advisory:
+The session suppresses exactly the five rules below, recorded with their reasons
+in `MISRA_DEVIATIONS` in `noxfile.py`, plus cppcheck's own `unusedStructMember`.
+Any other finding fails it, and the header carries no suppression comment.
+Unsuppressed, the addon reports these five on the two golden headers, all
+advisory:
 
 | Rule | Findings on `minimal.h` | What it flags |
 |---|---|---|
@@ -590,7 +592,8 @@ definition it offers look unused, and they would clear against a translation
 unit that used the whole device. The last two are properties of what the
 header is. Memory-mapped access has no conforming spelling, and the union
 exists only where the source itself declares two layouts of one word; MISRA's
-own process handles both with a written deviation, and none is recorded here.
+own process handles both with a written deviation, and the table in `noxfile.py`
+is that record.
 
 A sixth, 8.9 (an object referenced from one function should be block-scope),
 applied while the peripheral instances were `static T *const` variables and

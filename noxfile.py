@@ -127,6 +127,18 @@ MISRA_ADDON_PATHS = (
     "/usr/local/share/cppcheck/addons/misra.py",
 )
 
+#: The MISRA C:2012 rules the generated headers deviate from, with the reason for
+#: each. All five are advisory; every required rule holds and is enforced. The ids
+#: are the addon's (``misra-c2012-<n>``). The header preamble and
+#: docs/rules/targets/c.md record the same deviations.
+MISRA_DEVIATIONS = {
+    "2.3": "unused type: a definitions header offers types the program may not use",
+    "2.4": "unused tag: the struct tags behind those types",
+    "2.5": "unused macro: every accessor, offset and field macro is an offer",
+    "11.4": "integer to pointer: memory-mapped access has no conforming spelling",
+    "19.2": "union: only where the source declares two layouts of one word",
+}
+
 
 def _misra_addon(cppcheck: str) -> str:
     """The ``--addon`` argument to use: an absolute misra.py, else the bare name.
@@ -165,10 +177,12 @@ def misra(session: nox.Session) -> None:
     three must come from that one release: the addon parses the binary's dump
     format, and a mismatch is reported as one.
 
-    No rule is turned off: the session passes no suppression of any kind, so
-    every finding the addon produces fails it. ``--platform=unix32`` gives the
-    essential-type rules a 32-bit MCU ABI, and ``--enable=style`` is what
-    surfaces the addon's findings at all -- without it cppcheck reports none.
+    Every required rule must hold. The five advisory rules in
+    ``MISRA_DEVIATIONS`` are the recorded deviations and are suppressed by id;
+    nothing else is, so any other finding fails the session.
+    ``--platform=unix32`` gives the essential-type rules a 32-bit MCU ABI, and
+    ``--enable=style`` is what surfaces the addon's findings at all -- without
+    it cppcheck reports none.
     """
     cppcheck = os.environ.get("REGFORGE_CPPCHECK") or shutil.which("cppcheck")
     if cppcheck is None:
@@ -219,6 +233,10 @@ def misra(session: nox.Session) -> None:
         "--platform=unix32",
         "--enable=style",
         "--error-exitcode=1",
+        # cppcheck's own per-translation-unit check (a struct member nothing in
+        # this file reads), not a MISRA rule: the firmware reads the registers.
+        "--suppress=unusedStructMember",
+        *(f"--suppress=misra-c2012-{rule}" for rule in MISRA_DEVIATIONS),
         "--template={file}:{line}: {id} {message}",
         "tests/golden/c/minimal.h",
         "tests/golden/c/lint_demo.h",
