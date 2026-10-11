@@ -1,4 +1,4 @@
-# Derived register rules
+# Derived rules
 
 **Read from:** [`derivedFrom`](formats/svd.md#derived-registers) &nbsp;·&nbsp; **Emitted as:** [register members](targets/c.md#register-members) and [field macros](targets/c.md#field-macros)
 
@@ -7,14 +7,16 @@ the rule below is unchanged.
 
 
 A register can say that it is another register with a different name and
-offset, and write only what differs. regforge copies the rest in once, before
-defaults are resolved, so writers read a register that is complete. A
-peripheral's `derivedFrom` works the same way for whole peripherals; see
-[interrupts.md](interrupts.md) for what it does not carry.
+offset, and write only what differs; an enumerated set can say that it is
+another set. regforge copies the rest in once, before defaults are resolved,
+so writers read an element that is complete. A peripheral's `derivedFrom`
+works the same way for whole peripherals; see [interrupts.md](interrupts.md)
+for what it does not carry.
 
-Code: `regforge/resolve.py` (`resolve_derived`, `_resolve_register_bases`).
+Code: `regforge/resolve.py` (`resolve_derived`, `_resolve_register_bases`,
+`_resolve_enum_bases`).
 Tests: `tests/resolve/test_derived_registers.py`,
-`tests/readers/svd/test_register_parser.py`.
+`tests/resolve/test_derived_enum_sets.py`, `tests/readers/svd/test_register_parser.py`.
 
 ## Registers
 
@@ -99,3 +101,76 @@ set whatever order the file lists them in.
 | no register of that name | nothing is inherited; `WARNING` |
 | the register names itself | nothing is inherited; `WARNING` |
 | a cycle (`A` from `B`, `B` from `A`) | reported once, each register keeps what it has; `WARNING` |
+
+## Enumerated values
+
+### Rule 6: a derived set is a copy
+
+An `<enumeratedValues derivedFrom="...">` names another set and, by the schema,
+adds nothing: it is a copy. Its entries (the catch-all `isDefault` entry among
+them) are copied from the base, so the field reports the same names and numbers
+and the C writer emits the same constants. It takes the base's `usage` while it
+states none that differs from the default, and the base's `headerEnumName` when
+it has none. Its own `<name>` stays. Entries it does write itself are kept and
+nothing is copied over them.
+
+Input — read as [CMSIS-SVD](formats/svd.md#field):
+
+```xml
+<field>
+  <name>MODE</name><bitOffset>0</bitOffset><bitWidth>1</bitWidth>
+  <enumeratedValues>
+    <name>MODES</name>
+    <enumeratedValue><name>OFF</name><value>0</value></enumeratedValue>
+    <enumeratedValue><name>ON</name><value>1</value></enumeratedValue>
+  </enumeratedValues>
+</field>
+<field>
+  <name>STATE</name><bitOffset>1</bitOffset><bitWidth>1</bitWidth>
+  <enumeratedValues derivedFrom="MODES"/>
+</field>
+```
+
+Output — emitted as [C](targets/c.md#field-macros):
+
+```c
+#define TIM_CTRL_MODE_OFF (0U)
+#define TIM_CTRL_MODE_ON (1U)
+#define TIM_CTRL_STATE_Pos (1U)
+#define TIM_CTRL_STATE_Msk (0x00000002UL)
+#define TIM_CTRL_STATE_OFF (0U)
+#define TIM_CTRL_STATE_ON (1U)
+```
+
+### Rule 7: where the base is looked for
+
+`derivedFrom` is the name of a set, or a path ending in it that starts anywhere
+along `PERIPHERAL.REGISTER.FIELD.NAME`, with the clusters between peripheral
+and register when there are any. The schema asks for a path when a name is not
+unique. regforge uses the nearest set the written name can mean: one in the same
+register before one in another register, one in the same peripheral before one
+in another. Two equally near sets are a `WARNING` and the first is used, so
+write more of the path.
+
+| Written | Means |
+|---|---|
+| `MODES` | the set `MODES`, the nearest one |
+| `ctl.sms.MODES` | the set `MODES` of the field `sms` of the register `ctl` |
+| `DMAC.ctl.sms.MODES` | the same, in the peripheral `DMAC` |
+| `CH.CTRL.MODE.MODES` | the same, in the cluster `CH` of the peripheral |
+| `CH%s.A.MODES` | the set in a copy of the template `CH%s`: the copy nearest the derived set, else the first, with a `WARNING` |
+
+A peripheral copied from a base resolves its sets inside itself: `UART1`'s derived
+set finds `UART1`'s own base set, not `UART0`'s.
+
+### Rule 8: chains, and what cannot be resolved
+
+The base is resolved first, so a chain inherits a complete set whatever order
+the file lists them in.
+
+| Case | Result |
+|---|---|
+| no set of that name | nothing is inherited; `WARNING` |
+| two equally near sets of that name | the first; `WARNING` |
+| the set names itself | nothing is inherited, as for an unknown name; `WARNING` |
+| a cycle | reported once, each set keeps what it has; `WARNING` |

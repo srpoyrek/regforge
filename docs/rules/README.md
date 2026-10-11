@@ -35,7 +35,7 @@ rewritten.
 | [arrays.md](arrays.md) | `dim`: copies, arrays, strides |
 | [clusters.md](clusters.md) | Register groups as nested types |
 | [alternates.md](alternates.md) | Two layouts of one word: `alternateRegister` as a union |
-| [derived.md](derived.md) | A register that is another register: what `derivedFrom` copies |
+| [derived.md](derived.md) | A register or an enumerated set that is another one: what `derivedFrom` copies |
 
 ## Input formats
 

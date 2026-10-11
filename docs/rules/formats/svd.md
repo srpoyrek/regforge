@@ -129,15 +129,16 @@ The bit range can be written three ways, and all three are accepted:
 
 Each `<enumeratedValues>` block becomes one set on the field, since a field may
 carry a read set and a write set. The set keeps its `<name>`, `<headerEnumName>`,
-`<usage>` (`read-write` when absent) and `derivedFrom`; its `<enumeratedValue>`
-entries become the field's named constants. The schema gives an entry a `<value>`
+`<usage>` (`read-write` when absent) and `derivedFrom`, which makes the set a copy of
+another (see [ir/derived.md](../derived.md#rule-6-a-derived-set-is-a-copy)); its
+`<enumeratedValue>` entries become the field's named constants. The schema gives an entry a `<value>`
 or `<isDefault>`, never both. A catch-all `<isDefault>` entry has no number and is
 kept as the entry for all other values. A `<value>` may write some bits as `x`
 (`#01xx`, or `0b01xx`): the bits read as 0 in the value and are recorded as
 don't-care. An entry with neither is skipped, because there is nothing to name.
 The C writer reads the values of all sets together and writes a constant for each
-plain number, none for a catch-all or a pattern; it does not yet act on `<usage>`
-or `derivedFrom`.
+plain number, none for a catch-all or a pattern; it does not yet act on `<usage>`.
+A `derivedFrom` set already holds its base's entries by then.
 
 `<dim>`, `<dimIncrement>` and `<dimIndex>` are read on a field too, with the
 increment in bits; see [Arrays](#arrays).
@@ -198,8 +199,7 @@ These are read into the IR, but no output uses them yet. On a register: `<displa
 `<dataType>`, `<protection>`, `<modifiedWriteValues>`, `<readAction>` and
 `<writeConstraint>` (`writeAsRead`, `useEnumeratedValues`, `range`). On a field: the last
 three. At device, peripheral and cluster level: `<protection>`, as the default for the
-registers below. On an enumerated value: `<isDefault>`. A value outside the schema's list
-is read as absent.
+registers below. A value outside the schema's list is read as absent.
 
 ## Not read
 
