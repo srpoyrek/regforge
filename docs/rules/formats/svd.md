@@ -6,7 +6,7 @@ from each section.
 
 Code: `regforge/readers/svd.py`. Tests: `tests/readers/svd/`.
 
-Code: `regforge/readers/svd.py`.
+Code: `regforge/readers/svd/` (one parser class per element).
 Tests: `tests/readers/svd/`.
 
 ## Device
@@ -198,7 +198,7 @@ These are in the SVD schema but do not affect output today:
 never interpreted.
 
 
-Code: `regforge/readers/svd.py`.
+Code: `regforge/readers/svd/` (one parser class per element).
 Tests: `tests/readers/svd/`.
 
 ## Integers
