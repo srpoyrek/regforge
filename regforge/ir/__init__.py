@@ -20,6 +20,8 @@ from enum import Enum
 
 from regforge.ir.bit import Bit as Bit
 from regforge.ir.bit import bits as bits
+from regforge.ir.enum_set import EnumSet as EnumSet
+from regforge.ir.enum_usage import EnumUsage as EnumUsage
 from regforge.ir.enumerated_value import EnumeratedValue as EnumeratedValue
 from regforge.ir.field import Field as Field
 
