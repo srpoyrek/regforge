@@ -82,6 +82,19 @@ offsets relative to the cluster.
 | `<fields><field>` | the bit fields | none |
 | `<dim>`, `<dimIncrement>`, `<dimIndex>` | a template for several copies, see [Arrays](#arrays) | see [ir/arrays.md](../arrays.md) |
 | `<alternateRegister>`, `<alternateGroup>` | another view of the register named, see [Alternate registers](#alternate-registers) | see [ir/alternates.md](../alternates.md) |
+| `derivedFrom` | the register it copies from, see [Derived registers](#derived-registers) | an **XML attribute**; none |
+
+## Derived registers
+
+`derivedFrom` on a `<register>` names the register it takes what it leaves unsaid
+from: a name in the same peripheral or cluster, or a path from the peripheral down
+(`PORT.PMUX0_%s`, `CH.CTRL`). The attribute is kept as written; the resolve pass
+copies the base's `size`, `resetValue`, `resetMask`, `access`, `description`,
+`displayName`, `dataType`, `protection`, side-effect settings and fields into the
+register wherever it states none of its own. A field of the same name replaces the
+base's field in place and any other field it writes is added. Its own name, offset,
+`<dim>` and `<alternateRegister>` stay. The rules, including what happens to a
+`%s` template, are in [ir/derived.md](../derived.md#registers).
 
 ## Alternate registers
 

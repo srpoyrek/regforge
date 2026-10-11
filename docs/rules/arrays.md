@@ -209,7 +209,7 @@ before its base's registers are copied into each. The remaining cases:
 | `dim` on the derived peripheral | three shells, each then inheriting the base's registers |
 | base has `dim`, derived declares its own | the derived's own `dim` is used; no finding |
 | derived declares only `dimIncrement` (or `dimIndex`, `dimName`) | a partial `dim`: `dim` and whatever else is unsaid come from the base template, the derived stride wins; no finding. A base with no `dim` to give is an `ERROR`, and the derived peripheral stays one instance |
-| `derivedFrom` on a register | not parsed today; the same ordering rule will apply inside a peripheral when it is |
+| `derivedFrom` on a register naming a template (`PMUX0_%s`) | the same ordering rule: a copy takes the copy of the same index, any other register the first copy with a `WARNING`; see [derived.md](derived.md#rule-4-a-base-that-is-a-template) |
 
 ## Corner cases
 

@@ -180,3 +180,8 @@ def test_a_register_is_write_once_by_its_access():
     assert Register("KEY", 0x4, access=Access.READ_WRITE_ONCE).is_write_once
     assert not Register("CR", 0x8, access=Access.READ_WRITE).is_write_once
     assert not Register("CR", 0x8).is_write_once  # unresolved counts as read-write
+
+
+def test_a_register_is_not_derived_unless_it_says_so():
+    assert Register("CTRL", 0x0).derived_from is None
+    assert Register("CTRL2", 0x4, derived_from="CTRL").derived_from == "CTRL"

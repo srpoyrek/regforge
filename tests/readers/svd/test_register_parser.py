@@ -44,3 +44,22 @@ def test_an_alternate_group_is_spelled_name_group_and_linked_to_the_plain_name()
         )
     )
     assert (register.name, register.alternate_register) == ("CTRL_G", "CTRL")
+
+
+def test_a_derived_from_attribute_is_kept_as_written():
+    register = RegisterParser(ParseContext()).parse(
+        _el(
+            '<register derivedFrom="PORT.PMUX0_%s"><name>PMUX1_%s</name>'
+            "<dim>16</dim><dimIncrement>1</dimIncrement>"
+            "<addressOffset>0xB0</addressOffset></register>"
+        )
+    )
+    assert register.derived_from == "PORT.PMUX0_%s"
+    assert register.name == "PMUX1_%s" and register.fields == []
+
+
+def test_a_register_without_derived_from_has_none():
+    register = RegisterParser(ParseContext()).parse(
+        _el("<register><name>R</name><addressOffset>0</addressOffset></register>")
+    )
+    assert register.derived_from is None

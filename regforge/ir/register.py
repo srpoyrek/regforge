@@ -54,6 +54,10 @@ class Register:
         expanded_from: The ``<dim>`` template this element was expanded from
             (``UART%s``), so a report can point at the one declaration behind
             several copies; ``None`` when written out by hand.
+        derived_from: The register this one takes what it leaves unsaid from (SVD
+            ``derivedFrom``): a name, or a dotted path through the peripheral and
+            clusters (``PORT.PMUX0_%s``). A reference, kept as written: the resolve
+            pass copies the base's fields and settings in, as it does for a peripheral.
         alternate_register: The register this one is another view of, as
             declared (SVD ``<alternateRegister>``; an ``<alternateGroup>`` is
             read as the same thing, the view renamed ``NAME_GROUP``).
@@ -83,6 +87,7 @@ class Register:
     fields: list[Field] = field(default_factory=list)
     dim: Dim | None = None
     expanded_from: str | None = None
+    derived_from: str | None = None
     alternate_register: str | None = None
     alternates: tuple[str, ...] = ()
     display_name: str | None = None

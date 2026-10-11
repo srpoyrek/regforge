@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import copy
 import re
+from collections.abc import Iterator, Sequence
 from typing import NamedTuple, TypeVar
 
 from .check import Finding, Severity
@@ -41,6 +42,8 @@ from .ir import (
     Device,
     Dim,
     DimOrigin,
+    EnumSet,
+    EnumUsage,
     Field,
     Peripheral,
     Register,
@@ -48,11 +51,14 @@ from .ir import (
 )
 
 _T = TypeVar("_T")
+_Named = TypeVar("_Named", Cluster, Peripheral, Register)
 
 #: The placeholders SVD allows in a ``<dim>`` template's name: ``%s`` for
 #: separately named copies, ``[%s]`` for an array kept as one element.
 _COPY = "%s"
 _ARRAY = "[%s]"
+#: Separates the parts of a ``derivedFrom`` path: ``PORT.PMUX0_%s``, ``CH.CTRL``.
+_PATH_SEPARATOR = "."
 #: What a ``dimIndex`` label must look like to end up inside an identifier.
 _IDENTIFIER_TAIL = re.compile(r"[A-Za-z0-9_]+")
 
@@ -494,8 +500,11 @@ def resolve_derived(device: Device) -> list[str]:
     wins. The base is resolved first so ``derivedFrom`` chains inherit a
     complete set. A ``derivedFrom`` naming a ``<dim>`` template (``UART%s``),
     which no longer exists once expanded, resolves to the template's first
-    copy. Mutates ``device`` in place and returns warnings: that template case,
-    an unknown base, a cycle, or a cluster ``derivedFrom``, not resolved yet.
+    copy. A register's and an enumerated set's ``derivedFrom`` are resolved once
+    every peripheral has its registers (see :func:`_resolve_register_bases` and
+    :func:`_resolve_enum_bases`). Mutates ``device`` in place and returns
+    warnings: that template case, an unknown base, a cycle, or a cluster
+    ``derivedFrom``, not resolved yet.
     """
     warnings: list[str] = []
     by_name = {peripheral.name: peripheral for peripheral in device.peripherals}
@@ -565,6 +574,322 @@ def resolve_derived(device: Device) -> list[str]:
                     f"{path}: derivedFrom '{cluster.derived_from}' on a cluster is not "
                     "resolved yet -- the cluster is emitted as written"
                 )
+    warnings.extend(_resolve_register_bases(device))
+    warnings.extend(_resolve_enum_bases(device))
+    return warnings
+
+
+# --- register derivedFrom ---
+
+
+class _Site(NamedTuple):
+    """Where a register sits: the name to report it by and the lists it is found in.
+
+    Attributes:
+        where: The dotted path of the peripheral or cluster that holds it.
+        registers: The registers of that peripheral or cluster, itself among them.
+        clusters: The clusters of that peripheral or cluster.
+        peripheral: The peripheral it belongs to, whose root a path may start from.
+    """
+
+    where: str
+    registers: list[Register]
+    clusters: list[Cluster]
+    peripheral: Peripheral
+
+
+def _register_sites(device: Device) -> list[tuple[Register, _Site]]:
+    """Every register of the device with where it sits, in the order they are declared."""
+    sites: list[tuple[Register, _Site]] = []
+    for peripheral in device.peripherals:
+        here = _Site(peripheral.name, peripheral.registers, peripheral.clusters, peripheral)
+        sites += [(register, here) for register in peripheral.registers]
+        for path, cluster in walk_clusters(peripheral.clusters, peripheral.name):
+            here = _Site(path, cluster.registers, cluster.clusters, peripheral)
+            sites += [(register, here) for register in cluster.registers]
+    return sites
+
+
+def _named(items: Sequence[_Named], wanted: str) -> list[_Named]:
+    """The items ``wanted`` names: the one of that name, or every copy of a template.
+
+    ``CC[%s]`` names the array kept as ``CC``; ``PMUX0_%s`` names the copies expanded from it.
+    """
+    if _COPY in wanted and _ARRAY not in wanted:
+        return [item for item in items if item.expanded_from == wanted]
+    plain = wanted.replace(_ARRAY, "")
+    return [item for item in items if item.name == plain]
+
+
+def _descend(
+    registers: list[Register], clusters: list[Cluster], parts: list[str]
+) -> list[Register]:
+    """The registers the path ``parts`` names, looking in these registers and clusters."""
+    if len(parts) == 1:
+        return _named(registers, parts[0])
+    found: list[Register] = []
+    for cluster in _named(clusters, parts[0]):
+        found += _descend(cluster.registers, cluster.clusters, parts[1:])
+    return found
+
+
+def _candidates(site: _Site, device: Device, wanted: str) -> list[Register]:
+    """The registers ``wanted`` can mean from ``site``, nearest reading first.
+
+    A path is read from the peripheral or cluster that holds the register, then from
+    the root of its peripheral, then as ``PERIPHERAL.REGISTER`` (or
+    ``PERIPHERAL.CLUSTER.REGISTER``) from the device.
+    """
+    parts = wanted.split(_PATH_SEPARATOR)
+    found = _descend(site.registers, site.clusters, parts)
+    if not found:
+        found = _descend(site.peripheral.registers, site.peripheral.clusters, parts)
+    if not found and len(parts) > 1:
+        for peripheral in _named(device.peripherals, parts[0]):
+            found += _descend(peripheral.registers, peripheral.clusters, parts[1:])
+    return found
+
+
+def _merged_fields(own: list[Field], base: list[Field]) -> list[Field]:
+    """The base's fields with ``own`` laid over them.
+
+    A field of the same name replaces the base's in its place; one the base lacks is added.
+    """
+    own_by_name = {field_.name: field_ for field_ in own}
+    merged: list[Field] = []
+    for field_ in base:
+        replacement = own_by_name.pop(field_.name, None)
+        merged.append(replacement if replacement is not None else copy.deepcopy(field_))
+    return merged + list(own_by_name.values())
+
+
+def _inherit_register(register: Register, base: Register) -> None:
+    """Give ``register`` what it left unsaid from ``base``.
+
+    Its own name, offset, ``<dim>`` and alternate declaration stay: they are what
+    makes it a different register. Everything it states itself wins.
+    """
+    register.size = _first(register.size, base.size)
+    register.reset_value = _first(register.reset_value, base.reset_value)
+    register.reset_mask = _first(register.reset_mask, base.reset_mask)
+    register.description = _first(register.description, base.description)
+    register.access = _first(register.access, base.access)
+    register.display_name = _first(register.display_name, base.display_name)
+    register.data_type = _first(register.data_type, base.data_type)
+    register.protection = _first(register.protection, base.protection)
+    register.modified_write_values = _first(
+        register.modified_write_values, base.modified_write_values
+    )
+    register.read_action = _first(register.read_action, base.read_action)
+    register.write_constraint = _first(register.write_constraint, base.write_constraint)
+    register.fields = _merged_fields(register.fields, base.fields)
+
+
+def _resolve_register_bases(device: Device) -> list[str]:
+    """Copy each derived register's base into it, as :func:`resolve_derived` does for peripherals.
+
+    A register's ``derivedFrom`` is a name in the same peripheral or cluster, or a path
+    from the peripheral down (``PORT.PMUX0_%s``, ``CH.CTRL``). The base is resolved
+    first, so a chain inherits a complete set. A template name (``PMUX0_%s``) means its
+    copies: a derived register that is itself a copy of a template takes the copy of the
+    same index, any other takes the first copy and is warned about. Returns warnings: an
+    unknown base, a register that names itself, a cycle, a template with the wrong
+    number of copies.
+    """
+    warnings: list[str] = []
+    placed = _register_sites(device)
+    site_of = {id(register): site for register, site in placed}
+    done: set[int] = set()
+    resolving: set[int] = set()
+
+    def base_of(register: Register, wanted: str, site: _Site) -> Register | None:
+        label = f"{site.where}.{register.name}"
+        found = _candidates(site, device, wanted)
+        if not found:
+            warnings.append(
+                f"{label}: derivedFrom '{wanted}' -- no such register; nothing inherited"
+            )
+            return None
+        base = found[0]
+        if _COPY in wanted and _ARRAY not in wanted:
+            if register.expanded_from is None:
+                warnings.append(
+                    f"{label}: derivedFrom names the template '{wanted}' -- resolved to its "
+                    f"first copy, {base.name}"
+                )
+            else:
+                siblings = [r for r in site.registers if r.expanded_from == register.expanded_from]
+                if len(siblings) == len(found):
+                    base = found[siblings.index(register)]
+                else:
+                    warnings.append(
+                        f"{label}: derivedFrom '{wanted}' has {len(found)} copies, not "
+                        f"{len(siblings)} -- resolved to the first, {base.name}"
+                    )
+        if base is register:
+            warnings.append(f"{label}: derivedFrom names itself -- nothing inherited")
+            return None
+        return base
+
+    def resolve(register: Register) -> None:
+        wanted = register.derived_from
+        if wanted is None or id(register) in done:
+            return
+        site = site_of[id(register)]
+        if id(register) in resolving:
+            warnings.append(f"{site.where}.{register.name}: derivedFrom cycle -- left as written")
+            return
+        resolving.add(id(register))
+        base = base_of(register, wanted, site)
+        if base is not None:
+            resolve(base)
+            _inherit_register(register, base)
+            if _COPY in wanted:
+                register.derived_from = base.name  # the template is gone; name what it became
+        resolving.discard(id(register))
+        done.add(id(register))
+
+    for register, _ in placed:
+        resolve(register)
+    return warnings
+
+
+# --- enumeratedValues derivedFrom ---
+
+
+class _EnumSite(NamedTuple):
+    """Where an enumerated set sits.
+
+    Attributes:
+        path: The names from its peripheral down to its field: the peripheral, the
+            clusters, the register, the field.
+        enum_set: The set.
+    """
+
+    path: tuple[str, ...]
+    enum_set: EnumSet
+
+
+def _register_homes(
+    prefix: tuple[str, ...], clusters: list[Cluster]
+) -> Iterator[tuple[tuple[str, ...], list[Register]]]:
+    """The registers of every cluster under ``clusters``, with the names that lead to them."""
+    for cluster in clusters:
+        here = (*prefix, cluster.name)
+        yield here, cluster.registers
+        yield from _register_homes(here, cluster.clusters)
+
+
+def _enum_sites(device: Device) -> list[_EnumSite]:
+    """Every enumerated set of the device with where it sits, in the order they are declared."""
+    sites: list[_EnumSite] = []
+    for peripheral in device.peripherals:
+        root = (peripheral.name,)
+        homes = [(root, peripheral.registers), *_register_homes(root, peripheral.clusters)]
+        for home, registers in homes:
+            for register in registers:
+                for field_ in register.fields:
+                    path = (*home, register.name, field_.name)
+                    sites += [_EnumSite(path, enum_set) for enum_set in field_.enum_sets]
+    return sites
+
+
+def _is_called(name: str, segment: str) -> bool:
+    """Whether ``name`` is what a path ``segment`` means; ``%s`` stands for any label."""
+    plain = segment.replace(_ARRAY, "")
+    if _COPY not in plain:
+        return name == plain
+    head, _, tail = plain.partition(_COPY)
+    return len(name) >= len(head) + len(tail) and name.startswith(head) and name.endswith(tail)
+
+
+def _ends_with(site: _EnumSite, parts: list[str]) -> bool:
+    """Whether the set's own name, and the names above it, end in the path ``parts``."""
+    if site.enum_set.name is None:
+        return False
+    full = (*site.path, site.enum_set.name)
+    if len(parts) > len(full):
+        return False
+    return all(_is_called(name, part) for name, part in zip(full[-len(parts) :], parts))
+
+
+def _shared(left: tuple[str, ...], right: tuple[str, ...]) -> int:
+    """How many names two paths start with in common: the nearer two sets are, the more."""
+    count = 0
+    for a, b in zip(left, right):
+        if a != b:
+            break
+        count += 1
+    return count
+
+
+def _inherit_enum_set(enum_set: EnumSet, base: EnumSet) -> None:
+    """Make ``enum_set`` a copy of ``base``, keeping what it states itself.
+
+    The schema allows nothing else in a derived set, so its entries and usage are the
+    base's. The usage is taken only while the set says nothing different from the default.
+    """
+    if not enum_set.values:
+        enum_set.values = copy.deepcopy(base.values)
+    if enum_set.usage is EnumUsage.READ_WRITE:
+        enum_set.usage = base.usage
+    enum_set.header_enum_name = _first(enum_set.header_enum_name, base.header_enum_name)
+
+
+def _resolve_enum_bases(device: Device) -> list[str]:
+    """Copy each derived enumerated set's base into it, as :func:`resolve_derived` does.
+
+    A set's ``derivedFrom`` is the name of another ``<enumeratedValues>``, or a path to it
+    that starts anywhere along ``PERIPHERAL.REGISTER.FIELD.NAME``. Of the sets the name
+    can mean, the nearest to the derived one is used: the same register's before another
+    register's, the same peripheral's before another's. The base is resolved first, so a
+    chain inherits a complete set. Returns warnings: an unknown base, two equally near
+    sets of that name, a set that names itself, a cycle.
+    """
+    warnings: list[str] = []
+    sites = _enum_sites(device)
+    site_of = {id(site.enum_set): site for site in sites}
+    done: set[int] = set()
+    resolving: set[int] = set()
+
+    def base_of(site: _EnumSite, wanted: str) -> EnumSet | None:
+        label = _PATH_SEPARATOR.join(site.path)
+        found = [c for c in sites if c is not site and _ends_with(c, wanted.split(_PATH_SEPARATOR))]
+        if not found:
+            warnings.append(
+                f"{label}: derivedFrom '{wanted}' -- no such enumeratedValues; nothing inherited"
+            )
+            return None
+        nearest = max(_shared(c.path, site.path) for c in found)
+        best = [c for c in found if _shared(c.path, site.path) == nearest]
+        if len(best) > 1:
+            first = _PATH_SEPARATOR.join(best[0].path)
+            warnings.append(
+                f"{label}: derivedFrom '{wanted}' names {len(best)} equally near sets -- "
+                f"used the first, in {first}"
+            )
+        return best[0].enum_set
+
+    def resolve(site: _EnumSite) -> None:
+        wanted = site.enum_set.derived_from
+        if wanted is None or id(site.enum_set) in done:
+            return
+        if id(site.enum_set) in resolving:
+            warnings.append(
+                f"{_PATH_SEPARATOR.join(site.path)}: derivedFrom '{wanted}' is a cycle -- "
+                "left as written"
+            )
+            return
+        resolving.add(id(site.enum_set))
+        base = base_of(site, wanted)
+        if base is not None:
+            resolve(site_of[id(base)])
+            _inherit_enum_set(site.enum_set, base)
+        resolving.discard(id(site.enum_set))
+        done.add(id(site.enum_set))
+
+    for site in sites:
+        resolve(site)
     return warnings
 
 

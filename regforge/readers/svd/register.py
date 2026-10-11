@@ -48,6 +48,7 @@ class RegisterParser(ElementParser):
             name = f"{name}_{group}"
         return Register(
             name=name,
+            derived_from=element.get("derivedFrom"),  # XML attribute, as on a peripheral
             alternate_register=alternate,
             address_offset=child_int(element, "addressOffset", 0),
             size=child_int(element, "size"),

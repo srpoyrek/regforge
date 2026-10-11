@@ -33,8 +33,9 @@ finally exist, in the same peripheral or the same cluster:
 | `DR` with `alternateGroup` `Cal` | the register `DR`; the view is named `DR_Cal` |
 
 A derived peripheral inherits its base's pairs with the base's registers. A
-declaration is not inherited across a register-level `derivedFrom`, which
-regforge does not resolve.
+declaration is not inherited across a register-level `derivedFrom`: a view of
+another word is a fact about the register that declares it (see
+[derived.md](derived.md#rule-1-what-is-inherited)).
 
 The result on every register of a set is `alternates`: all the views' names,
 the primary first. The primary is the view nothing points away from; a cycle
@@ -149,7 +150,7 @@ the address sum.
 | 13 | `alternateGroup` (same name, another group) | read as the view `NAME_GROUP`, alternate of `NAME` |
 | 14 | alternate inside a `[%s]` array | equal `dim` and `dimIncrement` required; the union is the element |
 | 15 | alternate inside a cluster | identical path, a union member of the cluster's type |
-| 16 | register-level `derivedFrom` | not supported; nothing to copy down |
+| 16 | register-level `derivedFrom` | the base's fields and settings are copied; the alternate declaration is not |
 | 17 | one view has fields, the other none | fine; the field-less view is a plain word access |
 | 18 | three views, two of them byte-sized | one union, size 4 |
 | 19 | families | the alternate set is part of the layout signature |
