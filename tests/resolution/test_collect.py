@@ -2,13 +2,16 @@
 
 from regforge.finding import Finding, Severity
 from regforge.ir import (
+    Access,
     Cluster,
     Device,
     Dim,
     EnumeratedValue,
     EnumSet,
     Field,
+    ModifiedWriteValues,
     Peripheral,
+    ReadAction,
     Register,
 )
 from regforge.resolution import collect
@@ -165,3 +168,67 @@ def test_a_register_may_repeat_reserved_fields():
 def test_a_set_may_repeat_reserved_entries():
     entries = [EnumeratedValue("Reserved", 2), EnumeratedValue("Reserved", 3)]
     assert _messages(_device(Field("MODE", 0, 2, enum_sets=[EnumSet(entries)]))) == []
+
+
+def _of(register: Register) -> list[str]:
+    device = Device(name="Chip", peripherals=[Peripheral("P", 0, registers=[register])])
+    return [finding.message for finding in collect(device)]
+
+
+def test_the_write_behaviour_of_a_register_is_judged_against_its_access():
+    register = Register(
+        "R",
+        0,
+        size=8,
+        access=Access.READ_ONLY,
+        modified_write_values=ModifiedWriteValues.ONE_TO_SET,
+    )
+    assert _of(register) == [
+        "P.R: modifiedWriteValues oneToSet describes a write, but access is read-only"
+    ]
+
+
+def test_the_read_action_of_a_register_is_judged_against_its_access():
+    register = Register(
+        "R", 0, size=8, access=Access.WRITE_ONLY, read_action=ReadAction.MODIFY_EXTERNAL
+    )
+    assert _of(register) == [
+        "P.R: readAction modifyExternal describes a read, but access is write-only"
+    ]
+
+
+def test_a_field_is_judged_against_its_own_access_not_the_registers():
+    field = Field(
+        "F", 0, 1, access=Access.READ_ONLY, modified_write_values=ModifiedWriteValues.CLEAR
+    )
+    register = Register("R", 0, size=8, access=Access.READ_WRITE, fields=[field])
+    assert _of(register) == [
+        "P.R.F: modifiedWriteValues clear describes a write, but access is read-only"
+    ]
+
+
+def test_the_registers_own_effects_come_before_those_of_its_fields():
+    field = Field(
+        "F", 0, 1, access=Access.READ_ONLY, modified_write_values=ModifiedWriteValues.CLEAR
+    )
+    register = Register(
+        "R",
+        0,
+        size=8,
+        access=Access.READ_ONLY,
+        modified_write_values=ModifiedWriteValues.CLEAR,
+        fields=[field],
+    )
+    assert [message.split(":")[0] for message in _of(register)] == ["P.R", "P.R.F"]
+
+
+def test_effects_that_agree_with_the_access_are_silent():
+    register = Register("R", 0, size=8, access=Access.READ_ONLY, read_action=ReadAction.CLEAR)
+    assert _of(register) == []
+
+
+def test_a_register_with_no_resolved_size_has_no_effects_judged():
+    register = Register(
+        "R", 0, access=Access.READ_ONLY, modified_write_values=ModifiedWriteValues.CLEAR
+    )
+    assert _of(register) == []

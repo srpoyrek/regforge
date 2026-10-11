@@ -116,4 +116,4 @@ error: P.R.M%s: M8..M8 (1 of its 9 copies) run past the 32-bit register
 | 2 | two fields both past the width | Rule 3 for each (from the field class); no collision, since the bits do not exist |
 | 3 | a copy of a template and a plain field on one bit | Rule 2, the copy named by its own name |
 | 4 | an unresolved register size | silent: both rules need the width |
-| 5 | a vendor file with a `Reserved` field over a real one | Rule 2; in the corpus 108 of 109,520 registers, in 13 of 88 files |
+| 5 | a vendor file with overlapping fields | Rule 2; in the survey 108 of 116,583 registers, in 13 of 93 files (a `Reserved` field over a real one in 11 of them, in 2 files) |

@@ -249,3 +249,55 @@ def test_repeated_reserved_names_are_not_warned_about_on_the_command_line(tmp_pa
     )
     assert main([str(svd), "--no-provenance"]) == ExitCode.OK
     assert "the name" not in capsys.readouterr().err
+
+
+def _register_svd(tmp_path, register: str):
+    svd = tmp_path / "effects.svd"
+    svd.write_text(
+        "<device><name>C</name><peripherals><peripheral><name>TIM</name>"
+        "<baseAddress>0x0</baseAddress><registers><register><name>CTRL</name>"
+        "<addressOffset>0x0</addressOffset><size>8</size>"
+        + register
+        + "</register></registers></peripheral></peripherals></device>",
+        encoding="utf-8",
+    )
+    return svd
+
+
+def test_a_write_behaviour_on_a_read_only_field_is_warned_about_on_the_command_line(
+    tmp_path, capsys
+):
+    svd = _register_svd(
+        tmp_path,
+        "<access>read-only</access><fields><field><name>DONE</name><bitOffset>0</bitOffset>"
+        "<bitWidth>1</bitWidth><modifiedWriteValues>oneToClear</modifiedWriteValues>"
+        "</field></fields>",
+    )
+    assert main([str(svd), "--no-provenance"]) == ExitCode.OK  # a warning, not a refusal
+    err = capsys.readouterr().err
+    assert (
+        "warn: TIM.CTRL.DONE: modifiedWriteValues oneToClear describes a write, "
+        "but access is read-only"
+    ) in err
+
+
+def test_a_read_action_on_a_write_only_register_is_warned_about_on_the_command_line(
+    tmp_path, capsys
+):
+    svd = _register_svd(tmp_path, "<access>write-only</access><readAction>clear</readAction>")
+    assert main([str(svd), "--no-provenance"]) == ExitCode.OK
+    err = capsys.readouterr().err
+    assert "warn: TIM.CTRL: readAction clear describes a read, but access is write-only" in err
+
+
+def test_effects_that_agree_with_the_access_are_not_warned_about_on_the_command_line(
+    tmp_path, capsys
+):
+    svd = _register_svd(
+        tmp_path,
+        "<access>read-write</access><readAction>clear</readAction><fields><field>"
+        "<name>FLAG</name><bitOffset>0</bitOffset><bitWidth>1</bitWidth>"
+        "<modifiedWriteValues>oneToClear</modifiedWriteValues></field></fields>",
+    )
+    assert main([str(svd), "--no-provenance"]) == ExitCode.OK
+    assert "describes a" not in capsys.readouterr().err

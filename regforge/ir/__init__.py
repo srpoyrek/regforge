@@ -135,11 +135,15 @@ class AddressBlock:
         size: Size of the block, in address units.
         usage: What the block holds -- ``"registers"``, ``"buffer"``, or
             ``"reserved"`` (``None`` when the source omits it).
+        protection: The permission an access to the block needs (the block's SVD
+            ``<protection>``, from schema 1.3.2); ``None`` when the source omits it. Kept
+            as read: no output uses it yet.
     """
 
     offset: int
     size: int
     usage: str | None = None
+    protection: Protection | None = None
 
     @property
     def holds_registers(self) -> bool:

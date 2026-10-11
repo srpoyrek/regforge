@@ -12,7 +12,10 @@ from collections.abc import Iterator
 
 from regforge.finding import Finding
 from regforge.ir import Device, Peripheral, Register, walk_clusters
+from regforge.resolution.base import Resolution
 from regforge.resolution.field import FieldResolution
+from regforge.resolution.modified_write_values import ModifiedWriteValuesResolution
+from regforge.resolution.read_action import ReadActionResolution
 
 
 def _registers(peripheral: Peripheral) -> Iterator[tuple[str, Register]]:
@@ -22,6 +25,21 @@ def _registers(peripheral: Peripheral) -> Iterator[tuple[str, Register]]:
     for path, cluster in walk_clusters(peripheral.clusters, peripheral.name):
         for register in cluster.registers:
             yield f"{path}.{register.name}", register
+
+
+def _effects(register: Register, where: str) -> list[Finding]:
+    """What the effect classes find in the register's own write behaviour and read action.
+
+    This stands in for the register's own class, as the walk of its fields does.
+    """
+    effects: list[Resolution] = []
+    if register.modified_write_values is not None:
+        effects.append(
+            ModifiedWriteValuesResolution(register.modified_write_values, register.access, where)
+        )
+    if register.read_action is not None:
+        effects.append(ReadActionResolution(register.read_action, register.access, where))
+    return [finding for effect in effects for finding in effect.findings()]
 
 
 def _fields(register: Register, size: int, where: str) -> list[Finding]:
@@ -45,5 +63,6 @@ def collect(device: Device) -> list[Finding]:
         for where, register in _registers(peripheral):
             if register.size is None:
                 continue  # without its width there are no bits to check
+            findings += _effects(register, where)
             findings += _fields(register, register.size, where)
     return findings

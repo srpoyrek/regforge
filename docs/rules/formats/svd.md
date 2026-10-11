@@ -196,11 +196,15 @@ the resolved register size, which exists only after defaults resolution.
 
 ## Kept, not yet acted on
 
-These are read into the IR, but no output uses them yet. On a register: `<displayName>`,
-`<dataType>`, `<protection>`, `<modifiedWriteValues>`, `<readAction>` and
+These are read into the IR, but the C header does not use them yet. (The HTML reference
+shows a register's protection and the side effects of registers and fields, and the
+[side-effect rules](../side-effects.md) check them against the access.) On a register:
+`<displayName>`, `<dataType>`, `<protection>`, `<modifiedWriteValues>`, `<readAction>` and
 `<writeConstraint>` (`writeAsRead`, `useEnumeratedValues`, `range`). On a field: the last
-three. At device, peripheral and cluster level: `<protection>`, as the default for the
-registers below. A value outside the schema's list is read as absent.
+three. On an address block: `<protection>`. At device, peripheral and cluster level:
+`<protection>`, as the default for the registers below. That is every place the schema
+allows `<protection>`, except the CPU's SAU configuration (see below). A value outside the
+schema's list is read as absent.
 
 ## Not read
 
@@ -212,6 +216,7 @@ These are in the SVD schema but do not affect output today:
 | `alternatePeripheral` | not parsed; see [ir/address-blocks.md](../address-blocks.md) |
 | `<prependToName>`, `<appendToName>` | not applied |
 | `<headerSystemFilename>` | not applied |
+| `<sauRegionsConfig>` (the CPU's SAU regions, with `protectionWhenDisabled`) | not parsed; none of the 2,459 SVD files in three public collections uses it |
 
 `<vendorExtensions>` is kept as text so nothing is lost, but its contents are
 never interpreted.

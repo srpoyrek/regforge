@@ -15,7 +15,8 @@ compare is for the level above, the register, which will take that walk over fro
 (`CollisionResolution`), with bits as its space. It also holds the field's enumerated
 sets, which it hands to the set class one by one and in pairs; see [enums.md](enums.md).
 Two fields compared with each other are judged for the name they share as well as the
-bits.
+bits. Its write behaviour and read action go to their own classes, with the field's own
+access; see [side-effects.md](side-effects.md).
 
 Code: `regforge/resolution/field.py` (`FieldResolution`), `regforge/resolution/placeholder.py`
 (`is_placeholder_name`), `regforge/ir/field.py` (`Field`, `runs`, `fits_in`),
@@ -125,7 +126,7 @@ still defines the constants of every placeholder field, repeated ones included (
 
 ## In your files
 
-Across the 88 vendor files in the survey, a register holds one field name more than once
+Across the 93 vendor files in the survey, a register holds one field name more than once
 1,574 times (3,621 fields beyond the first), and the name is always `Reserved` (3,468) or
 `RESERVED` (153). So Rule 3 reports nothing in any of them. Two of the 43 headers the C
 writer produces for the survey, NXP LPC1102 and LPC13xx, repeat the constants of their

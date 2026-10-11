@@ -4,7 +4,8 @@ A field knows its own element and the levels below it, the bits and the enumerat
 is given the register's width as a number and the register's path, and knows nothing of the
 register: which pairs of fields to compare is for the level above. Comparing two fields
 reports the name they share and hands the bits they share to the bit class, which judges
-them; the field's sets are judged by the set class, one by one and in pairs.
+them; the field's sets are judged by the set class, one by one and in pairs, and its
+write behaviour and read action by theirs, against the field's own access.
 """
 
 from __future__ import annotations
@@ -13,10 +14,13 @@ from collections.abc import Sequence
 
 from regforge.finding import Finding, Severity
 from regforge.ir import Field
+from regforge.resolution.base import Resolution
 from regforge.resolution.bit import BitResolution
 from regforge.resolution.collision import CollisionResolution
 from regforge.resolution.enum_set import EnumSetResolution
+from regforge.resolution.modified_write_values import ModifiedWriteValuesResolution
 from regforge.resolution.placeholder import is_placeholder_name
+from regforge.resolution.read_action import ReadActionResolution
 
 
 def _label(field: Field) -> str:
@@ -27,7 +31,7 @@ def _label(field: Field) -> str:
 class FieldResolution(CollisionResolution):
     """One field of a register, as the rules see it.
 
-    Four rules. A field that reaches past the register's width has no storage there
+    Five rules. A field that reaches past the register's width has no storage there
     (``ERROR``). Two different fields on one bit contradict each other, though the hardware
     could still be as the file says (``WARNING``): the bit map gives the bit to the first
     declared. Two fields with one name contradict each other too (``WARNING``), since the
@@ -35,9 +39,11 @@ class FieldResolution(CollisionResolution):
     vendors give to every unused run of bits, is not a clash. And the field's enumerated sets
     must be sound, each alone and as a pair, which is the business of
     :class:`~regforge.resolution.EnumSetResolution`; the sets are judged against the field's
-    own width. Copies of one ``<dim>`` template overlapping each other are reported when the
-    template is expanded, and a field array overlapping itself by ``check_address_math``, so
-    neither is repeated here.
+    own width. Its write behaviour and read action must agree with its own access, which is
+    the business of :class:`~regforge.resolution.ModifiedWriteValuesResolution` and
+    :class:`~regforge.resolution.ReadActionResolution`. Copies of one ``<dim>`` template
+    overlapping each other are reported when the template is expanded, and a field array
+    overlapping itself by ``check_address_math``, so neither is repeated here.
 
     Attributes:
         field: The field.
@@ -82,6 +88,24 @@ class FieldResolution(CollisionResolution):
                 findings += first.compare(second)
         return findings
 
+    def effects(self) -> list[Resolution]:
+        """The field's write behaviour and read action, each judged against its own access."""
+        where = f"{self.where}.{self.owner}"
+        found: list[Resolution] = []
+        if self.field.modified_write_values is not None:
+            found.append(
+                ModifiedWriteValuesResolution(
+                    self.field.modified_write_values, self.field.access, where
+                )
+            )
+        if self.field.read_action is not None:
+            found.append(ReadActionResolution(self.field.read_action, self.field.access, where))
+        return found
+
+    def effect_findings(self) -> list[Finding]:
+        """What is wrong with the field's write behaviour and read action."""
+        return [finding for effect in self.effects() for finding in effect.findings()]
+
     def _past_width(self) -> list[Finding]:
         """Bits past the register's width, for a field that is not a copy of a template."""
         if self.field.expanded_from is not None or self.field.fits_in(self.width):
@@ -96,20 +120,20 @@ class FieldResolution(CollisionResolution):
         ]
 
     def findings(self) -> list[Finding]:
-        """What is wrong with the field alone: bits past the register's width, and its sets.
+        """What is wrong with the field alone: its width, its sets, and what a write or read does.
 
         A copy of a ``<dim>`` template is left to :meth:`check_all` for the width, which
         reports the copies that run past together.
         """
-        return self._past_width() + self.enum_findings()
+        return self._past_width() + self.enum_findings() + self.effect_findings()
 
     @staticmethod
     def check_all(fields: Sequence[FieldResolution]) -> list[Finding]:
         """What is wrong with each of a register's fields.
 
         Copies of one ``<dim>`` template that run past the width are one finding, since the
-        template is what needs fixing. Each copy's enumerated sets are still judged, as the
-        copies are separate fields.
+        template is what needs fixing. Each copy's enumerated sets, write behaviour and read
+        action are still judged, as the copies are separate fields.
         """
         findings: list[Finding] = []
         past: dict[str, list[FieldResolution]] = {}
@@ -119,7 +143,7 @@ class FieldResolution(CollisionResolution):
             if template is None:
                 findings += resolution.findings()
                 continue
-            findings += resolution.enum_findings()
+            findings += resolution.enum_findings() + resolution.effect_findings()
             total[template] = total.get(template, 0) + 1
             if not resolution.field.fits_in(resolution.width):
                 past.setdefault(template, []).append(resolution)

@@ -124,9 +124,9 @@ warn: P.R.F: the read-write set and the read set both describe reads
 
 ## In your files
 
-Across the 88 vendor files in the survey (118,598 fields with sets, 123,872 sets, 326,064
+Across the 93 vendor files in the survey (149,100 fields with sets, 154,374 sets, 393,825
 entries), the rules find 69 repeated names in 69 sets (4 files, names such as `ENABLED` and
-`TRISTATED`), 14 entries that do not fit their field (2 files, for instance a 1-bit field
+`TRISTATED`), 15 entries that do not fit their field (3 files, for instance a 1-bit field
 with entries named `10` and `11`) and 6 numbers named twice (1 file: two entries both
 called `10`). A further 87 repeated names are placeholders (`Reserved`, `reserved`,
 `RESERVED`, `RESERVED_`, in 3 files), which are not reported. Two catch-alls and clashing

@@ -41,6 +41,7 @@ rewritten.
 | [bits.md](bits.md) | Which field owns a bit, and two claimants on one bit |
 | [fields.md](fields.md) | A field past the register's width, two fields on one bit, two fields with one name |
 | [enums.md](enums.md) | An entry the field cannot hold, two entries on one number, a repeated name, two sets of one direction |
+| [side-effects.md](side-effects.md) | A write behaviour beside an access that cannot write, a read action beside one that cannot read; why protection has no rule |
 
 ## Input formats
 

@@ -100,18 +100,33 @@ def test_a_field_reads_its_side_effects(tmp_path):
     assert field.write_constraint is not None and field.write_constraint.use_enumerated_values
 
 
-def test_protection_is_read_as_a_default_at_every_level(tmp_path):
+def test_protection_is_read_everywhere_the_schema_allows_it(tmp_path):
+    # The schema allows it in the register properties group (device, peripheral, cluster and
+    # register) and in an address block; every one is read.
     device = _read(
         tmp_path,
         device="<protection>n</protection>",
-        peripheral="<protection>s</protection>",
+        peripheral="<protection>s</protection><addressBlock><offset>0x0</offset>"
+        "<size>0x10</size><usage>registers</usage><protection>p</protection></addressBlock>",
         cluster="<cluster><name>C</name><addressOffset>0x0</addressOffset>"
         "<protection>p</protection></cluster>",
+        register="<protection>n</protection>",
     )
     peripheral = device.peripherals[0]
     assert device.default_protection is Protection.NON_SECURE
     assert peripheral.default_protection is Protection.SECURE
+    assert peripheral.address_blocks[0].protection is Protection.PRIVILEGED
     assert peripheral.clusters[0].default_protection is Protection.PRIVILEGED
+    assert _register(device).protection is Protection.NON_SECURE
+
+
+def test_a_device_level_protection_is_read_as_the_real_renesas_files_write_it(tmp_path):
+    # Five SVDs in the public collections carry exactly this: one <protection>n</protection>
+    # on the device, and nothing below it.
+    device = _read(tmp_path, device="<protection>n</protection>")
+    assert device.default_protection is Protection.NON_SECURE
+    assert device.peripherals[0].default_protection is None
+    assert _register(device).protection is None
 
 
 def test_is_default_marks_the_catch_all_enumerated_value(tmp_path):

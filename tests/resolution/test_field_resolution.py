@@ -6,8 +6,22 @@ import pytest
 
 import regforge.resolution.field as field_module
 from regforge.finding import Severity
-from regforge.ir import Dim, EnumeratedValue, EnumSet, EnumUsage, Field
-from regforge.resolution import BitResolution, FieldResolution
+from regforge.ir import (
+    Access,
+    Dim,
+    EnumeratedValue,
+    EnumSet,
+    EnumUsage,
+    Field,
+    ModifiedWriteValues,
+    ReadAction,
+)
+from regforge.resolution import (
+    BitResolution,
+    FieldResolution,
+    ModifiedWriteValuesResolution,
+    ReadActionResolution,
+)
 
 
 def _res(field: Field, width: int = 8) -> FieldResolution:
@@ -343,6 +357,110 @@ def test_each_copy_of_a_template_has_its_own_sets_judged():
     assert _messages(findings) == [
         "P.R.M0: the name A is used by 2 entries (0x1, 0x2)",
         "P.R.M1: the name A is used by 2 entries (0x1, 0x2)",
+    ]
+
+
+# --- the field's write behaviour and read action ---------------------------------------
+
+
+def test_a_write_behaviour_on_a_read_only_field_is_reported_at_the_fields_path():
+    field = Field(
+        "DONE",
+        0,
+        1,
+        access=Access.READ_ONLY,
+        modified_write_values=ModifiedWriteValues.ONE_TO_CLEAR,
+    )
+    assert _messages(_res(field).findings()) == [
+        "P.R.DONE: modifiedWriteValues oneToClear describes a write, but access is read-only"
+    ]
+
+
+def test_a_read_action_on_a_write_only_field_is_reported_at_the_fields_path():
+    field = Field("DATA", 0, 8, access=Access.WRITE_ONLY, read_action=ReadAction.CLEAR)
+    assert _messages(_res(field).findings()) == [
+        "P.R.DATA: readAction clear describes a read, but access is write-only"
+    ]
+
+
+def test_a_read_to_clear_flag_that_is_also_write_one_to_clear_is_fine():
+    field = Field(
+        "FLAG",
+        0,
+        1,
+        access=Access.READ_WRITE,
+        modified_write_values=ModifiedWriteValues.ONE_TO_CLEAR,
+        read_action=ReadAction.CLEAR,
+    )
+    assert _res(field).effect_findings() == []
+
+
+def test_a_field_with_an_unresolved_access_is_not_a_contradiction():
+    field = Field("F", 0, 1, modified_write_values=ModifiedWriteValues.CLEAR)
+    assert _res(field).effect_findings() == []
+
+
+def test_the_write_behaviour_is_judged_before_the_read_action():
+    field = Field(
+        "F",
+        0,
+        1,
+        modified_write_values=ModifiedWriteValues.SET,
+        read_action=ReadAction.SET,
+    )
+    kinds = [type(effect) for effect in _res(field).effects()]
+    assert kinds == [ModifiedWriteValuesResolution, ReadActionResolution]
+
+
+def test_a_field_with_neither_has_no_effects():
+    assert _res(Field("F", 0, 1)).effects() == []
+
+
+def test_an_array_names_the_path_with_its_count_for_its_effects():
+    field = Field(
+        "OD",
+        0,
+        1,
+        access=Access.READ_ONLY,
+        dim=Dim(4, 2, array=True),
+        modified_write_values=ModifiedWriteValues.CLEAR,
+    )
+    assert _messages(_res(field).findings()) == [
+        "P.R.OD[4]: modifiedWriteValues clear describes a write, but access is read-only"
+    ]
+
+
+def test_the_width_and_the_sets_are_reported_before_the_effects():
+    field = Field(
+        "F",
+        6,
+        4,
+        access=Access.READ_ONLY,
+        modified_write_values=ModifiedWriteValues.ONE_TO_CLEAR,
+        enum_sets=[EnumSet([EnumeratedValue("A", 1), EnumeratedValue("A", 2)])],
+    )
+    assert _messages(_res(field).findings()) == [
+        "P.R.F: bits 6..9 run past the 8-bit register",
+        "P.R.F: the name A is used by 2 entries (0x1, 0x2)",
+        "P.R.F: modifiedWriteValues oneToClear describes a write, but access is read-only",
+    ]
+
+
+def test_each_copy_of_a_template_has_its_effects_judged():
+    def copy(name: str) -> Field:
+        return Field(
+            name,
+            0,
+            1,
+            access=Access.READ_ONLY,
+            modified_write_values=ModifiedWriteValues.ONE_TO_SET,
+            expanded_from="M%s",
+        )
+
+    findings = FieldResolution.check_all([_res(copy("M0")), _res(copy("M1"))])
+    assert _messages(findings) == [
+        "P.R.M0: modifiedWriteValues oneToSet describes a write, but access is read-only",
+        "P.R.M1: modifiedWriteValues oneToSet describes a write, but access is read-only",
     ]
 
 

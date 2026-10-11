@@ -51,6 +51,7 @@ nav:
       - Bits: rules/bits.md
       - Fields: rules/fields.md
       - Enumerated values: rules/enums.md
+      - Side effects: rules/side-effects.md
   - Input formats:
       - CMSIS-SVD: rules/formats/svd.md
   - Output targets:
