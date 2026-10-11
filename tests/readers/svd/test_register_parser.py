@@ -36,14 +36,36 @@ def test_a_register_reads_its_properties_and_its_fields_in_order():
     assert (register.fields[1].bit_offset, register.fields[1].bit_width) == (2, 2)
 
 
-def test_an_alternate_group_is_spelled_name_group_and_linked_to_the_plain_name():
+def test_an_alternate_group_is_kept_as_a_label_and_nothing_is_renamed_or_linked():
     register = RegisterParser(ParseContext()).parse(
         _el(
             "<register><name>CTRL</name><alternateGroup>G</alternateGroup>"
             "<addressOffset>0x0</addressOffset></register>"
         )
     )
-    assert (register.name, register.alternate_register) == ("CTRL_G", "CTRL")
+    assert (register.name, register.alternate_group) == ("CTRL", "G")
+    assert register.alternate_register is None
+
+
+def test_a_register_with_no_alternate_group_has_none():
+    register = RegisterParser(ParseContext()).parse(
+        _el("<register><name>R</name><addressOffset>0</addressOffset></register>")
+    )
+    assert register.alternate_group is None
+
+
+def test_an_alternate_register_beside_a_group_is_kept_as_written():
+    register = RegisterParser(ParseContext()).parse(
+        _el(
+            "<register><name>DR</name><alternateGroup>Raw</alternateGroup>"
+            "<alternateRegister>DR</alternateRegister><addressOffset>0x0</addressOffset></register>"
+        )
+    )
+    assert (register.name, register.alternate_group, register.alternate_register) == (
+        "DR",
+        "Raw",
+        "DR",
+    )
 
 
 def test_a_derived_from_attribute_is_kept_as_written():

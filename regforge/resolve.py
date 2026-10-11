@@ -896,6 +896,49 @@ def _resolve_enum_bases(device: Device) -> list[str]:
 # --- alternate registers ---
 
 
+def _same_shape(register: Register, other: Register) -> bool:
+    """Whether both are single registers, or arrays of the same count and stride."""
+    if register.dim is None or other.dim is None:
+        return register.dim is None and other.dim is None
+    return (register.dim.count, register.dim.increment) == (other.dim.count, other.dim.increment)
+
+
+def _name_groups(registers: list[Register]) -> dict[int, Register]:
+    """Rename the grouped registers whose name another register of the block shares.
+
+    ``<alternateGroup>`` lets a name be used again in another group, so ``DR`` in group
+    ``Cal`` beside a plain ``DR`` is read as ``DR_Cal``: a name of its own for the
+    header, with the plain register its primary view. A group whose name nothing else in
+    the block uses is only a label, and the register keeps the name it was declared with.
+
+    Returns, for each renamed register that names no ``alternateRegister`` of its own,
+    the register that kept the name when the two sit at one offset and share a shape:
+    the view that reusing the name implies. At another offset the registers are two
+    different things that happen to share a name, and are only renamed.
+    """
+    by_name: dict[str, list[Register]] = {}
+    for register in registers:
+        by_name.setdefault(register.name, []).append(register)
+    implied: dict[int, Register] = {}
+    for sharing in by_name.values():
+        grouped = [register for register in sharing if register.alternate_group]
+        if len(sharing) < 2 or not grouped:
+            continue
+        plain = [register for register in sharing if not register.alternate_group]
+        primary = plain[0] if plain else grouped[0]
+        for register in grouped:
+            register.name = f"{register.name}_{register.alternate_group}"
+        for register in grouped:
+            if (
+                register is not primary
+                and register.alternate_register is None
+                and register.address_offset == primary.address_offset
+                and _same_shape(register, primary)
+            ):
+                implied[id(register)] = primary
+    return implied
+
+
 def _alternate_target(
     register: Register, registers: list[Register], where: str, findings: list[Finding]
 ) -> Register | None:
@@ -954,12 +997,7 @@ def _alternate_target(
             Finding(Severity.WARNING, f"{label}: alternateRegister names itself -- ignored")
         )
         return None
-    same_shape = (register.dim is None and target.dim is None) or (
-        register.dim is not None
-        and target.dim is not None
-        and (register.dim.count, register.dim.increment) == (target.dim.count, target.dim.increment)
-    )
-    if not same_shape:
+    if not _same_shape(register, target):
         findings.append(
             Finding(
                 Severity.WARNING,
@@ -981,8 +1019,13 @@ def _alternate_target(
     return target
 
 
-def _link_alternates(where: str, registers: list[Register], findings: list[Finding]) -> None:
-    """Union-find the declared views of one block into sets, primary first."""
+def _link_alternates(
+    where: str,
+    registers: list[Register],
+    implied: dict[int, Register],
+    findings: list[Finding],
+) -> None:
+    """Union-find the declared and implied views of one block into sets, primary first."""
     parent: dict[int, int] = {id(register): id(register) for register in registers}
 
     def find(key: int) -> int:
@@ -993,9 +1036,10 @@ def _link_alternates(where: str, registers: list[Register], findings: list[Findi
 
     linked: set[int] = set()  # registers whose own declaration was accepted
     for register in registers:
-        if register.alternate_register is None:
-            continue
-        target = _alternate_target(register, registers, where, findings)
+        if register.alternate_register is not None:
+            target = _alternate_target(register, registers, where, findings)
+        else:
+            target = implied.get(id(register))
         if target is None:
             continue
         linked.add(id(register))
@@ -1018,7 +1062,10 @@ def resolve_alternates(device: Device) -> list[Finding]:
     """Link every ``alternateRegister`` into its set of views, block by block.
 
     Runs after ``expand_dim`` and ``resolve_derived`` so the names it matches
-    are the final ones. Each register of a set gets ``alternates``: every
+    are the final ones. A register in an ``alternateGroup`` whose name another
+    register of its block shares is renamed ``NAME_GROUP`` first (see
+    :func:`_name_groups`); the group of any other register stays a label. Each
+    register of a set gets ``alternates``: every
     view's name, the primary first, so the layout can emit one union for the
     word and the checks can compare the views. A declaration that cannot be
     honoured -- a missing target (``ERROR``), a self-reference, another
@@ -1028,9 +1075,13 @@ def resolve_alternates(device: Device) -> list[Finding]:
     """
     findings: list[Finding] = []
     for peripheral in device.peripherals:
-        _link_alternates(peripheral.name, peripheral.registers, findings)
-        for path, cluster in walk_clusters(peripheral.clusters, peripheral.name):
-            _link_alternates(path, cluster.registers, findings)
+        blocks = [(peripheral.name, peripheral.registers)]
+        blocks += [
+            (path, cluster.registers)
+            for path, cluster in walk_clusters(peripheral.clusters, peripheral.name)
+        ]
+        for where, registers in blocks:
+            _link_alternates(where, registers, _name_groups(registers), findings)
     return findings
 
 

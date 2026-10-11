@@ -30,7 +30,7 @@ finally exist, in the same peripheral or the same cluster:
 | `DTR%s` alternate `DT%s` | copy with copy: `DTR0` with `DT0`, `DTR1` with `DT1` |
 | `CCI[%s]` alternate `CC[%s]` | the array `CC`, when `dim` and `dimIncrement` match |
 | `RAW` alternate `DT%s` | the template's first copy, `DT0`, with a `WARNING` |
-| `DR` with `alternateGroup` `Cal` | the register `DR`; the view is named `DR_Cal` |
+| `DR` with `alternateGroup` `Cal`, beside a plain `DR` | the register `DR`; the view is named `DR_Cal` (Rule 7) |
 
 A derived peripheral inherits its base's pairs with the base's registers. A
 declaration is not inherited across a register-level `derivedFrom`: a view of
@@ -131,6 +131,47 @@ the address sum.
 | views with differing `resetValue` | `WARNING` from `check_alternate_registers`; each view keeps its own |
 | the common prefix collides with a sibling | `WARNING`; fallback naming |
 
+## Rule 7: `alternateGroup` is a label; only a shared name renames
+
+`alternateGroup` says which mode or function a register serves (`PWM`, `SPI`,
+`Cal`). It is kept on the register as written and links nothing by itself: a
+register in a group need not be a view of any other. The schema also lets a name
+be used again in another group, and that is the one case in which regforge changes a
+name, so that every register has an identifier of its own. `resolve_alternates`
+renames a grouped register `NAME_GROUP` when another register of its block
+(the same peripheral or cluster) has the same name, and links the pair as views
+only if they sit at one offset and have one `dim` shape.
+
+| The block holds | Result |
+|---|---|
+| `PWM_TMCR` in group `PWM`, no other register of that name | nothing changes; the group is a label |
+| `DR`, and `DR` in group `Cal`, at one offset | the second is `DR_Cal`, a view of `DR`: one union |
+| `DR` in group `A` and `DR` in group `B`, no plain `DR` | `DR_A` and `DR_B`; the first is the primary |
+| `CTRL` in group `SPI` at `0x0` and `CTRL` in group `I2C` at `0x10` | `CTRL_SPI` and `CTRL_I2C`; two registers, not views; no finding |
+| the same name at one offset but another `dim` shape | renamed, not linked; no finding |
+| an explicit `alternateRegister` beside the group | kept as written, whether or not the name is shared |
+
+Nothing is linked to a register that does not exist: a group on a name nothing
+else uses produces no finding. The names are those after expansion, so the
+copies of `R%s` in group `Cal` pair with the copies of a plain `R%s`, `R0_Cal`
+with `R0`.
+
+Input — read as [CMSIS-SVD](formats/svd.md#alternate-registers):
+
+```xml
+<register><name>DR</name><description>Data register</description><addressOffset>0x04</addressOffset><access>read-only</access></register>
+<register><name>DR</name><alternateGroup>Cal</alternateGroup><description>Calibrated data</description><addressOffset>0x04</addressOffset><access>read-only</access></register>
+```
+
+Output — emitted as [C](targets/c.md#union-members):
+
+```c
+    union {
+        volatile const uint32_t DR;      /* 0x04  Data register */
+        volatile const uint32_t DR_Cal;  /* 0x04  Calibrated data */
+    } DR;  /* 0x04  one register, 2 views */
+```
+
 ## Corner cases
 
 | # | Input | Result |
@@ -147,7 +188,7 @@ the address sum.
 | 10 | no usable common prefix | union named after the primary, full member names |
 | 11 | common prefix equals a sibling register's name | rule 2 naming plus `WARNING` |
 | 12 | undeclared same-offset overlap | `LayoutError` with the `alternateRegister` hint; never inferred |
-| 13 | `alternateGroup` (same name, another group) | read as the view `NAME_GROUP`, alternate of `NAME` |
+| 13 | `alternateGroup` (same name, another group) | renamed `NAME_GROUP`; a view of `NAME` when at its offset and shape (Rule 7) |
 | 14 | alternate inside a `[%s]` array | equal `dim` and `dimIncrement` required; the union is the element |
 | 15 | alternate inside a cluster | identical path, a union member of the cluster's type |
 | 16 | register-level `derivedFrom` | the base's fields and settings are copied; the alternate declaration is not |
@@ -156,3 +197,6 @@ the address sum.
 | 19 | families | the alternate set is part of the layout signature |
 | 20 | word-addressable device | offsets compared in address units, no change |
 | 21 | `DTR%s` alternate `DT%s` | copy pairs with copy of the same index; differing counts are a `WARNING` |
+| 22 | `alternateGroup` on a name nothing else in the block uses | a label only: no rename, no link, no finding |
+| 23 | the same name in two groups at different offsets | renamed `NAME_GROUP`, not linked; no finding |
+| 24 | `derivedFrom` naming a register that has an `alternateGroup` | found by the name it was declared with; the group does not rename it unless the name is shared |

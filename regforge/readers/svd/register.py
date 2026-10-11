@@ -38,18 +38,11 @@ class RegisterParser(ElementParser):
         resolution pass fills them from the inheritance chain.
         """
         name = child_text(element, "name") or ""
-        alternate = child_text(element, "alternateRegister")
-        group = child_text(element, "alternateGroup")
-        if group:
-            # <alternateGroup>: the same register name reused in another group is
-            # the spec's other spelling of an alternate view. Spelled NAME_GROUP so
-            # it is an identifier, and linked to the plainly named register.
-            alternate = alternate or name
-            name = f"{name}_{group}"
         return Register(
             name=name,
             derived_from=element.get("derivedFrom"),  # XML attribute, as on a peripheral
-            alternate_register=alternate,
+            alternate_register=child_text(element, "alternateRegister"),
+            alternate_group=child_text(element, "alternateGroup"),
             address_offset=child_int(element, "addressOffset", 0),
             size=child_int(element, "size"),
             reset_value=child_int(element, "resetValue"),

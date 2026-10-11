@@ -185,3 +185,8 @@ def test_a_register_is_write_once_by_its_access():
 def test_a_register_is_not_derived_unless_it_says_so():
     assert Register("CTRL", 0x0).derived_from is None
     assert Register("CTRL2", 0x4, derived_from="CTRL").derived_from == "CTRL"
+
+
+def test_a_register_belongs_to_no_group_unless_the_file_says_so():
+    assert Register("CTRL", 0x0).alternate_group is None
+    assert Register("CTRL", 0x0, alternate_group="SPI").alternate_group == "SPI"

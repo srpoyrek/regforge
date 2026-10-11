@@ -111,11 +111,12 @@ may name a `%s` template or a `[%s]` array.
 </register>
 ```
 
-`<alternateGroup>` is the schema's other spelling of the same idea: a register
-reusing another's name in a named group. It is read as a register named
-`NAME_GROUP` whose `alternateRegister` is `NAME` (an explicit
-`<alternateRegister>` beside it is kept as written). What the pair becomes is
-decided by [ir/alternates.md](../alternates.md).
+`<alternateGroup>` names the mode or function a register serves. It is kept on
+the register as a label and links nothing by itself. The schema also lets a name
+be reused in another group: when another register of the block has the same name,
+the grouped one is renamed `NAME_GROUP` and, if the two sit at one offset, is a view
+of `NAME`. A group on a name nothing else uses changes nothing. What the pair
+becomes is decided by [ir/alternates.md](../alternates.md#rule-7-alternategroup-is-a-label-only-a-shared-name-renames).
 
 ## Field
 

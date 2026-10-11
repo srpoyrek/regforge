@@ -30,19 +30,19 @@ _SVD = """<?xml version="1.0" encoding="utf-8"?>
 def _registers(tmp_path):
     path = tmp_path / "alt.svd"
     path.write_text(_SVD, encoding="utf-8")
-    return {r.name: r for r in SvdReader().read(path).peripherals[0].registers}
+    return SvdReader().read(path).peripherals[0].registers
 
 
 def test_alternate_register_is_read_as_declared(tmp_path):
-    registers = _registers(tmp_path)
+    registers = {r.name: r for r in _registers(tmp_path)}
     assert registers["CCMR1_Output"].alternate_register is None
     assert registers["CCMR1_Input"].alternate_register == "CCMR1_Output"
     assert registers["CCMR1_Input"].alternates == ()  # linked by the resolve pass, not here
 
 
-def test_alternate_group_renames_the_view_and_links_it_to_the_plain_register(tmp_path):
-    registers = _registers(tmp_path)
-    assert "DR_Cal" in registers and registers["DR_Cal"].alternate_register == "DR"
-    # An explicit alternateRegister beside the group is kept as written.
-    assert registers["DR_Raw"].alternate_register == "DR"
-    assert registers["DR"].alternate_register is None
+def test_alternate_group_is_a_label_the_reader_neither_renames_nor_links(tmp_path):
+    plain, cal, raw = _registers(tmp_path)[2:]
+    assert [r.name for r in (plain, cal, raw)] == ["DR", "DR", "DR"]
+    assert [r.alternate_group for r in (plain, cal, raw)] == [None, "Cal", "Raw"]
+    # Only what the file wrote is a link: an explicit alternateRegister beside the group.
+    assert [r.alternate_register for r in (plain, cal, raw)] == [None, None, "DR"]
