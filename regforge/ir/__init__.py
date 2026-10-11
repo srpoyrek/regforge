@@ -14,11 +14,13 @@ The hierarchy mirrors the structure of a memory-mapped device:
 from __future__ import annotations
 
 from collections.abc import Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from dataclasses import field as dc_field  # `field` is also a submodule of this package
 from enum import Enum
 
 from regforge.ir.bit import Bit as Bit
 from regforge.ir.bit import bits as bits
+from regforge.ir.field import Field as Field
 
 # --- SVD schema defaults (used when the source omits an optional element) ---
 #: Default bits per address unit (8 => byte-addressable).
@@ -90,7 +92,7 @@ class Dim:
     index: list[str] | None = None
     array: bool = False
     name: str | None = None
-    array_index: list[EnumeratedValue] = field(default_factory=list)
+    array_index: list[EnumeratedValue] = dc_field(default_factory=list)
 
     @property
     def labels(self) -> list[str]:
@@ -118,41 +120,6 @@ class Dim:
         """
         assert self.count is not None
         return self.count
-
-
-@dataclass
-class Field:
-    """A contiguous group of bits within a :class:`Register`.
-
-    Attributes:
-        name: Identifier of the field.
-        bit_offset: Zero-based index of the field's least-significant bit.
-        bit_width: Number of bits the field occupies.
-        description: Optional human-readable description.
-        access: Access policy. Raw (possibly ``None``) as parsed; filled in by
-            the defaults resolution pass so every field carries a resolved value.
-        enums: Enumerated values the field may take, if any.
-        dim: Array shape when the field is one of several copies (SVD
-            ``<dim>``, increment in bits); ``None`` for a single field. After
-            expansion only a ``[%s]`` array keeps it, with ``name`` bare.
-        expanded_from: The ``<dim>`` template this element was expanded from
-            (``UART%s``), so a report can point at the one declaration behind
-            several copies; ``None`` when written out by hand.
-    """
-
-    name: str
-    bit_offset: int
-    bit_width: int
-    description: str | None = None
-    access: Access | None = None
-    enums: list[EnumeratedValue] = field(default_factory=list)
-    dim: Dim | None = None
-    expanded_from: str | None = None
-
-    @property
-    def mask(self) -> int:
-        """The field's bit mask, shifted into position."""
-        return ((1 << self.bit_width) - 1) << self.bit_offset
 
 
 @dataclass
@@ -197,7 +164,7 @@ class Register:
     reset_mask: int | None = None
     description: str | None = None
     access: Access | None = None
-    fields: list[Field] = field(default_factory=list)
+    fields: list[Field] = dc_field(default_factory=list)
     dim: Dim | None = None
     expanded_from: str | None = None
     alternate_register: str | None = None
@@ -247,8 +214,8 @@ class Cluster:
     default_access: Access | None = None
     default_reset_value: int | None = None
     default_reset_mask: int | None = None
-    registers: list[Register] = field(default_factory=list)
-    clusters: list[Cluster] = field(default_factory=list)
+    registers: list[Register] = dc_field(default_factory=list)
+    clusters: list[Cluster] = dc_field(default_factory=list)
     dim: Dim | None = None
     expanded_from: str | None = None
 
@@ -362,10 +329,10 @@ class Peripheral:
     default_access: Access | None = None
     default_reset_value: int | None = None
     default_reset_mask: int | None = None
-    registers: list[Register] = field(default_factory=list)
-    interrupts: list[Interrupt] = field(default_factory=list)
-    address_blocks: list[AddressBlock] = field(default_factory=list)
-    clusters: list[Cluster] = field(default_factory=list)
+    registers: list[Register] = dc_field(default_factory=list)
+    interrupts: list[Interrupt] = dc_field(default_factory=list)
+    address_blocks: list[AddressBlock] = dc_field(default_factory=list)
+    clusters: list[Cluster] = dc_field(default_factory=list)
     dim: Dim | None = None
     expanded_from: str | None = None
 
@@ -452,7 +419,7 @@ class Device:
     default_access: Access | None = None
     default_reset_value: int | None = None
     default_reset_mask: int | None = None
-    peripherals: list[Peripheral] = field(default_factory=list)
+    peripherals: list[Peripheral] = dc_field(default_factory=list)
 
 
 def walk_clusters(clusters: list[Cluster], where: str) -> Iterator[tuple[str, Cluster]]:
