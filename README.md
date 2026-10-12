@@ -132,10 +132,10 @@ published on every push to `main`.
 What regforge does with each part of an SVD file is in
 [docs/rules/](docs/rules/): each rule states what it does, shows input and
 output, lists the corner cases, and links to the input format it reads and the
-output target it emits. Among them, [derived.md](docs/rules/derived.md) covers
+output target it emits. Among them, [derived.md](docs/rules/device/peripheral/derived.md) covers
 how `derivedFrom` is resolved for registers and enumerated-value sets,
-[alternates.md](docs/rules/alternates.md) how alternate registers and
-`alternateGroup` become one union, and [arrays.md](docs/rules/arrays.md) how
+[alternates.md](docs/rules/device/peripheral/alternates.md) how alternate registers and
+`alternateGroup` become one union, and [arrays.md](docs/rules/device/peripheral/arrays.md) how
 `<dim>` is expanded. To view it locally:
 
 ```bash

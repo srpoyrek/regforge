@@ -25,25 +25,31 @@ rewritten.
 
 ## Rules
 
-| Rule | Decides |
-|---|---|
-| [structure.md](structure.md) | The order of blocks in a generated file |
-| [naming.md](naming.md) | What a type is called |
-| [families.md](families.md) | Which peripherals share one type |
-| [address-blocks.md](address-blocks.md) | Declared footprint, size contract, padding |
-| [interrupts.md](interrupts.md) | Vectors, and what `derivedFrom` does not carry |
-| [defaults.md](defaults.md) | Inherited `size` / `access` / `reset*` |
-| [address-math.md](address-math.md) | Address units, bus width, member offsets |
-| [arrays.md](arrays.md) | `dim`: copies, arrays, strides |
-| [clusters.md](clusters.md) | Register groups as nested types |
-| [alternates.md](alternates.md) | Two layouts of one word: `alternateRegister` as a union |
-| [derived.md](derived.md) | A register or an enumerated set that is another one: what `derivedFrom` copies |
-| [bits.md](bits.md) | Which field owns a bit, and two claimants on one bit |
-| [fields.md](fields.md) | A field past the register's width, two fields on one bit, two fields with one name |
-| [enums.md](enums.md) | An entry the field cannot hold, two entries on one number, a repeated name, two sets of one direction |
-| [side-effects.md](side-effects.md) | A write behaviour beside an access that cannot write, a read action beside one that cannot read; why protection has no rule |
-| [access.md](access.md) | A field's access beyond its register's, a set beside an access that forbids it, how a misspelt value is read |
-| [data-types.md](data-types.md) | A data type of another width than its register |
+A rule page sits in the folder of the highest element it is about, the folder that element's
+class sits in under `regforge/ir/`, so the folders here are the folders of the code: a device
+holds peripherals, a peripheral holds clusters and registers, a register holds fields, and a
+field holds enumerated sets. The SVD reader, the resolution classes and the HTML writer, and
+their tests, are laid out in the same folders.
+
+| Element | Rule | Decides |
+|---|---|---|
+| Device | [structure.md](device/structure.md) | The order of blocks in a generated file |
+| | [defaults.md](device/defaults.md) | Inherited `size` / `access` / `reset*` |
+| | [address-math.md](device/address-math.md) | Address units, bus width, member offsets |
+| | [access.md](device/access.md) | A field's access beyond its register's, a set beside an access that forbids it, how a misspelt value is read |
+| Peripheral | [naming.md](device/peripheral/naming.md) | What a type is called |
+| | [families.md](device/peripheral/families.md) | Which peripherals share one type |
+| | [address-blocks.md](device/peripheral/address-blocks.md) | Declared footprint, size contract, padding |
+| | [interrupts.md](device/peripheral/interrupts.md) | Vectors, and what `derivedFrom` does not carry |
+| | [arrays.md](device/peripheral/arrays.md) | `dim`: copies, arrays, strides |
+| | [derived.md](device/peripheral/derived.md) | A register or an enumerated set that is another one: what `derivedFrom` copies |
+| | [alternates.md](device/peripheral/alternates.md) | Two layouts of one word: `alternateRegister` as a union |
+| Cluster | [clusters.md](device/peripheral/cluster/clusters.md) | Register groups as nested types |
+| Register | [bits.md](device/peripheral/register/bits.md) | Which field owns a bit, and two claimants on one bit |
+| | [data-types.md](device/peripheral/register/data-types.md) | A data type of another width than its register |
+| | [side-effects.md](device/peripheral/register/side-effects.md) | A write behaviour beside an access that cannot write, a read action beside one that cannot read; why protection has no rule |
+| Field | [fields.md](device/peripheral/register/field/fields.md) | A field past the register's width, two fields on one bit, two fields with one name |
+| Enumerated set | [enums.md](device/peripheral/register/field/enum_set/enums.md) | An entry the field cannot hold, two entries on one number, a repeated name, two sets of one direction |
 
 ## Input formats
 

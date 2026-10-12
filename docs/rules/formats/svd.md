@@ -4,10 +4,10 @@ How an SVD file is read: which elements become which values, and how those
 values are parsed. The rules that act on them are in the rule pages, linked
 from each section.
 
-Code: `regforge/readers/svd.py`. Tests: `tests/readers/svd/`.
-
-Code: `regforge/readers/svd/` (one parser class per element).
-Tests: `tests/readers/svd/`.
+Code: `regforge/readers/svd/` (one parser class per element, in a folder tree that mirrors the
+IR: `device/`, `device/peripheral/`, and so on down to `enum_set/`).
+Tests: `tests/readers/svd/` (the same tree, one test file per parser; the tests that read a
+whole file are in `whole_file/`).
 
 ## Device
 
@@ -44,14 +44,14 @@ another architecture leaves them absent rather than guessing.
 | `<baseAddress>` | absolute base | defaults to `0` |
 | `<description>` | comment text | |
 | `derivedFrom` | the base it copies from | an **XML attribute**, not a child element; may name a `<dim>` copy, or the template itself (then its first copy) |
-| `<groupName>` | family label | see [ir/families.md](../families.md) |
-| `<headerStructName>` | requested struct name | see [ir/naming.md](../naming.md) |
-| `<size>`, `<access>`, `<resetValue>`, `<resetMask>` | peripheral-level defaults | see [ir/defaults.md](../defaults.md) |
-| `<addressBlock>` | declared footprint, repeatable | see [ir/address-blocks.md](../address-blocks.md) |
-| `<interrupt>` | a vector, repeatable | see [ir/interrupts.md](../interrupts.md) |
+| `<groupName>` | family label | see [families.md](../device/peripheral/families.md) |
+| `<headerStructName>` | requested struct name | see [naming.md](../device/peripheral/naming.md) |
+| `<size>`, `<access>`, `<resetValue>`, `<resetMask>` | peripheral-level defaults | see [defaults.md](../device/defaults.md) |
+| `<addressBlock>` | declared footprint, repeatable | see [address-blocks.md](../device/peripheral/address-blocks.md) |
+| `<interrupt>` | a vector, repeatable | see [interrupts.md](../device/peripheral/interrupts.md) |
 | `<registers><register>` | the registers | |
-| `<registers><cluster>` | a register group, see [Cluster](#cluster) | see [ir/clusters.md](../clusters.md) |
-| `<dim>`, `<dimIncrement>`, `<dimIndex>` | a template for several copies, see [Arrays](#arrays) | see [ir/arrays.md](../arrays.md) |
+| `<registers><cluster>` | a register group, see [Cluster](#cluster) | see [clusters.md](../device/peripheral/cluster/clusters.md) |
+| `<dim>`, `<dimIncrement>`, `<dimIndex>` | a template for several copies, see [Arrays](#arrays) | see [arrays.md](../device/peripheral/arrays.md) |
 
 ## Cluster
 
@@ -66,10 +66,10 @@ offsets relative to the cluster.
 | `<description>` | comment text | |
 | `derivedFrom` | the cluster it copies from | an **XML attribute**; parsed and reported, not resolved yet |
 | `<headerStructName>` | the vendor's name for the cluster's struct type | |
-| `<size>`, `<access>`, `<resetValue>`, `<resetMask>` | cluster-level defaults, one rung below the peripheral's | see [ir/defaults.md](../defaults.md) |
+| `<size>`, `<access>`, `<resetValue>`, `<resetMask>` | cluster-level defaults, one rung below the peripheral's | see [defaults.md](../device/defaults.md) |
 | `<register>` | the registers, as direct children | |
 | `<cluster>` | nested clusters, as direct children | |
-| `<dim>`, `<dimIncrement>`, `<dimIndex>` | a template for several copies, see [Arrays](#arrays) | see [ir/arrays.md](../arrays.md) |
+| `<dim>`, `<dimIncrement>`, `<dimIndex>` | a template for several copies, see [Arrays](#arrays) | see [arrays.md](../device/peripheral/arrays.md) |
 
 ## Register
 
@@ -80,8 +80,8 @@ offsets relative to the cluster.
 | `<size>`, `<resetValue>`, `<resetMask>`, `<access>` | resolved through the defaults chain | absent |
 | `<description>` | comment text | absent |
 | `<fields><field>` | the bit fields | none |
-| `<dim>`, `<dimIncrement>`, `<dimIndex>` | a template for several copies, see [Arrays](#arrays) | see [ir/arrays.md](../arrays.md) |
-| `<alternateRegister>`, `<alternateGroup>` | another view of the register named, see [Alternate registers](#alternate-registers) | see [ir/alternates.md](../alternates.md) |
+| `<dim>`, `<dimIncrement>`, `<dimIndex>` | a template for several copies, see [Arrays](#arrays) | see [arrays.md](../device/peripheral/arrays.md) |
+| `<alternateRegister>`, `<alternateGroup>` | another view of the register named, see [Alternate registers](#alternate-registers) | see [alternates.md](../device/peripheral/alternates.md) |
 | `derivedFrom` | the register it copies from, see [Derived registers](#derived-registers) | an **XML attribute**; none |
 
 ## Derived registers
@@ -94,7 +94,7 @@ copies the base's `size`, `resetValue`, `resetMask`, `access`, `description`,
 register wherever it states none of its own. A field of the same name replaces the
 base's field in place and any other field it writes is added. Its own name, offset,
 `<dim>` and `<alternateRegister>` stay. The rules, including what happens to a
-`%s` template, are in [ir/derived.md](../derived.md#registers).
+`%s` template, are in [derived.md](../device/peripheral/derived.md#registers).
 
 ## Alternate registers
 
@@ -116,7 +116,7 @@ the register as a label and links nothing by itself. The schema also lets a name
 be reused in another group: when another register of the block has the same name,
 the grouped one is renamed `NAME_GROUP` and, if the two sit at one offset, is a view
 of `NAME`. A group on a name nothing else uses changes nothing. What the pair
-becomes is decided by [ir/alternates.md](../alternates.md#rule-7-alternategroup-is-a-label-only-a-shared-name-renames).
+becomes is decided by [alternates.md](../device/peripheral/alternates.md#rule-7-alternategroup-is-a-label-only-a-shared-name-renames).
 
 ## Field
 
@@ -131,7 +131,7 @@ The bit range can be written three ways, and all three are accepted:
 Each `<enumeratedValues>` block becomes one set on the field, since a field may
 carry a read set and a write set. The set keeps its `<name>`, `<headerEnumName>`,
 `<usage>` (`read-write` when absent) and `derivedFrom`, which makes the set a copy of
-another (see [ir/derived.md](../derived.md#rule-6-a-derived-set-is-a-copy)); its
+another (see [derived.md](../device/peripheral/derived.md#rule-6-a-derived-set-is-a-copy)); its
 `<enumeratedValue>` entries become the field's named constants. The schema gives an entry a `<value>`
 or `<isDefault>`, never both. A catch-all `<isDefault>` entry has no number and is
 kept as the entry for all other values. A `<value>` may write some bits as `x`
@@ -151,14 +151,14 @@ cluster, a register or a field, and mean the same on each: the element is a
 template, `<dim>` copies of it exist, `<dimIncrement>` apart, and `%s` in the
 name is replaced by each copy's label. The reader stores the three values as
 read and leaves the template in place; a later pass expands it. The rules that
-act on them are in [ir/arrays.md](../arrays.md).
+act on them are in [arrays.md](../device/peripheral/arrays.md).
 
 | Element | Becomes |
 |---|---|
 | `<dim>` | the number of copies; at least 1 |
 | `<dimIncrement>` | the distance between two neighbouring copies: address units on a peripheral, cluster or register, bits on a field |
 | `<dimIndex>` | the labels that replace `%s`; absent means `0`, `1`, `2`, ... |
-| `<dimName>` | a name for the type the copies share; see [ir/naming.md](../naming.md) |
+| `<dimName>` | a name for the type the copies share; see [naming.md](../device/peripheral/naming.md) |
 | `<dimArrayIndex>` | names for an array's indices, each an `<enumeratedValue>` with a `<value>` |
 
 `<dimIndex>` is a comma-separated list; any entry may be a range:
@@ -173,7 +173,7 @@ act on them are in [ir/arrays.md](../arrays.md).
 
 The reader only turns the text into labels. How many there are, and whether
 they can end an identifier, is judged when the template is expanded; see
-[ir/arrays.md](../arrays.md#rule-4-labels-come-from-dimindex-else-from-0).
+[arrays.md](../device/peripheral/arrays.md#rule-4-labels-come-from-dimindex-else-from-0).
 
 A file that cannot be expanded is refused when it is read, the way a field
 with no bit range is:
@@ -189,7 +189,7 @@ to `UART3`) and reports it; put `%s` in the name to choose where the index goes.
 Nor is a `<dim>` of 0 or a `<dim>` without `<dimIncrement>`: both are stored as
 read and judged by expansion (dropped, or kept as one instance), and a
 `<dimIncrement>` with no `<dim>` is noted by the reader and ignored; see
-[ir/arrays.md](../arrays.md#rule-1-expansion-runs-first-and-only-copies).
+[arrays.md](../device/peripheral/arrays.md#rule-1-expansion-runs-first-and-only-copies).
 
 The stride is not judged here. Whether `<dimIncrement>` fits the element needs
 the resolved register size, which exists only after defaults resolution.
@@ -198,7 +198,7 @@ the resolved register size, which exists only after defaults resolution.
 
 These are read into the IR, but the C header does not use them yet. (The HTML reference
 shows a register's protection and the side effects of registers and fields, and the
-[side-effect rules](../side-effects.md) check them against the access.) On a register:
+[side-effect rules](../device/peripheral/register/side-effects.md) check them against the access.) On a register:
 `<displayName>`, `<dataType>`, `<protection>`, `<modifiedWriteValues>`, `<readAction>` and
 `<writeConstraint>` (`writeAsRead`, `useEnumeratedValues`, `range`). On a field: the last
 three. On an address block: `<protection>`. At device, peripheral and cluster level:
@@ -206,7 +206,7 @@ three. On an address block: `<protection>`. At device, peripheral and cluster le
 allows `<protection>`, except the CPU's SAU configuration (see below). A spelling that
 differs from the schema's only in case is read as the schema's word, and any other value
 outside its list is read as absent; both are noted, for every tag with a closed list (see
-[access.md](../access.md#reading-every-value-is-kept-or-noted)).
+[access.md](../device/access.md#reading-every-value-is-kept-or-noted)).
 
 ## Not read
 
@@ -215,7 +215,7 @@ These are in the SVD schema but do not affect output today:
 | Element | Status |
 |---|---|
 | `alternateCluster` | not parsed |
-| `alternatePeripheral` | not parsed; see [ir/address-blocks.md](../address-blocks.md) |
+| `alternatePeripheral` | not parsed; see [address-blocks.md](../device/peripheral/address-blocks.md) |
 | `<prependToName>`, `<appendToName>` | not applied |
 | `<headerSystemFilename>` | not applied |
 | `<sauRegionsConfig>` (the CPU's SAU regions, with `protectionWhenDisabled`) | not parsed; none of the 2,459 SVD files in three public collections uses it |
@@ -285,7 +285,7 @@ is linked from its heading.
 
 ### Naming precedence
 
-Demonstrates [naming.md](../naming.md#rule-1-type-name-precedence). A peripheral declaring `headerStructName`, so the type is named `can_node_t` rather than `can_t` from its `groupName`.
+Demonstrates [naming.md](../device/peripheral/naming.md#rule-1-type-name-precedence). A peripheral declaring `headerStructName`, so the type is named `can_node_t` rather than `can_t` from its `groupName`.
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -314,7 +314,7 @@ Produces [this C](../targets/c.md#naming-precedence).
 
 ### One group becoming two types
 
-Demonstrates [naming.md](../naming.md#rule-2-naming-the-types-when-one-group-becomes-several). `FPU` and `FPU_CPACR` share `groupName=FPU` but have different registers, so two types are emitted and the peripheral called `FPU` takes the plain name.
+Demonstrates [naming.md](../device/peripheral/naming.md#rule-2-naming-the-types-when-one-group-becomes-several). `FPU` and `FPU_CPACR` share `groupName=FPU` but have different registers, so two types are emitted and the peripheral called `FPU` takes the plain name.
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -344,7 +344,7 @@ Produces [this C](../targets/c.md#one-group-becoming-two-types).
 
 ### Two peripherals sharing one type
 
-Demonstrates [families.md](../families.md#rule-1-grouping-follows-derivedfrom-and-groupname). `UART1` derives from `UART0`, so one struct is emitted with two instance pointers.
+Demonstrates [families.md](../device/peripheral/families.md#rule-1-grouping-follows-derivedfrom-and-groupname). `UART1` derives from `UART0`, so one struct is emitted with two instance pointers.
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -373,7 +373,7 @@ Produces [this C](../targets/c.md#two-peripherals-sharing-one-type).
 
 ### A registers block and a buffer block
 
-Demonstrates [address-blocks.md](../address-blocks.md#rule-1-usage-decides-what-is-emitted). The buffer window becomes one array member, and the size assert covers both blocks.
+Demonstrates [address-blocks.md](../device/peripheral/address-blocks.md#rule-1-usage-decides-what-is-emitted). The buffer window becomes one array member, and the size assert covers both blocks.
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -401,7 +401,7 @@ Produces [this C](../targets/c.md#a-registers-block-and-a-buffer-block).
 
 ### Inherited register properties
 
-Demonstrates [defaults.md](../defaults.md#rule-1-the-inheritance-chain). Neither register declares a size; both take it from the device `<width>`, and `SR` overrides access.
+Demonstrates [defaults.md](../device/defaults.md#rule-1-the-inheritance-chain). Neither register declares a size; both take it from the device `<width>`, and `SR` overrides access.
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -427,7 +427,7 @@ Produces [this C](../targets/c.md#inherited-register-properties).
 
 ### A peripheral array with a register array
 
-Demonstrates [arrays.md](../arrays.md#rule-2-names-is-copies-names-is-an-array). `PWM%s` becomes `PWMA` and `PWMB`, one family; `CC[%s]` is one packed array member with an indexed macro; `DT%s` is two separately placed registers.
+Demonstrates [arrays.md](../device/peripheral/arrays.md#rule-2-names-is-copies-names-is-an-array). `PWM%s` becomes `PWMA` and `PWMB`, one family; `CC[%s]` is one packed array member with an indexed macro; `DT%s` is two separately placed registers.
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -456,7 +456,7 @@ Produces [this C](../targets/c.md#a-peripheral-array-with-a-register-array).
 
 ### A cluster array
 
-Demonstrates [clusters.md](../clusters.md#rule-2-a-cluster-arrays-element-is-padded-to-the-stride). `CH[%s]` becomes one nested type, padded to the stride and size-asserted, used as `CH[DMA_CH_COUNT]`, with indexed macros for its registers.
+Demonstrates [clusters.md](../device/peripheral/cluster/clusters.md#rule-2-a-cluster-arrays-element-is-padded-to-the-stride). `CH[%s]` becomes one nested type, padded to the stride and size-asserted, used as `CH[DMA_CH_COUNT]`, with indexed macros for its registers.
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -487,7 +487,7 @@ Produces [this C](../targets/c.md#a-cluster-array).
 
 ### An alternate register pair
 
-Demonstrates [alternates.md](../alternates.md). `CCMR1_Input` names `CCMR1_Output` as its `alternateRegister`, so the word at `0x0C` is one union `CCMR1` with a member per view, asserted for offset and size, and each view keeps its own field macros.
+Demonstrates [alternates.md](../device/peripheral/alternates.md). `CCMR1_Input` names `CCMR1_Output` as its `alternateRegister`, so the word at `0x0C` is one union `CCMR1` with a member per view, asserted for offset and size, and each view keeps its own field macros.
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>

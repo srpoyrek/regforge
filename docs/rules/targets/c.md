@@ -5,14 +5,14 @@ replace this page and reuse the rules unchanged.
 
 Code: `regforge/writers/c.py`, `regforge/writers/templates/c/`.
 
-How a name chosen in [ir/naming.md](../naming.md) becomes an identifier in
+How a name chosen in [naming.md](../device/peripheral/naming.md) becomes an identifier in
 the header, and what other identifiers point at it.
 
 Code: `regforge/writers/c.py`, `regforge/writers/templates/c/header.h.j2`.
 
 ## File order
 
-The header's blocks come in the order [ir/structure.md](../structure.md)
+The header's blocks come in the order [structure.md](../device/structure.md)
 fixes, each under a banner comment: the file banner, the include guard and
 includes, `Compiler compatibility`, `Device`, `CPU`, `Interrupts`, `NVIC`,
 `Peripherals`, the end guard. Within `Peripherals`, one section per family
@@ -147,8 +147,8 @@ M051 file.
 **Two peripherals in different types have the same name.** The first processed
 takes the alias; the second is skipped for the same reason.
 
-How the member list decided in [ir/address-blocks.md](../address-blocks.md)
-and [ir/address-math.md](../address-math.md) is written as C.
+How the member list decided in [address-blocks.md](../device/peripheral/address-blocks.md)
+and [address-math.md](../device/address-math.md) is written as C.
 
 Code: `regforge/writers/c.py` (`_c_layout`), the header template.
 
@@ -177,7 +177,7 @@ number is written twice and the struct carries no literal; the register macros
 go through the typed instance and repeat none of them. User code has the
 constants for address tables, DMA descriptors and startup assembly, where an
 address must be a constant expression. `_SIZE` appears when the struct has a
-size contract (see [ir/address-blocks.md](../address-blocks.md)) and on a
+size contract (see [address-blocks.md](../device/peripheral/address-blocks.md)) and on a
 single cluster's type, whose contract is its own extent. An instance that shares a type
 gets its own `_COUNT` name as an alias of the family's, `DC_PWMA_CC_COUNT` for
 `DC_PWM_CC_COUNT`, so a loop can be written against the instance.
@@ -303,7 +303,7 @@ volatile uint32_t CC[DC_PWM_CC_COUNT];   /* 0x10  Capture/compare channel */
 ```
 
 This form needs the stride to equal the element size (see
-[ir/address-math.md](../address-math.md)); a larger stride gives flat members
+[address-math.md](../device/address-math.md)); a larger stride gives flat members
 instead, below. The flat macro takes the index, named after the array it
 steps through, and a count is emitted for loop bounds:
 
@@ -384,7 +384,7 @@ typedef struct {
 
 The type is named `<prefix><family>_<cluster>_t`, the cluster's
 `headerStructName` replacing its name when given, and a nested cluster appends
-its own name (`dc_dma_ch_sub_t`); see [ir/naming.md](../naming.md). An array
+its own name (`dc_dma_ch_sub_t`); see [naming.md](../device/peripheral/naming.md). An array
 cluster's element is padded to the stride and the type's size asserted against
 that stride, so the array tiles the vendor's spacing exactly. A single
 cluster's type is asserted against its
@@ -395,7 +395,7 @@ padding its parent computes after it.
 ## Union members
 
 Two registers the source declares at one offset as views of one word
-(`alternateRegister`, see [ir/alternates.md](../alternates.md)) become one
+(`alternateRegister`, see [alternates.md](../device/peripheral/alternates.md)) become one
 named union member, as wide as the widest view. Its name comes from the
 views' common prefix when that is a usable identifier, else from the primary
 view. The union carries the layout constants and is asserted for offset and
@@ -495,7 +495,7 @@ an array over instances correct: when the size matches the spacing between
 instances, `((dc_uart_t *)DC_UART0_BASE)[1]` is `DC_UART1`.
 
 Emitted only when the source supports it; see
-[ir/address-blocks.md](../address-blocks.md) for when it is skipped. An
+[address-blocks.md](../device/peripheral/address-blocks.md) for when it is skipped. An
 array cluster's element type is asserted against `dimIncrement` the same way,
 so `CH[3]` lands where the third channel really is, and a single cluster's
 type against its own extent, `DC_DMA_STAT_SIZE`.
@@ -582,7 +582,7 @@ advisory:
 | 2.5 unused macro | 140 | every `_OFFSET`, `_STRIDE`, `_COUNT`, accessor and field macro |
 | 2.3 unused type | 76 | every `dc_*_t` |
 | 2.4 unused tag | 11 | the struct tags behind them |
-| 19.2 union | 16 | the `alternateRegister` overlays ([alternates.md](../alternates.md)) |
+| 19.2 union | 16 | the `alternateRegister` overlays ([alternates.md](../device/peripheral/alternates.md)) |
 | 11.4 integer to pointer | 8 | the NVIC bank pointers, dereferenced inside the helpers |
 
 Every other rule the addon implements, required and advisory, passes. The
@@ -612,7 +612,7 @@ These are emitted with no `headerDefinitionsPrefix`, so identifiers carry no pre
 
 ### Naming precedence
 
-Demonstrates [naming.md](../naming.md#rule-1-type-name-precedence). A peripheral declaring `headerStructName`, so the type is named `can_node_t` rather than `can_t` from its `groupName`.
+Demonstrates [naming.md](../device/peripheral/naming.md#rule-1-type-name-precedence). A peripheral declaring `headerStructName`, so the type is named `can_node_t` rather than `can_t` from its `groupName`.
 
 From [this SVD](../formats/svd.md#naming-precedence):
 
@@ -654,7 +654,7 @@ typedef can_node_t can_node0_t;
 
 ### One group becoming two types
 
-Demonstrates [naming.md](../naming.md#rule-2-naming-the-types-when-one-group-becomes-several). `FPU` and `FPU_CPACR` share `groupName=FPU` but have different registers, so two types are emitted and the peripheral called `FPU` takes the plain name.
+Demonstrates [naming.md](../device/peripheral/naming.md#rule-2-naming-the-types-when-one-group-becomes-several). `FPU` and `FPU_CPACR` share `groupName=FPU` but have different registers, so two types are emitted and the peripheral called `FPU` takes the plain name.
 
 From [this SVD](../formats/svd.md#one-group-becoming-two-types):
 
@@ -715,7 +715,7 @@ REGFORGE_STATIC_ASSERT(offsetof(fpu_t, FPCAR) == FPU_FPCAR_OFFSET, FPU_FPCAR_OFF
 
 ### Two peripherals sharing one type
 
-Demonstrates [families.md](../families.md#rule-1-grouping-follows-derivedfrom-and-groupname). `UART1` derives from `UART0`, so one struct is emitted with two instance pointers.
+Demonstrates [families.md](../device/peripheral/families.md#rule-1-grouping-follows-derivedfrom-and-groupname). `UART1` derives from `UART0`, so one struct is emitted with two instance pointers.
 
 From [this SVD](../formats/svd.md#two-peripherals-sharing-one-type):
 
@@ -768,7 +768,7 @@ typedef uart_t uart1_t;
 
 ### A registers block and a buffer block
 
-Demonstrates [address-blocks.md](../address-blocks.md#rule-1-usage-decides-what-is-emitted). The buffer window becomes one array member, and the size assert covers both blocks.
+Demonstrates [address-blocks.md](../device/peripheral/address-blocks.md#rule-1-usage-decides-what-is-emitted). The buffer window becomes one array member, and the size assert covers both blocks.
 
 From [this SVD](../formats/svd.md#a-registers-block-and-a-buffer-block):
 
@@ -811,7 +811,7 @@ REGFORGE_STATIC_ASSERT(sizeof(uart0_t) == UART0_SIZE, UART0_SIZE_CHECK, "UART0 s
 
 ### Inherited register properties
 
-Demonstrates [defaults.md](../defaults.md#rule-1-the-inheritance-chain). Neither register declares a size; both take it from the device `<width>`, and `SR` overrides access.
+Demonstrates [defaults.md](../device/defaults.md#rule-1-the-inheritance-chain). Neither register declares a size; both take it from the device `<width>`, and `SR` overrides access.
 
 From [this SVD](../formats/svd.md#inherited-register-properties):
 
@@ -848,7 +848,7 @@ REGFORGE_STATIC_ASSERT(offsetof(misc_t, SR) == MISC_SR_OFFSET, MISC_SR_OFFSET_CH
 
 ### A peripheral array with a register array
 
-Demonstrates [arrays.md](../arrays.md#rule-2-names-is-copies-names-is-an-array). `PWM%s` becomes `PWMA` and `PWMB`, one family; `CC[%s]` is one packed array member with an indexed macro; `DT%s` is two separately placed registers.
+Demonstrates [arrays.md](../device/peripheral/arrays.md#rule-2-names-is-copies-names-is-an-array). `PWM%s` becomes `PWMA` and `PWMB`, one family; `CC[%s]` is one packed array member with an indexed macro; `DT%s` is two separately placed registers.
 
 From [this SVD](../formats/svd.md#a-peripheral-array-with-a-register-array):
 
@@ -932,7 +932,7 @@ typedef pwm_t pwmb_t;
 
 ### A cluster array
 
-Demonstrates [clusters.md](../clusters.md#rule-2-a-cluster-arrays-element-is-padded-to-the-stride). `CH[%s]` becomes one nested type, padded to the stride and size-asserted, used as `CH[DMA_CH_COUNT]`, with indexed macros for its registers.
+Demonstrates [clusters.md](../device/peripheral/cluster/clusters.md#rule-2-a-cluster-arrays-element-is-padded-to-the-stride). `CH[%s]` becomes one nested type, padded to the stride and size-asserted, used as `CH[DMA_CH_COUNT]`, with indexed macros for its registers.
 
 From [this SVD](../formats/svd.md#a-cluster-array):
 
@@ -991,7 +991,7 @@ REGFORGE_STATIC_ASSERT(sizeof(dma_t) == DMA_SIZE, DMA_SIZE_CHECK, "DMA struct si
 
 ### An alternate register pair
 
-Demonstrates [alternates.md](../alternates.md). `CCMR1_Input` names `CCMR1_Output` as its `alternateRegister`, so the word at `0x0C` is one union `CCMR1` with a member per view, asserted for offset and size, and each view keeps its own field macros.
+Demonstrates [alternates.md](../device/peripheral/alternates.md). `CCMR1_Input` names `CCMR1_Output` as its `alternateRegister`, so the word at `0x0C` is one union `CCMR1` with a member per view, asserted for offset and size, and each view keeps its own field macros.
 
 ```c
 /* Peripherals */

@@ -13,10 +13,21 @@ import pytest
 
 DOCS = Path(__file__).resolve().parents[2] / "docs"
 RULES = DOCS / "rules"
+#: The folders of the pipeline's two sides; their pages are not rules.
+SIDES = ("formats", "targets")
 
 
 def _pages() -> list[Path]:
     return sorted(DOCS.rglob("*.md"))
+
+
+def _rule_pages() -> list[Path]:
+    """The pages that state a rule: all of rules/ but the index and the two sides."""
+    return [
+        page
+        for page in sorted(RULES.rglob("*.md"))
+        if page.name != "README.md" and page.relative_to(RULES).parts[0] not in SIDES
+    ]
 
 
 def _anchors(path: Path) -> set[str]:
@@ -59,9 +70,7 @@ def test_every_rule_page_routes_to_a_format_and_a_target():
     # must say where its input is read and where its output is spelled, so adding
     # a format or a target is a matter of following those links.
     missing: list[str] = []
-    for page in sorted(RULES.glob("*.md")):
-        if page.name == "README.md":
-            continue
+    for page in _rule_pages():
         text = page.read_text(encoding="utf-8")
         if "formats/" not in text:
             missing.append(f"{page.name}: no link to an input format")

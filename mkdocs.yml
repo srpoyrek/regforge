@@ -31,29 +31,36 @@ markdown_extensions:
   - admonition
   - pymdownx.superfences
 
-# Mirrors docs/rules/: the rules, then one entry per input format, then one per
-# output target. A new format or target is one line under its heading.
+# Mirrors docs/rules/: the rules by element, top down (device, peripheral, register, field,
+# enumerated set, with the cluster beside the register), then one entry per input format, then
+# one per output target. A new format or target is one line under its heading.
 nav:
   - Home: index.md
   - Rules:
       - Overview: rules/README.md
-      - Output structure: rules/structure.md
-      - Naming: rules/naming.md
-      - Families: rules/families.md
-      - Address blocks: rules/address-blocks.md
-      - Interrupts: rules/interrupts.md
-      - Defaults: rules/defaults.md
-      - Address math: rules/address-math.md
-      - Arrays: rules/arrays.md
-      - Clusters: rules/clusters.md
-      - Alternate registers: rules/alternates.md
-      - Derived registers and sets: rules/derived.md
-      - Bits: rules/bits.md
-      - Fields: rules/fields.md
-      - Enumerated values: rules/enums.md
-      - Side effects: rules/side-effects.md
-      - Access: rules/access.md
-      - Data types: rules/data-types.md
+      - Device:
+          - Output structure: rules/device/structure.md
+          - Defaults: rules/device/defaults.md
+          - Address math: rules/device/address-math.md
+          - Access: rules/device/access.md
+          - Peripheral:
+              - Naming: rules/device/peripheral/naming.md
+              - Families: rules/device/peripheral/families.md
+              - Address blocks: rules/device/peripheral/address-blocks.md
+              - Interrupts: rules/device/peripheral/interrupts.md
+              - Arrays: rules/device/peripheral/arrays.md
+              - Derived registers and sets: rules/device/peripheral/derived.md
+              - Alternate registers: rules/device/peripheral/alternates.md
+              - Cluster:
+                  - Clusters: rules/device/peripheral/cluster/clusters.md
+              - Register:
+                  - Bits: rules/device/peripheral/register/bits.md
+                  - Data types: rules/device/peripheral/register/data-types.md
+                  - Side effects: rules/device/peripheral/register/side-effects.md
+                  - Field:
+                      - Fields: rules/device/peripheral/register/field/fields.md
+                      - Enumerated set:
+                          - Enumerated values: rules/device/peripheral/register/field/enum_set/enums.md
   - Input formats:
       - CMSIS-SVD: rules/formats/svd.md
   - Output targets:

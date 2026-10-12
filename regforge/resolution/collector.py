@@ -13,10 +13,12 @@ from collections.abc import Iterator
 from regforge.finding import Finding
 from regforge.ir import Device, Peripheral, Register, walk_clusters
 from regforge.resolution.base import Resolution
-from regforge.resolution.data_type import DataTypeResolution
-from regforge.resolution.field import FieldResolution
-from regforge.resolution.modified_write_values import ModifiedWriteValuesResolution
-from regforge.resolution.read_action import ReadActionResolution
+from regforge.resolution.device.peripheral.register.data_type import DataTypeResolution
+from regforge.resolution.device.peripheral.register.field.field import FieldResolution
+from regforge.resolution.device.peripheral.register.modified_write_values import (
+    ModifiedWriteValuesResolution,
+)
+from regforge.resolution.device.peripheral.register.read_action import ReadActionResolution
 
 
 def _registers(peripheral: Peripheral) -> Iterator[tuple[str, Register]]:

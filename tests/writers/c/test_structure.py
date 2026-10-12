@@ -1,4 +1,4 @@
-"""The generated file follows the fixed block order of docs/rules/structure.md."""
+"""The generated file follows the fixed block order of docs/rules/device/structure.md."""
 
 from regforge.writers.c import CWriter
 
