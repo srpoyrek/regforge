@@ -1,7 +1,7 @@
 """Access: the access policy of a register or field, and what it allows."""
 
 from regforge.ir import Access
-from regforge.ir.access import Access as AccessFromModule
+from regforge.ir.device.access import Access as AccessFromModule
 
 
 def test_values_are_spelled_as_in_svd():

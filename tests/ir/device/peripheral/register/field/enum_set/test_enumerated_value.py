@@ -1,7 +1,9 @@
 """EnumeratedValue: a name for one number a field's bits can hold."""
 
 from regforge.ir import EnumeratedValue, EnumSet, Field
-from regforge.ir.enumerated_value import EnumeratedValue as EnumeratedValueFromModule
+from regforge.ir.device.peripheral.register.field.enum_set.enumerated_value import (
+    EnumeratedValue as EnumeratedValueFromModule,
+)
 
 
 def test_holds_a_name_and_the_number_it_stands_for():

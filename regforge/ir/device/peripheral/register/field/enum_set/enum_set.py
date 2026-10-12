@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from regforge.ir.enum_usage import EnumUsage
+from regforge.ir.device.peripheral.register.field.enum_set.enum_usage import EnumUsage
 
 if TYPE_CHECKING:
     from regforge.ir import EnumeratedValue

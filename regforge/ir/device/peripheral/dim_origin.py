@@ -16,7 +16,7 @@ class DimOrigin:
     Expanding a ``DATA%s`` template whose ``<dim>`` is 4 leaves four ordinary elements,
     ``DATA0`` to ``DATA3``, with no ``Dim`` on them. Each one keeps a ``DimOrigin``, so
     the count, step and labels of the original declaration are not lost and the compact
-    reading can be rebuilt (see :func:`~regforge.ir.array_group.compact`).
+    reading can be rebuilt (see :func:`~regforge.ir.device.peripheral.array_group.compact`).
 
     Attributes:
         template: The template's name as written, ``"DATA%s"``.

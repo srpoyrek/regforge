@@ -237,3 +237,13 @@ def test_runs_may_reach_past_a_register_for_the_caller_to_judge():
 def test_runs_agree_with_fits_in():
     field = Field("A", 0, 4, dim=Dim(9, 4, array=True))
     assert field.runs()[-1][1] == 35 and not field.fits_in(32) and field.fits_in(36)
+
+
+def test_the_mask_is_positioned_where_the_field_sits():
+    assert Field("A", bit_offset=0, bit_width=2).mask == 0x3
+    assert Field("B", bit_offset=2, bit_width=2).mask == 0xC
+    assert Field("C", bit_offset=8, bit_width=8).mask == 0xFF00
+
+
+def test_a_field_as_wide_as_the_register_has_a_full_mask():
+    assert Field("D", bit_offset=0, bit_width=32).mask == 0xFFFFFFFF

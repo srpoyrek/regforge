@@ -2,7 +2,7 @@
 
 A register is the addressable word of the hardware map. ``size`` is how many bits it
 has; its :class:`~regforge.ir.Field` objects are named groups of those bits. See
-:mod:`regforge.ir.bit` for the view that makes the bits themselves explicit.
+:class:`~regforge.ir.Bit` for the view that makes the bits themselves explicit.
 """
 
 from __future__ import annotations
@@ -10,8 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from regforge.ir.access import Access
-from regforge.ir.bit import bits as _bits
+from regforge.ir.device.access import Access
+from regforge.ir.device.peripheral.register.bit import bits as _bits
 
 if TYPE_CHECKING:
     from regforge.ir import (
@@ -23,8 +23,8 @@ if TYPE_CHECKING:
         ReadAction,
         WriteConstraint,
     )
-    from regforge.ir.bit import Bit
-    from regforge.ir.dim_origin import DimOrigin
+    from regforge.ir.device.peripheral.dim_origin import DimOrigin
+    from regforge.ir.device.peripheral.register.bit import Bit
 
 
 @dataclass
@@ -105,7 +105,7 @@ class Register:
         return self.size
 
     def bits(self) -> list[Bit]:
-        """Every bit of the register, least-significant first (see :mod:`regforge.ir.bit`)."""
+        """Every bit of the register, least-significant first (see :class:`~regforge.ir.Bit`)."""
         return _bits(self)
 
     @property

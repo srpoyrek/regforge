@@ -3,7 +3,7 @@
 import pytest
 
 from regforge.ir import Dim, EnumeratedValue
-from regforge.ir.dim import Dim as DimFromModule
+from regforge.ir.device.peripheral.dim import Dim as DimFromModule
 
 
 def test_labels_default_to_numbers_from_zero():

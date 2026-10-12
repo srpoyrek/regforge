@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Generic, Protocol, TypeVar
 
 if TYPE_CHECKING:
     from regforge.ir import Dim
-    from regforge.ir.dim_origin import DimOrigin
+    from regforge.ir.device.peripheral.dim_origin import DimOrigin
 
 
 class _Copy(Protocol):

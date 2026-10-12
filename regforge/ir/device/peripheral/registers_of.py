@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Final, overload
 
-from regforge.ir.alternate_set import AlternateSet
+from regforge.ir.device.peripheral.alternate_set import AlternateSet
 
 if TYPE_CHECKING:
     from regforge.ir import Register

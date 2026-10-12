@@ -1,9 +1,9 @@
 """A field: a named group of adjacent bits inside a register.
 
 A field is recorded only as a position (``bit_offset``, ``bit_width``) over the
-bits its :class:`~regforge.ir.Register` already has; see :mod:`regforge.ir.bit` for
-the view that makes those bits explicit. Its enumerated values name the number the
-grouped bits hold.
+bits its :class:`~regforge.ir.Register` already has; see :class:`~regforge.ir.Bit` for the
+view that makes those bits explicit. Its enumerated values name the number the grouped bits
+hold.
 """
 
 from __future__ import annotations
@@ -11,8 +11,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from regforge.ir.access import Access
-from regforge.ir.enum_usage import EnumUsage
+from regforge.ir.device.access import Access
+from regforge.ir.device.peripheral.register.field.enum_set.enum_usage import EnumUsage
 
 if TYPE_CHECKING:
     from regforge.ir import (
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
         ReadAction,
         WriteConstraint,
     )
-    from regforge.ir.dim_origin import DimOrigin
+    from regforge.ir.device.peripheral.dim_origin import DimOrigin
 
 
 @dataclass

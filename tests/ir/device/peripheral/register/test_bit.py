@@ -3,7 +3,7 @@
 import pytest
 
 from regforge.ir import Access, Dim, Field, Register
-from regforge.ir.bit import bits, claims
+from regforge.ir.device.peripheral.register.bit import bits, claims
 
 
 def _ctrl() -> Register:

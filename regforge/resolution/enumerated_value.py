@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from regforge.finding import Finding, Severity
 from regforge.ir import EnumeratedValue
-from regforge.ir.enum_set import MAX_LISTED_BITS
+from regforge.ir.device.peripheral.register.field.enum_set.enum_set import MAX_LISTED_BITS
 from regforge.resolution.collision import CollisionResolution
 from regforge.resolution.placeholder import is_placeholder_name
 

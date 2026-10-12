@@ -13,7 +13,7 @@ from regforge.ir import (
     Register,
     WriteConstraint,
 )
-from regforge.ir.register import Register as RegisterFromModule
+from regforge.ir.device.peripheral.register.register import Register as RegisterFromModule
 
 
 def test_holds_its_name_and_offset_and_leaves_the_rest_unresolved():
