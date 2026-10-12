@@ -38,8 +38,6 @@ class RegisterHtml(ElementHtml):
         notes = effects(register)
         if register.protection is not None:
             notes.append(protection_text(register.protection))
-        if register.data_type is not None:
-            notes.append(f"accessed as {register.data_type.value}")
         own = array_note(register, "units")
         array = " -- ".join(n for n in (placed.note, own) if n) or None
         return self._fill(
@@ -51,6 +49,7 @@ class RegisterHtml(ElementHtml):
             address=hex_(peripheral.base_address + placed.offset, facts.address_digits),
             size=NO_VALUE if register.size is None else f"{register.size} bits",
             access=access_label(register.access),
+            data_type=None if register.data_type is None else register.data_type.value,
             reset=register_reset(register),
             reset_mask=register_reset_mask(register),
             description=register.description,

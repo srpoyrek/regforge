@@ -122,6 +122,17 @@ warn: P.R.F: the read-write set and the read set both describe reads
 | a read-write set and a write set | `both describe writes` |
 | two read-write sets | `both describe reads and writes` |
 
+## Rule 6: a set must not describe what its field's access forbids
+
+A set that describes only writes on a field that cannot be written, or only reads on a field
+that cannot be read, contradicts the field: a `WARNING`. A set with no usage describes both,
+which is the schema's default, so it is never reported. The set class is handed the field's
+access and passes it to the usage class; see [access.md](access.md#rule-2-a-set-must-not-describe-what-the-access-forbids).
+
+```
+warn: TIM.CTRL.F: the write set describes writes, but access is read-only
+```
+
 ## In your files
 
 Across the 93 vendor files in the survey (149,100 fields with sets, 154,374 sets, 393,825

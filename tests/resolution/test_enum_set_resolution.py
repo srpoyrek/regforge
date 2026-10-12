@@ -4,7 +4,7 @@ import inspect
 
 import regforge.resolution.enum_set as set_module
 from regforge.finding import Severity
-from regforge.ir import EnumeratedValue, EnumSet, EnumUsage
+from regforge.ir import Access, EnumeratedValue, EnumSet, EnumUsage
 from regforge.resolution import EnumSetResolution
 
 
@@ -161,6 +161,28 @@ def test_a_real_name_repeated_beside_placeholders_is_still_reported():
 def test_placeholders_still_collide_on_a_number():
     findings = _set(_plain("Reserved", 8), _plain("Reserved", 8)).findings()
     assert _messages(findings) == ["P.R.F: value 0x8 is claimed by Reserved and Reserved"]
+
+
+def test_a_set_that_describes_only_what_the_access_forbids_is_a_warning():
+    write_set = EnumSet([_plain("A", 1)], usage=EnumUsage.WRITE)
+    resolution = EnumSetResolution(write_set, 4, "P.R.F", Access.READ_ONLY)
+    assert _messages(resolution.findings()) == [
+        "P.R.F: the write set describes writes, but access is read-only"
+    ]
+
+
+def test_a_set_beside_an_access_that_allows_it_is_silent():
+    read_set = EnumSet([_plain("A", 1)], usage=EnumUsage.READ)
+    assert EnumSetResolution(read_set, 4, "P.R.F", Access.READ_ONLY).findings() == []
+
+
+def test_the_default_read_write_set_is_not_reported_on_a_read_only_field():
+    default_set = EnumSet([_plain("A", 1)])
+    assert EnumSetResolution(default_set, 4, "P.R.F", Access.READ_ONLY).findings() == []
+
+
+def test_a_set_given_no_access_is_judged_on_its_entries_alone():
+    assert _set(_plain("A", 1), usage=EnumUsage.WRITE).findings() == []
 
 
 # --- one set beside another -----------------------------------------------------------

@@ -22,13 +22,13 @@ class RegisterParser(ElementParser):
 
     def __init__(self, context: ParseContext) -> None:
         super().__init__(context)
-        self._access = AccessParser()
-        self._data_type = DataTypeParser()
+        self._access = AccessParser(context)
+        self._data_type = DataTypeParser(context)
         self._dim = DimParser(context)
         self._field = FieldParser(context)
-        self._modified_write_values = ModifiedWriteValuesParser()
-        self._protection = ProtectionParser()
-        self._read_action = ReadActionParser()
+        self._modified_write_values = ModifiedWriteValuesParser(context)
+        self._protection = ProtectionParser(context)
+        self._read_action = ReadActionParser(context)
         self._write_constraint = WriteConstraintParser()
 
     def parse(self, element: ET.Element) -> Register:

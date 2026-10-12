@@ -5,6 +5,7 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 
 from regforge.ir import EnumSet
+from regforge.readers.svd.element_parser import ParseContext
 from regforge.readers.svd.enum_usage import EnumUsageParser
 from regforge.readers.svd.enumerated_value import EnumeratedValueParser
 from regforge.readers.svd.primitives import child_text
@@ -13,9 +14,9 @@ from regforge.readers.svd.primitives import child_text
 class EnumSetParser:
     """Reads one ``<enumeratedValues>`` block as an :class:`~regforge.ir.EnumSet`."""
 
-    def __init__(self) -> None:
+    def __init__(self, context: ParseContext | None = None) -> None:
         self._value = EnumeratedValueParser()
-        self._usage = EnumUsageParser()
+        self._usage = EnumUsageParser(context)
 
     def parse(self, element: ET.Element) -> EnumSet:
         """The set ``element`` describes: its values and its own settings."""

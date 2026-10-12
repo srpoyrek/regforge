@@ -591,7 +591,9 @@ def check_element_rules(device: Device) -> list[Finding]:
     register's width, two fields on one bit or with one name, and in each field's sets an
     entry the field cannot hold, entries on one number, a repeated entry name and two sets
     of one direction. A write behaviour beside an access that cannot write, and a read
-    action beside one that cannot read, are reported on a field or a register. The other
+    action beside one that cannot read, are reported on a field or a register; so are a
+    field whose access goes beyond its register's, a set that describes only what its
+    field's access forbids, and a data type of another width than its register. The other
     elements keep their rules in the checks above until they get a resolution class of
     their own.
     """

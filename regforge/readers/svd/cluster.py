@@ -18,9 +18,9 @@ class ClusterParser(ElementParser):
 
     def __init__(self, context: ParseContext) -> None:
         super().__init__(context)
-        self._access = AccessParser()
+        self._access = AccessParser(context)
         self._dim = DimParser(context)
-        self._protection = ProtectionParser()
+        self._protection = ProtectionParser(context)
         self._register = RegisterParser(context)
 
     def parse(self, element: ET.Element) -> Cluster:

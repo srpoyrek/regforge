@@ -301,3 +301,36 @@ def test_effects_that_agree_with_the_access_are_not_warned_about_on_the_command_
     )
     assert main([str(svd), "--no-provenance"]) == ExitCode.OK
     assert "describes a" not in capsys.readouterr().err
+
+
+def test_a_field_beyond_its_registers_access_is_warned_about_on_the_command_line(tmp_path, capsys):
+    svd = _register_svd(
+        tmp_path,
+        "<access>read-only</access><fields><field><name>ERR</name><bitOffset>0</bitOffset>"
+        "<bitWidth>1</bitWidth><access>read-write</access></field></fields>",
+    )
+    assert main([str(svd), "--no-provenance"]) == ExitCode.OK  # a warning, not a refusal
+    err = capsys.readouterr().err
+    assert "warn: TIM.CTRL.ERR: access is read-write, but its register is read-only" in err
+
+
+def test_a_misspelt_access_is_read_and_noted_on_the_command_line(tmp_path, capsys):
+    svd = _register_svd(tmp_path, "<access>read-writeonce</access>")
+    assert main([str(svd), "--no-provenance"]) == ExitCode.OK
+    err = capsys.readouterr().err
+    assert "warn: CTRL: <access>read-writeonce</access> read as read-writeOnce" in err
+    assert "access unspecified" not in err  # it was read, not lost
+
+
+def test_an_access_the_schema_does_not_know_is_noted_on_the_command_line(tmp_path, capsys):
+    svd = _register_svd(tmp_path, "<access>write</access>")
+    assert main([str(svd), "--no-provenance"]) == ExitCode.OK
+    err = capsys.readouterr().err
+    assert "warn: CTRL: <access>write</access> is not a CMSIS-SVD value -- ignored" in err
+
+
+def test_a_data_type_of_another_width_is_warned_about_on_the_command_line(tmp_path, capsys):
+    svd = _register_svd(tmp_path, "<access>read-write</access><dataType>uint16_t</dataType>")
+    assert main([str(svd), "--no-provenance"]) == ExitCode.OK
+    err = capsys.readouterr().err
+    assert "warn: TIM.CTRL: dataType uint16_t is 16 bits wide, but the register is 8 bits" in err

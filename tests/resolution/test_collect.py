@@ -4,6 +4,7 @@ from regforge.finding import Finding, Severity
 from regforge.ir import (
     Access,
     Cluster,
+    DataType,
     Device,
     Dim,
     EnumeratedValue,
@@ -232,3 +233,22 @@ def test_a_register_with_no_resolved_size_has_no_effects_judged():
         "R", 0, access=Access.READ_ONLY, modified_write_values=ModifiedWriteValues.CLEAR
     )
     assert _of(register) == []
+
+
+def test_a_field_is_judged_against_the_access_of_its_register():
+    field = Field("F", 0, 1, access=Access.READ_WRITE)
+    register = Register("R", 0, size=8, access=Access.READ_ONLY, fields=[field])
+    assert _of(register) == ["P.R.F: access is read-write, but its register is read-only"]
+
+
+def test_a_data_type_of_another_width_than_the_register_is_reported():
+    register = Register("R", 0, size=32, data_type=DataType.UINT16)
+    assert _of(register) == ["P.R: dataType uint16_t is 16 bits wide, but the register is 32 bits"]
+
+
+def test_a_data_type_as_wide_as_the_register_is_fine():
+    assert _of(Register("R", 0, size=32, data_type=DataType.UINT32)) == []
+
+
+def test_a_pointer_data_type_is_not_compared_with_the_register_size():
+    assert _of(Register("R", 0, size=32, data_type=DataType.UINT8_PTR)) == []

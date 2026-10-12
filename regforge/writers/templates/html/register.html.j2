@@ -5,6 +5,9 @@
 <span>Address <b class="mono">{{ address }}</b></span>
 <span>Size <b>{{ size }}</b></span>
 <span>Access <b>{{ access }}</b></span>
+{% if data_type %}
+<span>Type <b class="mono">{{ data_type }}</b></span>
+{% endif %}
 <span>Reset <b class="mono">{{ reset }}</b></span>
 {% if reset_mask %}
 <span>Reset mask <b class="mono">{{ reset_mask }}</b></span>

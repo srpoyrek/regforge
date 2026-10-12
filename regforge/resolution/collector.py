@@ -13,6 +13,7 @@ from collections.abc import Iterator
 from regforge.finding import Finding
 from regforge.ir import Device, Peripheral, Register, walk_clusters
 from regforge.resolution.base import Resolution
+from regforge.resolution.data_type import DataTypeResolution
 from regforge.resolution.field import FieldResolution
 from regforge.resolution.modified_write_values import ModifiedWriteValuesResolution
 from regforge.resolution.read_action import ReadActionResolution
@@ -28,9 +29,11 @@ def _registers(peripheral: Peripheral) -> Iterator[tuple[str, Register]]:
 
 
 def _effects(register: Register, where: str) -> list[Finding]:
-    """What the effect classes find in the register's own write behaviour and read action.
+    """What the element classes find in the register's own settings.
 
-    This stands in for the register's own class, as the walk of its fields does.
+    These are its write behaviour, its read action and its data type, each judged
+    against what is written beside it. This stands in for the register's own class, as
+    the walk of its fields does.
     """
     effects: list[Resolution] = []
     if register.modified_write_values is not None:
@@ -39,6 +42,8 @@ def _effects(register: Register, where: str) -> list[Finding]:
         )
     if register.read_action is not None:
         effects.append(ReadActionResolution(register.read_action, register.access, where))
+    if register.data_type is not None:
+        effects.append(DataTypeResolution(register.data_type, register.size, where))
     return [finding for effect in effects for finding in effect.findings()]
 
 
@@ -48,7 +53,7 @@ def _fields(register: Register, size: int, where: str) -> list[Finding]:
     This walk stands in for the register's own class: the register will pick the pairs of
     fields to compare, and each field hands the bit class the bits it shares with the other.
     """
-    fields = [FieldResolution(field, size, where) for field in register.fields]
+    fields = [FieldResolution(field, size, where, register.access) for field in register.fields]
     findings = FieldResolution.check_all(fields)
     for index, first in enumerate(fields):
         for second in fields[index + 1 :]:

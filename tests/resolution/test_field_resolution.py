@@ -464,6 +464,84 @@ def test_each_copy_of_a_template_has_its_effects_judged():
     ]
 
 
+# --- the field's access beside its register's -------------------------------------------
+
+
+def _within(field: Field, register_access: Access | None, width: int = 8) -> FieldResolution:
+    return FieldResolution(field, width, "P.R", register_access)
+
+
+def test_a_field_that_can_be_written_in_a_read_only_register_is_reported():
+    field = Field("F", 0, 1, access=Access.READ_WRITE)
+    assert _messages(_within(field, Access.READ_ONLY).findings()) == [
+        "P.R.F: access is read-write, but its register is read-only"
+    ]
+
+
+def test_a_field_with_a_narrower_access_than_its_register_is_fine():
+    field = Field("F", 0, 1, access=Access.READ_ONLY)
+    assert _within(field, Access.READ_WRITE).findings() == []
+
+
+def test_a_field_with_no_register_access_to_compare_with_is_fine():
+    assert _res(Field("F", 0, 1, access=Access.READ_WRITE)).findings() == []
+
+
+def test_an_array_names_the_path_with_its_count_for_its_access():
+    field = Field("OD", 0, 1, access=Access.WRITE_ONLY, dim=Dim(4, 2, array=True))
+    assert _messages(_within(field, Access.READ_ONLY).findings()) == [
+        "P.R.OD[4]: access is write-only, but its register is read-only"
+    ]
+
+
+def test_the_sets_of_a_field_are_judged_against_its_own_access():
+    write_set = EnumSet([EnumeratedValue("A", 1)], usage=EnumUsage.WRITE)
+    field = Field("F", 0, 2, access=Access.READ_ONLY, enum_sets=[write_set])
+    assert _messages(_res(field).findings()) == [
+        "P.R.F: the write set describes writes, but access is read-only"
+    ]
+
+
+def test_the_width_is_reported_first_then_the_access_then_the_sets_then_the_effects():
+    field = Field(
+        "F",
+        6,
+        4,
+        access=Access.WRITE_ONLY,
+        read_action=ReadAction.CLEAR,
+        enum_sets=[EnumSet([EnumeratedValue("A", 1), EnumeratedValue("A", 2)])],
+    )
+    assert _messages(_within(field, Access.READ_ONLY).findings()) == [
+        "P.R.F: bits 6..9 run past the 8-bit register",
+        "P.R.F: access is write-only, but its register is read-only",
+        "P.R.F: the name A is used by 2 entries (0x1, 0x2)",
+        "P.R.F: readAction clear describes a read, but access is write-only",
+    ]
+
+
+def test_the_content_findings_leave_the_width_to_check_all():
+    field = Field("F", 6, 4, access=Access.READ_WRITE)
+    assert _messages(_within(field, Access.READ_ONLY).content_findings()) == [
+        "P.R.F: access is read-write, but its register is read-only"
+    ]
+
+
+def test_check_all_asks_every_field_for_its_access_a_copy_of_a_template_included():
+    def copy(name: str) -> Field:
+        return Field(name, 0, 1, access=Access.READ_WRITE, expanded_from="M%s")
+
+    fields = [
+        _within(Field("F", 0, 1, access=Access.READ_WRITE), Access.READ_ONLY),
+        _within(copy("M0"), Access.READ_ONLY),
+        _within(copy("M1"), Access.READ_ONLY),
+    ]
+    assert _messages(FieldResolution.check_all(fields)) == [
+        "P.R.F: access is read-write, but its register is read-only",
+        "P.R.M0: access is read-write, but its register is read-only",
+        "P.R.M1: access is read-write, but its register is read-only",
+    ]
+
+
 # --- layering ----------------------------------------------------------------------
 
 

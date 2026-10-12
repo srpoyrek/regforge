@@ -20,11 +20,11 @@ class FieldParser(ElementParser):
 
     def __init__(self, context: ParseContext) -> None:
         super().__init__(context)
-        self._access = AccessParser()
+        self._access = AccessParser(context)
         self._dim = DimParser(context)
-        self._enum_set = EnumSetParser()
-        self._modified_write_values = ModifiedWriteValuesParser()
-        self._read_action = ReadActionParser()
+        self._enum_set = EnumSetParser(context)
+        self._modified_write_values = ModifiedWriteValuesParser(context)
+        self._read_action = ReadActionParser(context)
         self._write_constraint = WriteConstraintParser()
 
     def bits(self, element: ET.Element) -> tuple[int, int]:

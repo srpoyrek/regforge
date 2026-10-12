@@ -5,6 +5,7 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 
 from regforge.ir import AddressBlock
+from regforge.readers.svd.element_parser import ParseContext
 from regforge.readers.svd.primitives import child_int, child_text
 from regforge.readers.svd.protection import ProtectionParser
 
@@ -12,8 +13,8 @@ from regforge.readers.svd.protection import ProtectionParser
 class AddressBlockParser:
     """Reads one ``<addressBlock>`` as a :class:`~regforge.ir.AddressBlock`."""
 
-    def __init__(self) -> None:
-        self._protection = ProtectionParser()
+    def __init__(self, context: ParseContext | None = None) -> None:
+        self._protection = ProtectionParser(context)
 
     def parse(self, element: ET.Element) -> AddressBlock:
         """The block ``element`` describes."""

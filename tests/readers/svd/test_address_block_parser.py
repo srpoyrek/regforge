@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 
 from regforge.ir import Protection
 from regforge.readers.svd.address_block import AddressBlockParser
+from regforge.readers.svd.element_parser import ParseContext
 
 
 def _el(xml: str) -> ET.Element:
@@ -33,3 +34,9 @@ def test_a_block_that_says_nothing_about_protection_has_none():
 def test_a_protection_the_schema_does_not_list_is_read_as_absent():
     block = AddressBlockParser().parse(_el("<b><protection>x</protection></b>"))
     assert block.protection is None
+
+
+def test_a_protection_the_schema_does_not_list_is_noted_when_there_is_a_context():
+    context = ParseContext()
+    AddressBlockParser(context).parse(_el("<b><protection>x</protection></b>"))
+    assert context.warnings == ["b: <protection>x</protection> is not a CMSIS-SVD value -- ignored"]

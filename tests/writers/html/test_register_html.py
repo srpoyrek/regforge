@@ -79,6 +79,26 @@ def test_it_notes_what_reading_and_writing_do():
         assert text in html
 
 
+def test_the_data_type_is_in_the_header_line_and_not_a_note():
+    register = _ctrl()
+    register.data_type = DataType.INT32
+    html = _renderer().render(_peripheral(), _placed(register), FACTS)
+    assert '<span>Type <b class="mono">int32_t</b></span>' in html
+    assert "accessed as" not in html
+
+
+def test_a_register_without_a_data_type_has_no_type_in_its_header():
+    html = _renderer().render(_peripheral(), _placed(), FACTS)
+    assert "<span>Type" not in html
+
+
+def test_a_write_once_access_is_written_out():
+    register = _ctrl()
+    register.access = Access.READ_WRITE_ONCE
+    html = _renderer().render(_peripheral(), _placed(register), FACTS)
+    assert "RW (write once)" in html and "can be written only once after reset" in html
+
+
 def test_it_notes_the_cluster_array_it_sits_in():
     html = _renderer().render(_peripheral(), _placed(note="array of 4, 0x10 units apart"), FACTS)
     assert "array of 4, 0x10 units apart" in html

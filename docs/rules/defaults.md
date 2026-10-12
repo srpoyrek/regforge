@@ -63,6 +63,10 @@ If no level declares `access`, regforge uses read-write and reports it:
 warn: MISC.REG: access unspecified at every level -- defaulting to read-write (unverified)
 ```
 
+A value the reader could not read, such as a misspelt `<access>`, is noted by the reader first,
+so the cause is named before this warning (see
+[access.md](access.md#reading-every-value-is-kept-or-noted)).
+
 Access decides whether the member is `const`. A read-only register is emitted as
 `volatile const`, so writing it is a compile error.
 

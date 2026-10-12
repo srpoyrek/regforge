@@ -52,6 +52,8 @@ nav:
       - Fields: rules/fields.md
       - Enumerated values: rules/enums.md
       - Side effects: rules/side-effects.md
+      - Access: rules/access.md
+      - Data types: rules/data-types.md
   - Input formats:
       - CMSIS-SVD: rules/formats/svd.md
   - Output targets:

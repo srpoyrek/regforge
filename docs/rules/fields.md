@@ -16,7 +16,10 @@ compare is for the level above, the register, which will take that walk over fro
 sets, which it hands to the set class one by one and in pairs; see [enums.md](enums.md).
 Two fields compared with each other are judged for the name they share as well as the
 bits. Its write behaviour and read action go to their own classes, with the field's own
-access; see [side-effects.md](side-effects.md).
+access; see [side-effects.md](side-effects.md). That access is also judged beside its
+register's, which the collector hands the field as a plain value; see
+[access.md](access.md). `check_all` asks every field for all of it, a copy of a template
+included.
 
 Code: `regforge/resolution/field.py` (`FieldResolution`), `regforge/resolution/placeholder.py`
 (`is_placeholder_name`), `regforge/ir/field.py` (`Field`, `runs`, `fits_in`),

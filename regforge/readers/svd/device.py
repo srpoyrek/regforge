@@ -18,10 +18,10 @@ class DeviceParser(ElementParser):
 
     def __init__(self, context: ParseContext) -> None:
         super().__init__(context)
-        self._access = AccessParser()
+        self._access = AccessParser(context)
         self._cpu = CpuParser()
         self._peripheral = PeripheralParser(context)
-        self._protection = ProtectionParser()
+        self._protection = ProtectionParser(context)
 
     def parse(self, root: ET.Element) -> Device:
         """The device ``root`` describes.

@@ -8,7 +8,7 @@ Whoever holds several sets of one field decides which pairs to compare.
 from __future__ import annotations
 
 from regforge.finding import Finding, Severity
-from regforge.ir import EnumeratedValue, EnumSet
+from regforge.ir import Access, EnumeratedValue, EnumSet
 from regforge.resolution.base import Resolution
 from regforge.resolution.enum_usage import EnumUsageResolution
 from regforge.resolution.enumerated_value import EnumeratedValueResolution
@@ -23,20 +23,25 @@ class EnumSetResolution(Resolution):
     A name given to two entries is a ``WARNING`` too, since the constants made from them
     would repeat; a placeholder name such as ``Reserved``, which vendors give to every
     unused number, may repeat. A set can have only one catch-all entry, which names the
-    rest (``WARNING``). Numbers are bucketed so a large set is not compared pair by pair;
-    only patterns are compared with every entry.
+    rest (``WARNING``). A set that describes only reads, or only writes, must not sit
+    beside an access that cannot do that (``WARNING``). Numbers are bucketed so a large
+    set is not compared pair by pair; only patterns are compared with every entry.
 
     Attributes:
         enum_set: The set.
         width: The field's width in bits, as a number.
         where: The field's dotted path, ``P.R.F``, which starts every message.
+        access: The access of the field; ``None`` while unresolved.
         label: What the set is called in a message: its name, or ``the read set``.
     """
 
-    def __init__(self, enum_set: EnumSet, width: int, where: str) -> None:
+    def __init__(
+        self, enum_set: EnumSet, width: int, where: str, access: Access | None = None
+    ) -> None:
         self.enum_set = enum_set
         self.width = width
         self.where = where
+        self.access = access
         self.label = enum_set.name or f"the {enum_set.usage.value} set"
 
     def _value(self, entry: EnumeratedValue) -> EnumeratedValueResolution:
@@ -105,7 +110,8 @@ class EnumSetResolution(Resolution):
         findings: list[Finding] = []
         for entry in self.enum_set.values:
             findings += self._value(entry).findings()
-        return findings + self.catch_alls() + self.names() + self.collisions()
+        findings += self.catch_alls() + self.names() + self.collisions()
+        return findings + self.usage().against(self.access)
 
     def compare(self, other: EnumSetResolution) -> list[Finding]:
         """Cross-verify this set with another of the same field: the directions both describe."""

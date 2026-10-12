@@ -42,6 +42,8 @@ rewritten.
 | [fields.md](fields.md) | A field past the register's width, two fields on one bit, two fields with one name |
 | [enums.md](enums.md) | An entry the field cannot hold, two entries on one number, a repeated name, two sets of one direction |
 | [side-effects.md](side-effects.md) | A write behaviour beside an access that cannot write, a read action beside one that cannot read; why protection has no rule |
+| [access.md](access.md) | A field's access beyond its register's, a set beside an access that forbids it, how a misspelt value is read |
+| [data-types.md](data-types.md) | A data type of another width than its register |
 
 ## Input formats
 

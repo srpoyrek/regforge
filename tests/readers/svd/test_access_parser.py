@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 
 from regforge.ir import Access
 from regforge.readers.svd.access import AccessParser
+from regforge.readers.svd.element_parser import ParseContext
 
 
 def _el(xml: str) -> ET.Element:
@@ -27,3 +28,15 @@ def test_a_missing_child_is_read_as_absent():
 
 def test_a_spelling_the_schema_does_not_list_is_read_as_absent():
     assert AccessParser().parse(_el("<x><access>bogus</access></x>")) is None
+
+
+def test_the_spellings_real_vendor_files_use_are_read_or_noted():
+    # Nordic writes read-writeonce, GigaDevice writes write: neither is dropped silently.
+    context = ParseContext()
+    parser = AccessParser(context)
+    assert parser.parse(_el("<x><access>read-writeonce</access></x>")) is Access.READ_WRITE_ONCE
+    assert parser.parse(_el("<x><access>write</access></x>")) is None
+    assert context.warnings == [
+        "x: <access>read-writeonce</access> read as read-writeOnce",
+        "x: <access>write</access> is not a CMSIS-SVD value -- ignored",
+    ]

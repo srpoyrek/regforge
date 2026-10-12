@@ -21,12 +21,12 @@ class PeripheralParser(ElementParser):
 
     def __init__(self, context: ParseContext) -> None:
         super().__init__(context)
-        self._access = AccessParser()
-        self._address_block = AddressBlockParser()
+        self._access = AccessParser(context)
+        self._address_block = AddressBlockParser(context)
         self._cluster = ClusterParser(context)
         self._dim = DimParser(context)
         self._interrupt = InterruptParser()
-        self._protection = ProtectionParser()
+        self._protection = ProtectionParser(context)
         self._register = RegisterParser(context)
 
     def parse(self, element: ET.Element) -> Peripheral:

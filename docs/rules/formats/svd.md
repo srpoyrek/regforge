@@ -203,8 +203,10 @@ shows a register's protection and the side effects of registers and fields, and 
 `<writeConstraint>` (`writeAsRead`, `useEnumeratedValues`, `range`). On a field: the last
 three. On an address block: `<protection>`. At device, peripheral and cluster level:
 `<protection>`, as the default for the registers below. That is every place the schema
-allows `<protection>`, except the CPU's SAU configuration (see below). A value outside the
-schema's list is read as absent.
+allows `<protection>`, except the CPU's SAU configuration (see below). A spelling that
+differs from the schema's only in case is read as the schema's word, and any other value
+outside its list is read as absent; both are noted, for every tag with a closed list (see
+[access.md](../access.md#reading-every-value-is-kept-or-noted)).
 
 ## Not read
 
