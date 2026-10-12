@@ -49,3 +49,12 @@ class ElementHtml:
 
     def _fill(self, template: str, **values: object) -> Markup:
         return Markup(self.context.env.get_template(template).render(**values))
+
+
+class LeafHtml:
+    """Base of the renderers of the small elements that read as a phrase, not as a block.
+
+    An access reads ``RW``, a data type ``int32_t``, a write behaviour "writing 1 clears the
+    bit": there is no template to fill, so a leaf needs no environment and is built on its
+    own. A block renderer (:class:`ElementHtml`) calls the leaves of the element it renders.
+    """

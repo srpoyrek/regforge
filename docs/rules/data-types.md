@@ -13,9 +13,12 @@ register's size as a number; the collector hands it both for each register.
 
 Code: `regforge/resolution/data_type.py`, `regforge/resolution/collector.py` (`_effects`),
 `regforge/ir/data_type.py`, `regforge/readers/svd/data_type.py`,
-`regforge/writers/html/register.py`.
+`regforge/writers/html/device/peripheral/register/data_type.py` (`DataTypeHtml`),
+`regforge/writers/html/device/peripheral/register/register.py`.
 Tests: `tests/resolution/test_data_type_resolution.py`, `tests/resolution/test_collect.py`,
-`tests/readers/svd/test_data_type_parser.py`, `tests/writers/html/test_register_html.py`.
+`tests/readers/svd/test_data_type_parser.py`,
+`tests/writers/html/device/peripheral/register/test_data_type_html.py`,
+`tests/writers/html/device/peripheral/register/test_register_html.py`.
 
 ## Rule 1: a data type must be as wide as its register
 

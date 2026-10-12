@@ -6,7 +6,7 @@ from regforge.ir import Device
 from regforge.provenance import Provenance
 from regforge.writers.base import Writer
 from regforge.writers.html.context import RenderContext
-from regforge.writers.html.device import DeviceHtml
+from regforge.writers.html.device.device import DeviceHtml
 
 
 class HtmlWriter(Writer):

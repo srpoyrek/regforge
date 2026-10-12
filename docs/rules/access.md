@@ -17,7 +17,7 @@ of its content.
 Code: `regforge/resolution/access.py`, `regforge/resolution/field.py` (`access_findings`,
 `content_findings`), `regforge/resolution/enum_usage.py` (`against`),
 `regforge/readers/svd/choice_parser.py`, `regforge/ir/access.py`,
-`regforge/writers/html/wording.py` (`access_label`).
+`regforge/writers/html/device/peripheral/register/access.py` (`AccessHtml`).
 Tests: `tests/resolution/test_access_resolution.py`,
 `tests/resolution/test_field_resolution.py`, `tests/resolution/test_enum_usage_resolution.py`,
 `tests/readers/svd/test_choice_parser.py`, `tests/readers/svd/test_access_parser.py`.
