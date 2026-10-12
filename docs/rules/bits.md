@@ -29,11 +29,11 @@ level: it picks the pairs of fields, gathers what every element's class finds, a
 command line prints it. The other elements still keep
 their rules in the checks; they move to a class of their own one at a time.
 
-Code: `regforge/ir/bit.py` (`Bit`, `bits`, `claims`), `regforge/resolution/bit.py`
+Code: `regforge/ir/device/peripheral/register/bit.py` (`Bit`, `bits`, `claims`), `regforge/resolution/bit.py`
 (`BitResolution`), `regforge/resolution/collision.py` (`CollisionResolution`),
 `regforge/resolution/collector.py` (`collect`), `regforge/check.py`
 (`check_element_rules`).
-Tests: `tests/core/test_bit.py`, `tests/resolution/test_bit_resolution.py`,
+Tests: `tests/ir/device/peripheral/register/test_bit.py`, `tests/resolution/test_bit_resolution.py`,
 `tests/resolution/test_collision.py`, `tests/resolution/test_collect.py`.
 
 ## Rule 1: the first declared field keeps a contested bit

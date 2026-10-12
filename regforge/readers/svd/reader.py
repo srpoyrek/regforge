@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 
 from regforge.ir import Device
 from regforge.readers.base import Reader, Source
-from regforge.readers.svd.device import DeviceParser
+from regforge.readers.svd.device.device import DeviceParser
 from regforge.readers.svd.element_parser import ParseContext
 
 

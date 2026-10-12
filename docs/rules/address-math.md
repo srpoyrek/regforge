@@ -12,7 +12,7 @@ How the resulting members are spelled is in [targets/c.md](targets/c.md#register
 
 Code: `regforge/layout.py`, `regforge/check.py` (`check_address_math`).
 Tests: `tests/core/test_layout.py`, `tests/check/test_address_math.py`,
-`tests/readers/svd/test_address_units.py`.
+`tests/readers/svd/whole_file/test_address_units.py`.
 
 ## Rule 1: offsets are stored in address units and converted at the end
 

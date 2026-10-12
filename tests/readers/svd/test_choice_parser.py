@@ -13,14 +13,18 @@ from regforge.ir import (
     ReadAction,
 )
 from regforge.readers.svd import SvdReader
-from regforge.readers.svd.access import AccessParser
 from regforge.readers.svd.choice_parser import ChoiceParser
-from regforge.readers.svd.data_type import DataTypeParser
+from regforge.readers.svd.device.access import AccessParser
+from regforge.readers.svd.device.peripheral.register.data_type import DataTypeParser
+from regforge.readers.svd.device.peripheral.register.field.enum_set.enum_usage import (
+    EnumUsageParser,
+)
+from regforge.readers.svd.device.peripheral.register.modified_write_values import (
+    ModifiedWriteValuesParser,
+)
+from regforge.readers.svd.device.peripheral.register.read_action import ReadActionParser
+from regforge.readers.svd.device.protection import ProtectionParser
 from regforge.readers.svd.element_parser import ParseContext
-from regforge.readers.svd.enum_usage import EnumUsageParser
-from regforge.readers.svd.modified_write_values import ModifiedWriteValuesParser
-from regforge.readers.svd.protection import ProtectionParser
-from regforge.readers.svd.read_action import ReadActionParser
 
 PARSERS = [
     AccessParser,

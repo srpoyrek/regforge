@@ -22,10 +22,10 @@ register's, which the collector hands the field as a plain value; see
 included.
 
 Code: `regforge/resolution/field.py` (`FieldResolution`), `regforge/resolution/placeholder.py`
-(`is_placeholder_name`), `regforge/ir/field.py` (`Field`, `runs`, `fits_in`),
+(`is_placeholder_name`), `regforge/ir/device/peripheral/register/field/field.py` (`Field`, `runs`, `fits_in`),
 `regforge/resolution/collector.py` (`collect`), `regforge/check.py` (`check_element_rules`).
 Tests: `tests/resolution/test_field_resolution.py`, `tests/resolution/test_placeholder.py`,
-`tests/resolution/test_collect.py`, `tests/core/test_field.py`.
+`tests/resolution/test_collect.py`, `tests/ir/device/peripheral/register/field/test_field.py`.
 
 ## Rule 1: a field past the register's width is an error
 

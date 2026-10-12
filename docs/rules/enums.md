@@ -24,8 +24,8 @@ each its width and path, and compares its sets in pairs. Collisions use the shar
 
 Code: `regforge/resolution/enumerated_value.py`, `regforge/resolution/enum_usage.py`,
 `regforge/resolution/enum_set.py`, `regforge/resolution/placeholder.py`,
-`regforge/resolution/field.py` (`sets`, `enum_findings`), `regforge/ir/enumerated_value.py`,
-`regforge/ir/enum_set.py`.
+`regforge/resolution/field.py` (`sets`, `enum_findings`), `regforge/ir/device/peripheral/register/field/enum_set/enumerated_value.py`,
+`regforge/ir/device/peripheral/register/field/enum_set/enum_set.py`.
 Tests: `tests/resolution/test_enumerated_value_resolution.py`,
 `tests/resolution/test_enum_usage_resolution.py`,
 `tests/resolution/test_enum_set_resolution.py`, `tests/resolution/test_placeholder.py`,

@@ -18,8 +18,8 @@ does the same for a register.
 
 Code: `regforge/resolution/modified_write_values.py`, `regforge/resolution/read_action.py`,
 `regforge/resolution/field.py` (`effects`, `effect_findings`),
-`regforge/resolution/collector.py`, `regforge/ir/modified_write_values.py`,
-`regforge/ir/read_action.py`, `regforge/ir/access.py`.
+`regforge/resolution/collector.py`, `regforge/ir/device/peripheral/register/modified_write_values.py`,
+`regforge/ir/device/peripheral/register/read_action.py`, `regforge/ir/device/access.py`.
 Tests: `tests/resolution/test_modified_write_values_resolution.py`,
 `tests/resolution/test_read_action_resolution.py`,
 `tests/resolution/test_field_resolution.py`, `tests/resolution/test_collect.py`.

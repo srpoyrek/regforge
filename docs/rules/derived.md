@@ -16,7 +16,7 @@ for what it does not carry.
 Code: `regforge/resolve.py` (`resolve_derived`, `_resolve_register_bases`,
 `_resolve_enum_bases`).
 Tests: `tests/resolve/test_derived_registers.py`,
-`tests/resolve/test_derived_enum_sets.py`, `tests/readers/svd/test_register_parser.py`.
+`tests/resolve/test_derived_enum_sets.py`, `tests/readers/svd/device/peripheral/register/test_register_parser.py`.
 
 ## Registers
 

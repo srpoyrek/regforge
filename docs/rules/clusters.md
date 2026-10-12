@@ -11,9 +11,9 @@ its own: a DMA channel's control block, a timer's capture unit. It may nest,
 and it may be an array. It is the only container inside a peripheral; it holds
 registers and clusters, never interrupts, address blocks or fields.
 
-Code: `regforge/ir.py` (`Cluster`), `regforge/layout.py` (`cluster_layout`),
+Code: `regforge/ir/device/peripheral/cluster/cluster.py` (`Cluster`), `regforge/layout.py` (`cluster_layout`),
 `regforge/writers/c.py` (`_cluster_types`).
-Tests: `tests/readers/svd/test_clusters.py`, `tests/core/test_layout.py`,
+Tests: `tests/readers/svd/whole_file/test_clusters.py`, `tests/core/test_layout.py`,
 `tests/writers/c/test_clusters.py`.
 
 ## Rule 1: a cluster is one member of its own type

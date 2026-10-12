@@ -12,11 +12,11 @@ describes the same offset twice, the second register naming the first as its
 `alternateRegister`. STM32 timers do this on every `TIM`. The two are one
 register: regforge keeps both descriptions and emits one union for the word.
 
-Code: `regforge/ir/alternate_set.py` (`AlternateSet`), `regforge/ir/registers_of.py`,
+Code: `regforge/ir/device/peripheral/alternate_set.py` (`AlternateSet`), `regforge/ir/device/peripheral/registers_of.py`,
 `regforge/resolve.py` (`resolve_alternates`), `regforge/layout.py` (`union_naming`,
 the union slot), `regforge/check.py` (`check_alternate_registers`),
 `regforge/writers/c.py`.
-Tests: `tests/core/test_alternate_set.py`, `tests/core/test_registers_of.py`,
+Tests: `tests/ir/device/peripheral/test_alternate_set.py`, `tests/ir/device/peripheral/test_registers_of.py`,
 `tests/resolve/test_alternates.py`, `tests/core/test_alternates_layout.py`,
 `tests/check/test_alternates.py`, `tests/writers/c/test_alternates.py`.
 
