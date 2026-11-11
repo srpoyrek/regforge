@@ -28,5 +28,6 @@ class EnumSetHtml(ElementHtml):
         return self._fill(
             "enum_set.html.j2",
             label=label,
+            name=enum_set.name or enum_set.header_enum_name,
             values=[self._value.render(v, bit_width) for v in enum_set.values],
         )

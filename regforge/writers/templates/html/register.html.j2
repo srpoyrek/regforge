@@ -5,6 +5,9 @@
 <span>Address <b class="mono">{{ address }}</b></span>
 <span>Size <b>{{ size }}</b></span>
 <span>Access <b>{{ access }}</b></span>
+{% if alternate_group %}
+<span>Alternate group <b>{{ alternate_group }}</b></span>
+{% endif %}
 {% if data_type %}
 <span>Type <b class="mono">{{ data_type }}</b></span>
 {% endif %}

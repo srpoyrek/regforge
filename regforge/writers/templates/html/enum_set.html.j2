@@ -1,6 +1,6 @@
 <ul class="enums">
-{% if label %}
-<li class="group">{{ label }} values</li>
+{% if label or name %}
+<li class="group">{% if label %}{{ label }} {% endif %}values{% if name %} ({{ name }}){% endif %}</li>
 {% endif %}
 {% for value in values %}
 {{ value }}

@@ -142,7 +142,9 @@ Licensed under the Apache License, Version 2.0.
               <description>Send a break condition</description>
               <bitOffset>8</bitOffset>
               <bitWidth>1</bitWidth>
+              <!-- Only a headerEnumName: the page falls back to it. -->
               <enumeratedValues>
+                <headerEnumName>uart_brk_t</headerEnumName>
                 <usage>write</usage>
                 <enumeratedValue><name>SEND</name><value>1</value></enumeratedValue>
               </enumeratedValues>
@@ -161,7 +163,9 @@ Licensed under the Apache License, Version 2.0.
               <description>Transmit buffer empty</description>
               <bitOffset>0</bitOffset>
               <bitWidth>1</bitWidth>
+              <!-- A named set: the page puts the name beside the direction. -->
               <enumeratedValues>
+                <name>TXE_Val</name>
                 <usage>read</usage>
                 <enumeratedValue><name>FULL</name><value>0</value></enumeratedValue>
                 <enumeratedValue><name>EMPTY</name><value>1</value></enumeratedValue>

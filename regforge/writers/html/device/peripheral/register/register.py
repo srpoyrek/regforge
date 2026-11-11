@@ -55,6 +55,7 @@ class RegisterHtml(ElementHtml):
             address=hex_(peripheral.base_address + placed.offset, facts.address_digits),
             size=NO_VALUE if register.size is None else f"{register.size} bits",
             access=self._access.label(register.access),
+            alternate_group=register.alternate_group,
             data_type=self._data_type.label(register.data_type),
             reset=self._reset.register_value(register),
             reset_mask=self._reset.register_mask(register),

@@ -39,6 +39,18 @@ def _placed(register=None, note=None):
     return PlacedRegister(register or _ctrl(), "CTRL", 0x10, note)
 
 
+def test_it_names_the_alternate_group_a_register_was_declared_in():
+    grouped = Register("DR", 0x4, size=8, alternate_group="Cal")
+    html = _renderer().render(Peripheral("ADC0", 0x4000_0000), _placed(grouped), FACTS)
+    assert "Alternate group <b>Cal</b>" in html
+
+
+def test_it_names_no_alternate_group_when_the_register_is_in_none():
+    assert "Alternate group" not in _renderer().render(
+        Peripheral("P", 0x4000_0000), _placed(), FACTS
+    )
+
+
 def _peripheral():
     return Peripheral("P", 0x40000000)
 

@@ -28,6 +28,7 @@ ul.notes { margin: 6px 0 6px 18px; padding: 0; color: var(--warn); }
 ul.enums { margin: 6px 0 2px 18px; padding: 0; list-style: none; }
 ul.enums li { margin: 1px 0; }
 ul.enums li.group { color: var(--muted); font-style: italic; }
+ul.enums b { color: var(--ink); font-weight: 600; }
 .alt { color: var(--muted); }
 article.register { margin-bottom: 20px; }
 table.bitmap { width: auto; table-layout: fixed; margin: 8px 0 12px; }
@@ -286,10 +287,39 @@ Licensed under the Apache License, Version 2.0.</pre>
 <p class="desc">Data register</p>
 <table class="bitmap">
 <tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
-<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="fields"><td colspan="23" class="reserved"></td><td colspan="1" class="field">BRK</td><td colspan="8" class="field">DATA</td></tr>
 <tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
 </table>
 
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">[7:0]</td><td>DATA</td><td>RW</td><td class="mono">–</td><td>
+<div class="desc">Received byte on read, byte to send on write</div>
+<ul class="enums">
+<li class="group">read values</li>
+<li><span class="mono">0x0</span> <b>RX_IDLE</b></li>
+
+</ul>
+
+<ul class="enums">
+<li class="group">write values</li>
+<li><span class="mono">0x0</span> <b>TX_NULL</b></li>
+
+</ul>
+
+</td></tr>
+
+<tr><td class="mono">[8]</td><td>BRK</td><td>RW</td><td class="mono">–</td><td>
+<div class="desc">Send a break condition</div>
+<ul class="enums">
+<li class="group">write values (uart_brk_t)</li>
+<li><span class="mono">0x1</span> <b>SEND</b></li>
+
+</ul>
+
+</td></tr>
+
+</table>
 </article>
 
 <article class="register" id="UART0.SR">
@@ -313,7 +343,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <tr><td class="mono">[0]</td><td>TXE</td><td>RO</td><td class="mono">–</td><td>
 <div class="desc">Transmit buffer empty</div>
 <ul class="enums">
-<li class="group">read values</li>
+<li class="group">read values (TXE_Val)</li>
 <li><span class="mono">0x0</span> <b>FULL</b></li>
 
 <li><span class="mono">0x1</span> <b>EMPTY</b></li>
@@ -368,10 +398,39 @@ Licensed under the Apache License, Version 2.0.</pre>
 <p class="desc">Data register</p>
 <table class="bitmap">
 <tr class="numbers"><td>31</td><td>30</td><td>29</td><td>28</td><td>27</td><td>26</td><td>25</td><td>24</td><td>23</td><td>22</td><td>21</td><td>20</td><td>19</td><td>18</td><td>17</td><td>16</td><td>15</td><td>14</td><td>13</td><td>12</td><td>11</td><td>10</td><td>9</td><td>8</td><td>7</td><td>6</td><td>5</td><td>4</td><td>3</td><td>2</td><td>1</td><td>0</td></tr>
-<tr class="fields"><td colspan="32" class="reserved"></td></tr>
+<tr class="fields"><td colspan="23" class="reserved"></td><td colspan="1" class="field">BRK</td><td colspan="8" class="field">DATA</td></tr>
 <tr class="resets"><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
 </table>
 
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td class="mono">[7:0]</td><td>DATA</td><td>RW</td><td class="mono">–</td><td>
+<div class="desc">Received byte on read, byte to send on write</div>
+<ul class="enums">
+<li class="group">read values</li>
+<li><span class="mono">0x0</span> <b>RX_IDLE</b></li>
+
+</ul>
+
+<ul class="enums">
+<li class="group">write values</li>
+<li><span class="mono">0x0</span> <b>TX_NULL</b></li>
+
+</ul>
+
+</td></tr>
+
+<tr><td class="mono">[8]</td><td>BRK</td><td>RW</td><td class="mono">–</td><td>
+<div class="desc">Send a break condition</div>
+<ul class="enums">
+<li class="group">write values (uart_brk_t)</li>
+<li><span class="mono">0x1</span> <b>SEND</b></li>
+
+</ul>
+
+</td></tr>
+
+</table>
 </article>
 
 <article class="register" id="UART1.SR">
@@ -395,7 +454,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <tr><td class="mono">[0]</td><td>TXE</td><td>RO</td><td class="mono">–</td><td>
 <div class="desc">Transmit buffer empty</div>
 <ul class="enums">
-<li class="group">read values</li>
+<li class="group">read values (TXE_Val)</li>
 <li><span class="mono">0x0</span> <b>FULL</b></li>
 
 <li><span class="mono">0x1</span> <b>EMPTY</b></li>
@@ -924,6 +983,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <span>Address <b class="mono">0x40012004</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RO</b></span>
+<span>Alternate group <b>Cal</b></span>
 <span>Reset <b class="mono">–</b></span>
 </div>
 <p class="desc">Calibrated data (alternate group of DR)</p>
@@ -1011,6 +1071,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 <span>Address <b class="mono">0x40012404</b></span>
 <span>Size <b>32 bits</b></span>
 <span>Access <b>RO</b></span>
+<span>Alternate group <b>Cal</b></span>
 <span>Reset <b class="mono">–</b></span>
 </div>
 <p class="desc">Calibrated data (alternate group of DR)</p>
@@ -1743,7 +1804,7 @@ Licensed under the Apache License, Version 2.0.</pre>
 </section>
 
 <footer>
-Generated by regforge 0.0.1 from <b>minimal.svd</b> (sha256 <span class="mono" title="9e25d03e7bfa0409f14a3505de2deeced5e5e72216c8ab50740ae27ac3556f25">9e25d03e7bfa0409</span>).<br>
+Generated by regforge 0.0.1 from <b>minimal.svd</b> (sha256 <span class="mono" title="61a2ab49c1379eb2b6b44abdedfe6999ab594802b3e071b0143a14056e41a26c">61a2ab49c1379eb2</span>).<br>
 Command: <span class="mono">regforge tests/fixtures/svd/minimal.svd -o tests/golden/html/minimal.html</span>
 </footer>
 
