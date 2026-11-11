@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from markupsafe import Markup
 
-from regforge.ir import Field, Register
+from regforge.ir import EnumSet, EnumUsage, Field, Register
 from regforge.writers.html.context import ElementHtml, RenderContext
 from regforge.writers.html.device.peripheral.dim import DimHtml
 from regforge.writers.html.device.peripheral.register.access import AccessHtml
@@ -32,6 +32,12 @@ class FieldHtml(ElementHtml):
         """The field's bits as ``[7:4]``, or ``[3]`` for a single bit."""
         return field_.bit_range if field_.bit_width > 1 else f"[{field_.lsb}]"
 
+    def direction_label(self, enum_set: EnumSet, several: bool) -> str | None:
+        """A one-way set is always named; ``read-write`` only to part it from a sibling."""
+        if enum_set.usage is not EnumUsage.READ_WRITE or several:
+            return enum_set.usage.value
+        return None
+
     def render(self, register: Register, field_: Field) -> Markup:
         """The field's bits, name, access, reset value, description, values and notes."""
         notes = self._side_effects.notes(field_)
@@ -40,7 +46,7 @@ class FieldHtml(ElementHtml):
             notes.insert(0, array)
         several = len(field_.enum_sets) > 1
         sets = [
-            self._enum_set.render(s, s.usage.value if several else None, field_.bit_width)
+            self._enum_set.render(s, self.direction_label(s, several), field_.bit_width)
             for s in field_.enum_sets
             if s.values
         ]

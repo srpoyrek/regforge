@@ -120,12 +120,54 @@ Licensed under the Apache License, Version 2.0.
           <name>DR</name>
           <description>Data register</description>
           <addressOffset>0x00</addressOffset>
+          <fields>
+            <!-- A read set and a write set: the page heads them separately. -->
+            <field>
+              <name>DATA</name>
+              <description>Received byte on read, byte to send on write</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>8</bitWidth>
+              <enumeratedValues>
+                <usage>read</usage>
+                <enumeratedValue><name>RX_IDLE</name><value>0</value></enumeratedValue>
+              </enumeratedValues>
+              <enumeratedValues>
+                <usage>write</usage>
+                <enumeratedValue><name>TX_NULL</name><value>0</value></enumeratedValue>
+              </enumeratedValues>
+            </field>
+            <!-- One write-only set: the page heads it "write values". -->
+            <field>
+              <name>BRK</name>
+              <description>Send a break condition</description>
+              <bitOffset>8</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <usage>write</usage>
+                <enumeratedValue><name>SEND</name><value>1</value></enumeratedValue>
+              </enumeratedValues>
+            </field>
+          </fields>
         </register>
         <register>
           <name>SR</name>
           <description>Status register</description>
           <addressOffset>0x04</addressOffset>
           <access>read-only</access>
+          <fields>
+            <!-- One read-only enum set: the page heads it "read values". -->
+            <field>
+              <name>TXE</name>
+              <description>Transmit buffer empty</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>1</bitWidth>
+              <enumeratedValues>
+                <usage>read</usage>
+                <enumeratedValue><name>FULL</name><value>0</value></enumeratedValue>
+                <enumeratedValue><name>EMPTY</name><value>1</value></enumeratedValue>
+              </enumeratedValues>
+            </field>
+          </fields>
         </register>
       </registers>
     </peripheral>

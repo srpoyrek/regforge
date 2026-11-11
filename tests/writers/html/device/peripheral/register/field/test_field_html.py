@@ -39,6 +39,37 @@ def test_it_names_the_direction_when_a_field_has_a_read_and_a_write_set():
     assert "read values" in html and "write values" in html
 
 
+def test_it_names_the_direction_of_a_lone_read_only_set():
+    read_only = EnumSet(
+        [EnumeratedValue("NotPresent", 0), EnumeratedValue("Present", 1)],
+        usage=EnumUsage.READ,
+    )
+    html = _render(Register("R", 0x0, size=8), Field("OVERRUN", 0, 1, enum_sets=[read_only]))
+    assert "read values" in html
+
+
+def test_it_names_the_direction_of_a_lone_write_only_set():
+    write_only = EnumSet([EnumeratedValue("Set", 1)], usage=EnumUsage.WRITE)
+    html = _render(Register("R", 0x0, size=8), Field("START", 0, 1, enum_sets=[write_only]))
+    assert "write values" in html
+
+
+def test_it_leaves_a_lone_read_write_set_unheaded():
+    both_ways = EnumSet([EnumeratedValue("IN", 0)], usage=EnumUsage.READ_WRITE)
+    html = _render(Register("R", 0x0, size=8), Field("MODE", 0, 2, enum_sets=[both_ways]))
+    assert "read-write values" not in html and 'class="group"' not in html
+
+
+def test_the_direction_label_names_a_one_way_set_and_a_sibling_only_otherwise():
+    renderer = FieldHtml(RenderContext.default())
+    read = EnumSet([EnumeratedValue("IDLE", 0)], usage=EnumUsage.READ)
+    both = EnumSet([EnumeratedValue("IN", 0)], usage=EnumUsage.READ_WRITE)
+    assert renderer.direction_label(read, several=False) == "read"
+    assert renderer.direction_label(read, several=True) == "read"
+    assert renderer.direction_label(both, several=False) is None
+    assert renderer.direction_label(both, several=True) == "read-write"
+
+
 def test_it_warns_about_a_write_one_to_clear_field():
     flag = Field("OVF", 0, 1, modified_write_values=ModifiedWriteValues.ONE_TO_CLEAR)
     html = _render(Register("R", 0x0, size=8), flag)
