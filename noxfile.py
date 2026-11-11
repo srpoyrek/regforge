@@ -1,7 +1,7 @@
 """Task automation for regforge.
 
-Run a single session with ``nox -s <name>``; run the default set (tests and
-lint) with a bare ``nox``. Sessions:
+Run a single session with ``nox -s <name>``; run the default set (coverage,
+lint and types) with a bare ``nox``. Sessions:
 
 * ``tests``   -- run the pytest suite.
 * ``coverage`` -- run the suite under branch coverage, naming the lines no test reaches.
@@ -23,7 +23,7 @@ from pathlib import Path
 
 import nox
 
-nox.options.sessions = ["tests", "lint", "types"]
+nox.options.sessions = ["coverage", "lint", "types"]
 # uv builds each session's environment far faster than virtualenv, so use it
 # where it is installed (it is a dev dependency) and fall back to virtualenv
 # where it is not, rather than failing outright.
@@ -37,6 +37,20 @@ def tests(session: nox.Session) -> None:
     """Run the test suite."""
     session.install("-e", ".[dev]")
     session.run("pytest", *session.posargs)
+
+
+@nox.session
+def coverage(session: nox.Session) -> None:
+    """Run the suite under branch coverage and name the lines no test reaches."""
+    session.install("-e", ".[dev]")
+    session.run(
+        "pytest",
+        "--cov=regforge",
+        "--cov-branch",
+        "--cov-report=term-missing",
+        "--cov-report=xml",
+        *session.posargs,
+    )
 
 
 @nox.session

@@ -1,5 +1,6 @@
 # Continuous integration: tests + lint + the compiler matrix, on Linux and
-# Windows. Free on public repositories (unlimited GitHub-hosted minutes).
+# Windows, with branch coverage in a parallel job. Free on public repositories
+# (unlimited GitHub-hosted minutes).
 #
 # The compile matrix (tests/writers/c/test_compiles.py) picks up whatever
 # compilers each runner provides and skips the rest, so:
@@ -75,3 +76,37 @@ jobs:
       - name: Size report (Linux)
         if: runner.os == 'Linux'
         run: nox -s sizes
+
+  # Its own job, so it runs beside the test matrix instead of doubling its wall clock.
+  coverage:
+    name: coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      # The same compilers as the test job: without them the compile matrix skips and the
+      # number reads lower than the suite actually reaches.
+      - name: Install C/C++ compilers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            gcc clang g++ gcc-arm-none-eabi binutils-arm-none-eabi
+
+      - name: Install nox
+        run: pip install nox uv
+
+      - name: Branch coverage
+        run: nox -s coverage
+
+      # Kept even on failure: a run that fails the threshold is the one worth reading.
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: error
