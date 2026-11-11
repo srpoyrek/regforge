@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 
-from regforge.ir import AlternateSet, Register
+from regforge.ir import Register
 from regforge.readers.svd.device.access import AccessParser
 from regforge.readers.svd.device.peripheral.dim import DimParser
 from regforge.readers.svd.device.peripheral.register.data_type import DataTypeParser
@@ -43,7 +43,8 @@ class RegisterParser(ElementParser):
         return Register(
             name=name,
             derived_from=element.get("derivedFrom"),  # XML attribute, as on a peripheral
-            alternate_group=child_text(element, "alternateGroup"),
+            # A whitespace-only tag strips to "", which is not a group name.
+            alternate_group=child_text(element, "alternateGroup") or None,
             address_offset=child_int(element, "addressOffset", 0),
             size=child_int(element, "size"),
             reset_value=child_int(element, "resetValue"),
@@ -59,11 +60,3 @@ class RegisterParser(ElementParser):
             read_action=self._read_action.parse(element),
             write_constraint=self._write_constraint.parse(element),
         )
-
-    def parse_set(self, element: ET.Element) -> AlternateSet:
-        """The register ``element`` describes, as the set of one view it starts out as.
-
-        The set carries what the file declared about it: ``<alternateRegister>`` is kept as
-        written in ``joins``, for ``resolve_alternates`` to merge once every name is final.
-        """
-        return AlternateSet((self.parse(element),), joins=child_text(element, "alternateRegister"))

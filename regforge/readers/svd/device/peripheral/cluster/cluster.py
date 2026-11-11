@@ -6,8 +6,8 @@ import xml.etree.ElementTree as ET
 
 from regforge.ir import Cluster
 from regforge.readers.svd.device.access import AccessParser
+from regforge.readers.svd.device.peripheral.alternate_set import AlternateSetParser
 from regforge.readers.svd.device.peripheral.dim import DimParser
-from regforge.readers.svd.device.peripheral.register.register import RegisterParser
 from regforge.readers.svd.device.protection import ProtectionParser
 from regforge.readers.svd.element_parser import ElementParser, ParseContext
 from regforge.readers.svd.primitives import child_int, child_text
@@ -20,8 +20,8 @@ class ClusterParser(ElementParser):
         super().__init__(context)
         self._access = AccessParser(context)
         self._dim = DimParser(context)
+        self._alternate_set = AlternateSetParser(context)
         self._protection = ProtectionParser(context)
-        self._register = RegisterParser(context)
 
     def parse(self, element: ET.Element) -> Cluster:
         """The cluster ``element`` describes.
@@ -41,7 +41,7 @@ class ClusterParser(ElementParser):
             default_reset_value=child_int(element, "resetValue"),
             default_reset_mask=child_int(element, "resetMask"),
             default_protection=self._protection.parse(element),
-            alternate_sets=[self._register.parse_set(r) for r in element.findall("./register")],
+            alternate_sets=[self._alternate_set.parse(r) for r in element.findall("./register")],
             clusters=[self.parse(c) for c in element.findall("./cluster")],
             dim=self._dim.parse(element, name, element.get("derivedFrom") is not None),
         )

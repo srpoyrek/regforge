@@ -168,6 +168,7 @@ each peripheral its registers, each register its fields, and so on).
 ```bash
 pytest                    # run the tests
 nox                       # run tests and lint
+nox -s coverage           # branch coverage, listing the lines no test reaches
 nox -s compilers          # compile the golden header on every compiler on PATH
 nox -s sizes              # size per compiler / optimization level
 nox -s format             # apply ruff + black

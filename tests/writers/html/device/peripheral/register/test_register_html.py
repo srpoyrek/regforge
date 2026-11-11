@@ -39,6 +39,19 @@ def _placed(register=None, note=None):
     return PlacedRegister(register or _ctrl(), "CTRL", 0x10, note)
 
 
+def test_it_cross_links_the_other_views_of_its_word():
+    placed = PlacedRegister(_ctrl(), "DR", 0x4, None, ("RXD", "TXD"))
+    html = _renderer().render(Peripheral("SPI0", 0x4000_0000), placed, FACTS)
+    assert "Shares this address with RXD, TXD" in html
+    assert "the same bits, a different layout" in html
+
+
+def test_it_cross_links_nothing_when_its_word_has_one_view():
+    assert "Shares this address" not in _renderer().render(
+        Peripheral("P", 0x4000_0000), _placed(), FACTS
+    )
+
+
 def test_it_names_the_alternate_group_a_register_was_declared_in():
     grouped = Register("DR", 0x4, size=8, alternate_group="Cal")
     html = _renderer().render(Peripheral("ADC0", 0x4000_0000), _placed(grouped), FACTS)

@@ -7,10 +7,10 @@ import xml.etree.ElementTree as ET
 from regforge.ir import Peripheral
 from regforge.readers.svd.device.access import AccessParser
 from regforge.readers.svd.device.peripheral.address_block import AddressBlockParser
+from regforge.readers.svd.device.peripheral.alternate_set import AlternateSetParser
 from regforge.readers.svd.device.peripheral.cluster.cluster import ClusterParser
 from regforge.readers.svd.device.peripheral.dim import DimParser
 from regforge.readers.svd.device.peripheral.interrupt import InterruptParser
-from regforge.readers.svd.device.peripheral.register.register import RegisterParser
 from regforge.readers.svd.device.protection import ProtectionParser
 from regforge.readers.svd.element_parser import ElementParser, ParseContext
 from regforge.readers.svd.primitives import child_int, child_text
@@ -23,11 +23,11 @@ class PeripheralParser(ElementParser):
         super().__init__(context)
         self._access = AccessParser(context)
         self._address_block = AddressBlockParser(context)
+        self._alternate_set = AlternateSetParser(context)
         self._cluster = ClusterParser(context)
         self._dim = DimParser(context)
         self._interrupt = InterruptParser()
         self._protection = ProtectionParser(context)
-        self._register = RegisterParser(context)
 
     def parse(self, element: ET.Element) -> Peripheral:
         """The peripheral ``element`` describes."""
@@ -45,7 +45,7 @@ class PeripheralParser(ElementParser):
             default_reset_mask=child_int(element, "resetMask"),
             default_protection=self._protection.parse(element),
             alternate_sets=[
-                self._register.parse_set(r) for r in element.findall("./registers/register")
+                self._alternate_set.parse(r) for r in element.findall("./registers/register")
             ],
             interrupts=[self._interrupt.parse(i) for i in element.findall("./interrupt")],
             address_blocks=[

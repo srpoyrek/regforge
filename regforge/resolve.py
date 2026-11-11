@@ -50,6 +50,7 @@ from .ir import (
     Register,
     walk_clusters,
 )
+from .resolution.device.peripheral.alternate_set import AlternateSetResolution
 
 _T = TypeVar("_T")
 _Named = TypeVar("_Named", Cluster, Peripheral, Register)
@@ -918,13 +919,6 @@ def _resolve_enum_bases(device: Device) -> list[str]:
 # --- alternate registers ---
 
 
-def _same_shape(register: Register, other: Register) -> bool:
-    """Whether both are single registers, or arrays of the same count and stride."""
-    if register.dim is None or other.dim is None:
-        return register.dim is None and other.dim is None
-    return (register.dim.count, register.dim.increment) == (other.dim.count, other.dim.increment)
-
-
 def _name_groups(sets: list[AlternateSet]) -> dict[int, Register]:
     """Rename the grouped registers whose name another register of the block shares.
 
@@ -959,93 +953,10 @@ def _name_groups(sets: list[AlternateSet]) -> dict[int, Register]:
                 register is not primary
                 and id(register) not in declared
                 and register.address_offset == primary.address_offset
-                and _same_shape(register, primary)
+                and AlternateSetResolution.same_shape(register, primary)
             ):
                 implied[id(register)] = primary
     return implied
-
-
-def _alternate_target(
-    register: Register,
-    wanted: str,
-    registers: list[Register],
-    where: str,
-    findings: list[Finding],
-) -> Register | None:
-    """The register named ``wanted``, which ``register`` declared itself an alternate of.
-
-    Returns ``None`` with a finding when it cannot be one. Names are matched after
-    expansion, so a copy expanded from ``DTR%s`` that names ``DT%s`` pairs with the
-    copy of the same index, and an array kept as ``CCI`` that names ``CC[%s]`` pairs
-    with ``CC``. Two views must share the offset and, when arrays, the shape; a view
-    naming itself, or a name no register of the block carries, leaves the register an
-    ordinary one.
-    """
-    label = f"{where}.{register.name}"
-    by_name = {candidate.name: candidate for candidate in registers}
-    target: Register | None
-    if _ARRAY in wanted:
-        target = by_name.get(wanted.replace(_ARRAY, ""))
-    elif _COPY in wanted:
-        copies = [candidate for candidate in registers if candidate.expanded_from == wanted]
-        target = None
-        if copies and register.expanded_from is None:
-            target = copies[0]
-            findings.append(
-                Finding(
-                    Severity.WARNING,
-                    f"{label}: alternateRegister names the template '{wanted}' -- resolved "
-                    f"to its first copy, {target.name}",
-                )
-            )
-        elif copies:
-            siblings = [c for c in registers if c.expanded_from == register.expanded_from]
-            if len(siblings) != len(copies):
-                findings.append(
-                    Finding(
-                        Severity.WARNING,
-                        f"{label}: alternateRegister '{wanted}' expands to {len(copies)} "
-                        f"copies, not {len(siblings)} -- left unrelated",
-                    )
-                )
-                return None
-            target = copies[siblings.index(register)]
-    else:
-        target = by_name.get(wanted)
-    if target is None:
-        findings.append(
-            Finding(
-                Severity.ERROR,
-                f"{label}: alternateRegister '{wanted}' -- no register of that name in "
-                f"{where}; treated as an ordinary register",
-            )
-        )
-        return None
-    if target is register:
-        findings.append(
-            Finding(Severity.WARNING, f"{label}: alternateRegister names itself -- ignored")
-        )
-        return None
-    if not _same_shape(register, target):
-        findings.append(
-            Finding(
-                Severity.WARNING,
-                f"{label}: alternateRegister '{target.name}' has a different <dim> shape -- "
-                "left unrelated",
-            )
-        )
-        return None
-    if target.address_offset != register.address_offset:
-        findings.append(
-            Finding(
-                Severity.WARNING,
-                f"{label}: alternateRegister '{target.name}' is at offset "
-                f"0x{target.address_offset:X}, not 0x{register.address_offset:X} -- an "
-                "alternate view must share the offset; left unrelated",
-            )
-        )
-        return None
-    return target
 
 
 def _link_alternates(
@@ -1077,9 +988,9 @@ def _link_alternates(
     for alternate_set in sets:
         for register in alternate_set.views:
             if alternate_set.joins is not None:
-                target = _alternate_target(
-                    register, alternate_set.joins, registers, where, findings
-                )
+                rules = AlternateSetResolution(register, alternate_set.joins, registers, where)
+                findings.extend(rules.findings())
+                target = rules.target()
             else:
                 target = implied.get(id(register))
             if target is None:

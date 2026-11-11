@@ -4,6 +4,7 @@ Run a single session with ``nox -s <name>``; run the default set (tests and
 lint) with a bare ``nox``. Sessions:
 
 * ``tests``   -- run the pytest suite.
+* ``coverage`` -- run the suite under branch coverage, naming the lines no test reaches.
 * ``lint``    -- check formatting and lint rules without modifying files.
 * ``types``   -- static type-check the sources with pyright.
 * ``format``  -- apply ruff fixes and black formatting in place.

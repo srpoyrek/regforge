@@ -27,7 +27,7 @@ def _sets(device: Device) -> list[tuple[str, ...]]:
 
 
 def test_a_group_whose_name_nothing_shares_is_only_a_label():
-    # A Fujitsu-style file: every register carries a group, none reuses a name.
+    # Every register carries a group, none reuses a name, and the offsets differ.
     tmcr = Register("PWM_TMCR", 0x0, size=32, alternate_group="PWM")
     ctrl = Register("PWM_CTRL", 0x4, size=32, alternate_group="PWM")
     device = _device(tmcr, ctrl)
@@ -35,6 +35,16 @@ def test_a_group_whose_name_nothing_shares_is_only_a_label():
     assert _names(device) == ["PWM_TMCR", "PWM_CTRL"]
     assert tmcr.alternate_group == "PWM"
     assert _sets(device) == [("PWM_TMCR",), ("PWM_CTRL",)]
+
+
+def test_two_names_in_one_group_at_one_offset_are_not_linked():
+    # 1,200 of 1,352 corpus declarations: different names, one offset, one group.
+    mlno = Register("TCD0_NBYTES_MLNO", 0x1008, size=32, alternate_group="DMA")
+    mloffno = Register("TCD0_NBYTES_MLOFFNO", 0x1008, size=32, alternate_group="DMA")
+    device = _device(mlno, mloffno)
+    assert resolve_alternates(device) == []
+    assert _names(device) == ["TCD0_NBYTES_MLNO", "TCD0_NBYTES_MLOFFNO"]
+    assert _sets(device) == [("TCD0_NBYTES_MLNO",), ("TCD0_NBYTES_MLOFFNO",)]
 
 
 def test_no_link_to_a_register_that_does_not_exist_is_invented():
